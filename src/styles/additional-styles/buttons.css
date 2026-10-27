@@ -1,0 +1,191 @@
+@layer components {
+  /* =========================================================
+     BUTTONS
+     Usage:  <button class="btn btn-primary">Save</button>
+             <button class="btn-lg btn-outline-danger">Delete</button>
+     Pick ONE size (btn | btn-lg | btn-sm | btn-xs)
+     + ONE variant (btn-primary, btn-secondary, ...)
+  ========================================================= */
+
+  /* ---------- Base (shared by every size) ---------- */
+  .btn,
+  .btn-lg,
+  .btn-sm,
+  .btn-xs {
+    @apply inline-flex select-none items-center justify-center gap-2
+      whitespace-nowrap rounded-lg border border-transparent
+      text-sm font-medium leading-5
+      transition duration-150 ease-out
+      focus:outline-none
+      focus-visible:ring-2 focus-visible:ring-offset-2
+      dark:focus-visible:ring-offset-slate-900
+      active:scale-[0.98]
+      motion-reduce:transform-none motion-reduce:transition-none
+      disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none;
+  }
+
+  /* Anchors / non-button elements can't use :disabled */
+  .btn[aria-disabled="true"],
+  .btn-lg[aria-disabled="true"],
+  .btn-sm[aria-disabled="true"],
+  .btn-xs[aria-disabled="true"] {
+    @apply pointer-events-none opacity-50;
+  }
+
+  /* ---------- Sizes ---------- */
+  .btn {
+    @apply px-4 py-2.5;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5;
+  }
+
+  .btn-xs {
+    @apply px-2.5 py-1 text-xs;
+  }
+
+  /* ---------- Solid variants ---------- */
+  .btn-primary {
+    @apply bg-primary-500 text-white shadow-primary-500/30
+      hover:bg-primary-600 hover:shadow-md active:bg-primary-700
+      focus-visible:ring-primary-500/50;
+  }
+
+  /* Solid deep slate: the "secondary brand" colour */
+  .btn-secondary {
+    @apply bg-slate-800 text-white shadow-slate-900/20
+      hover:bg-slate-700 hover:shadow-md active:bg-slate-900
+      focus-visible:ring-slate-500/50
+      dark:bg-slate-600 dark:hover:bg-slate-500 dark:active:bg-slate-700;
+  }
+
+  .btn-success {
+    @apply bg-emerald-500 text-white shadow-emerald-500/30
+      hover:bg-emerald-600 hover:shadow-md active:bg-emerald-700
+      focus-visible:ring-emerald-500/50;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 text-white shadow-red-500/30
+      hover:bg-red-600 hover:shadow-md active:bg-red-700
+      focus-visible:ring-red-500/50;
+  }
+
+  /* Dark text on amber for readable contrast */
+  .btn-warning {
+    @apply bg-amber-500 text-slate-900 shadow-amber-500/30
+      hover:bg-amber-600 hover:shadow-md active:bg-amber-700
+      focus-visible:ring-amber-500/50;
+  }
+
+  /* The previous white, bordered secondary look */
+  .btn-light {
+    @apply border-slate-200 bg-white text-slate-700
+      hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100
+      focus-visible:ring-slate-400/50
+      dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200
+      dark:hover:border-slate-600 dark:hover:bg-slate-700/60
+      dark:active:bg-slate-700;
+  }
+
+  /* ---------- Outline variants ---------- */
+  .btn-outline-primary {
+    @apply border-primary-500 bg-transparent text-primary-600
+      hover:bg-primary-500 hover:text-white
+      active:bg-primary-600
+      focus-visible:ring-primary-500/50
+      dark:text-primary-400 dark:hover:text-white;
+  }
+
+  .btn-outline-secondary {
+    @apply border-slate-800 bg-transparent text-slate-800
+      hover:bg-slate-800 hover:text-white active:bg-slate-900
+      focus-visible:ring-slate-500/50
+      dark:border-slate-500 dark:text-slate-200
+      dark:hover:bg-slate-600 dark:hover:text-white dark:active:bg-slate-700;
+  }
+
+  .btn-outline-success {
+    @apply border-emerald-500 bg-transparent text-emerald-600
+      hover:bg-emerald-500 hover:text-white
+      active:bg-emerald-600
+      focus-visible:ring-emerald-500/50
+      dark:text-emerald-400 dark:hover:text-white;
+  }
+
+  .btn-outline-danger {
+    @apply border-red-500 bg-transparent text-red-600
+      hover:bg-red-500 hover:text-white
+      active:bg-red-600
+      focus-visible:ring-red-500/50
+      dark:text-red-400 dark:hover:text-white;
+  }
+
+  .btn-outline-warning {
+    @apply border-amber-500 bg-transparent text-amber-600
+      hover:bg-amber-500 hover:text-slate-900
+      active:bg-amber-600
+      focus-visible:ring-amber-500/50
+      dark:text-amber-400 dark:hover:text-slate-900;
+  }
+
+  /* ---------- Low-emphasis variants ---------- */
+  .btn-ghost {
+    @apply bg-transparent text-slate-600
+      hover:bg-slate-100 active:bg-slate-200
+      focus-visible:ring-slate-400/50
+      dark:text-slate-300 dark:hover:bg-slate-700/60 dark:active:bg-slate-700;
+  }
+
+  .btn-link {
+    @apply bg-transparent px-0 text-primary-600
+      underline-offset-4 hover:underline
+      focus-visible:ring-primary-500/50
+      dark:text-primary-400;
+  }
+
+  /* Solid buttons: flat at rest, soft tinted glow on hover, pressed on click */
+  .btn-primary,
+  .btn-secondary,
+  .btn-success,
+  .btn-danger,
+  .btn-warning {
+    @apply hover:shadow-md active:shadow-none;
+  }
+
+  /* Flat variants carry no shadow */
+  .btn-outline-primary,
+  .btn-outline-secondary,
+  .btn-outline-success,
+  .btn-outline-danger,
+  .btn-outline-warning,
+  .btn-ghost,
+  .btn-link {
+    @apply shadow-none;
+  }
+
+  /* ---------- Modifiers ---------- */
+  .btn-block {
+    @apply flex w-full;
+  }
+
+  /* Square button for icon-only content (add aria-label!) */
+  .btn-icon {
+    @apply aspect-square px-2;
+  }
+
+  /* Loading: shows a spinner and blocks clicks */
+  .btn-loading {
+    @apply pointer-events-none relative cursor-wait;
+  }
+
+  .btn-loading::before {
+    content: "";
+    @apply h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent;
+  }
+}

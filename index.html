@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <!-- Apply saved theme & color mode before first paint (prevents flicker & bfcache stale restore) -->
+  <script>
+    (function () {
+      function applyTheme() {
+        try {
+          var theme = localStorage.getItem("app-theme") || "violet";
+          document.documentElement.setAttribute("data-theme", theme);
+
+          var mode = localStorage.getItem("dark-mode") || "system";
+          var isDark =
+            mode === "dark" ||
+            mode === "true" ||
+            ((mode === "system" || !mode) &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+          if (isDark) {
+            document.documentElement.classList.add("dark");
+            document.documentElement.style.colorScheme = "dark";
+          } else {
+            document.documentElement.classList.remove("dark");
+            document.documentElement.style.colorScheme = "light";
+          }
+        } catch (e) { }
+      }
+
+      // Initial execution before first paint
+      applyTheme();
+
+      // Re-apply immediately if page is restored from browser Back-Forward cache (bfcache)
+      window.addEventListener("pageshow", function () {
+        applyTheme();
+      });
+
+      // Re-apply on browser history back/forward navigation
+      window.addEventListener("popstate", function () {
+        applyTheme();
+      });
+    })();
+  </script>
+
+  <!-- Viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+
+  <!-- Application Identity -->
+  <title>iMaker Construction | Management Platform</title>
+
+  <meta name="description"
+    content="iMaker Construction is a unified management platform for planning projects, coordinating teams, managing workflows, tracking progress, and streamlining construction operations." />
+
+  <!-- Private Application — Do Not Index -->
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+
+  <!-- Browser / UI -->
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="color-scheme" content="light" />
+
+  <!-- Referrer Policy -->
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+  <!-- Application -->
+  <meta name="application-name" content="iMaker Construction" />
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

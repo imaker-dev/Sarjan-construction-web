@@ -21,7 +21,6 @@ axiosInstance.interceptors.request.use(
     const token = getBearerToken();
     const companyId = getCompanyId();
 
-    console.log(companyId);
     if (token) {
       config.headers.Authorization = token;
     }

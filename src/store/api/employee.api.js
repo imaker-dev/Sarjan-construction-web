@@ -17,7 +17,9 @@ export default false
       updateEmployeeApi: ({ id, values }) => {
         return Api.patch(`/employees/${id}`, values);
       },
-
+      updateEmployeeStatusApi: ({ id, values }) => {
+        return Api.post(`/employees/${id}/status`, values);
+      },
       sendEmployeeInviteApi: ({ id, values }) => {
         return Api.post(`/employees/${id}/invite`, values);
       },

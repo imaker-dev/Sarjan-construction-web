@@ -1,4 +1,3 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import employeeApi from "@store/api/employee.api";
 import { toast } from "sonner";
@@ -36,6 +35,15 @@ export const updateEmployee = createAsyncThunk(
   async ({ id, values }) => {
     const res = await employeeApi.updateEmployeeApi({ id, values });
     return res.data;
+  },
+);
+
+// Update Employee Status
+export const updateEmployeeStatus = createAsyncThunk(
+  "employee/updateEmployeeStatus",
+  async ({ id, values }) => {
+    const res = await employeeApi.updateEmployeeStatusApi({ id, values });
+    return { id, ...res.data };
   },
 );
 
@@ -77,6 +85,7 @@ const employeeSlice = createSlice({
     isSendingEmployeeInvite: false,
     isResendingEmployeeInvite: false,
     isClaimingEmployeeAccount: false,
+    isUpdatingEmployeeStatus: false,
 
     employeesData: null,
     employeeData: null,
@@ -150,6 +159,48 @@ const employeeSlice = createSlice({
         toast.error(action.error.message || "Failed to update employee");
       })
 
+      // Update Employee Status
+      .addCase(updateEmployeeStatus.pending, (state) => {
+        state.isUpdatingEmployeeStatus = true;
+      })
+      .addCase(updateEmployeeStatus.fulfilled, (state, action) => {
+        state.isUpdatingEmployeeStatus = false;
+
+        const { id, status, version, response } = action.payload;
+
+        const updateEmployeeRow = (employee) =>
+          employee.id === id
+            ? {
+                ...employee,
+                status,
+                ...(version !== undefined && { version }),
+              }
+            : employee;
+
+        if (Array.isArray(state.employeesData?.employees)) {
+          state.employeesData.employees =
+            state.employeesData.employees.map(updateEmployeeRow);
+        } else if (Array.isArray(state.employeesData)) {
+          state.employeesData = state.employeesData.map(updateEmployeeRow);
+        }
+
+        if (state.employeeData?.id === id) {
+          state.employeeData = {
+            ...state.employeeData,
+            status,
+            ...(version !== undefined && { version }),
+          };
+        }
+
+        toast.success(
+          response?.message || "Employee status updated successfully!",
+        );
+      })
+      .addCase(updateEmployeeStatus.rejected, (state, action) => {
+        state.isUpdatingEmployeeStatus = false;
+        toast.error(action.error.message || "Failed to update employee status");
+      })
+
       // Send Employee Invitation
       .addCase(sendEmployeeInvite.pending, (state) => {
         state.isSendingEmployeeInvite = true;
@@ -159,7 +210,8 @@ const employeeSlice = createSlice({
         state.isSendingEmployeeInvite = false;
         state.employeeInviteData = action.payload;
         toast.success(
-          action.payload?.message || "Employee invitation created successfully!",
+          action.payload?.message ||
+            "Employee invitation created successfully!",
         );
       })
       .addCase(sendEmployeeInvite.rejected, (state, action) => {
@@ -201,9 +253,7 @@ const employeeSlice = createSlice({
       })
       .addCase(employeeClaimAccount.rejected, (state, action) => {
         state.isClaimingEmployeeAccount = false;
-        toast.error(
-          action.error.message || "Failed to claim employee account",
-        );
+        toast.error(action.error.message || "Failed to claim employee account");
       });
   },
 });

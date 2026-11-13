@@ -1,4 +1,8 @@
-import { clearAuthStorage, getBearerToken } from "@utils/auth.utils";
+import {
+  clearAuthStorage,
+  getBearerToken,
+  getCompanyId,
+} from "@utils/auth.utils";
 import { ERROR_TYPES, identifyError } from "@utils/error.handlers";
 import axios from "axios";
 
@@ -15,9 +19,15 @@ axiosInstance.interceptors.request.use(
     if (!config.headers) config.headers = {};
 
     const token = getBearerToken();
+    const companyId = getCompanyId();
 
+    console.log(companyId);
     if (token) {
       config.headers.Authorization = token;
+    }
+
+    if (companyId) {
+      config.headers["x-company-id"] = companyId;
     }
 
     // If the request body is FormData, let axios set the Content-Type for multipart/form-data
@@ -36,24 +46,33 @@ axiosInstance.interceptors.request.use(
   },
 );
 
-// Response interceptor to handle errors and unauthorized status
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      const { status, data } = error.response;
-      const errorMessage = data?.message || data?.error || "Some unknown error";
+      const { data } = error.response;
 
-      const errorType = identifyError(errorMessage);
+      // Full error object: { code, message, requestId }
+      const apiError =
+        data?.error && typeof data.error === "object"
+          ? data.error
+          : {
+              message:
+                (typeof data?.error === "string" && data.error) ||
+                data?.message ||
+                "Some unknown error",
+            };
+
+      const errorType = identifyError(apiError.message);
       if (errorType === ERROR_TYPES.AUTH) {
         clearAuthStorage();
         window.location.replace("/auth");
       }
 
-      return Promise.reject(new Error(errorMessage));
+      return Promise.reject(apiError);
     }
 
-    return Promise.reject(new Error("Network error"));
+    return Promise.reject({ code: "NETWORK_ERROR", message: "Network error" });
   },
 );
 

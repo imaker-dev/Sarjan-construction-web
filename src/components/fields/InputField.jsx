@@ -62,15 +62,19 @@ export function InputField({
           autoComplete={autoComplete}
           maxLength={maxLength}
           className={`
-            w-full
             form-input
-            ${FinalLeftIcon ? "pl-10" : "pl-3"}
-            ${FinalRightIcon || isPassword ? "pr-10" : "pr-3"}
-            ${
-              error
-                && "border-red-300 bg-red-50"
-            }
+            ${FinalLeftIcon ? "pl-10" : "pl-3.5"}
+            ${FinalRightIcon || isPassword ? "pr-10" : "pr-3.5"}
+            ${error ? "is-invalid" : ""}
           `}
+          aria-invalid={Boolean(error)}
+          aria-describedby={
+            error
+              ? `${inputId}-error`
+              : helperText
+                ? `${inputId}-helper`
+                : undefined
+          }
         />
 
         {/* RIGHT ICON */}

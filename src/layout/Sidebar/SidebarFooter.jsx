@@ -1,7 +1,10 @@
 import Avatar from "@components/ui/Avatar";
 import { IconPower } from "@tabler/icons-react";
+import { useSelector } from "react-redux";
 
-function SidebarFooter({ user, collapsed, onLogout }) {
+function SidebarFooter({ collapsed, onLogout }) {
+  const { meData } = useSelector((state) => state.auth);
+  const { displayName, role } = meData || {};
   return (
     <div className="shrink-0 p-4 lg:p-5">
       <div
@@ -11,17 +14,17 @@ function SidebarFooter({ user, collapsed, onLogout }) {
             : "gap-3 rounded-2xl bg-secondary-500/10 px-3.5 py-3 dark:bg-secondary-500/10"
         }`}
       >
-        <Avatar size={38} />
+        <Avatar name={displayName || "Guest"} size={38} />
 
         {!collapsed && (
           <>
             <div className="min-w-0 flex-1 overflow-hidden">
               <p className="truncate text-[14px] font-semibold text-gray-800 dark:text-white">
-                {user?.name || "Guest"}
+                {displayName || "Guest"}
               </p>
 
               <p className="truncate text-[12.5px] text-gray-500 dark:text-white/90">
-                {user?.role || "Member"}
+                {role || "Member"}
               </p>
             </div>
 
@@ -31,10 +34,7 @@ function SidebarFooter({ user, collapsed, onLogout }) {
               className="shrink-0 rounded-full p-1.5 text-gray-500 transition-all duration-200 hover:bg-white hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700/70 dark:hover:text-primary-300"
               aria-label="Logout"
             >
-              <IconPower
-                className="h-[18px] w-[18px]"
-                strokeWidth={1.75}
-              />
+              <IconPower className="h-[18px] w-[18px]" strokeWidth={1.75} />
             </button>
           </>
         )}

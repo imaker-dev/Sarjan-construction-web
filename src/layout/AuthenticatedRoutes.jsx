@@ -6,11 +6,10 @@ import { routeConfig } from "@config/route.config";
 import UnauthorizedPage from "@components/feedback/UnauthorizedPage";
 import NotFoundPage from "@components/feedback/NotFoundPage";
 
-
 const AuthenticatedRoutes = () => {
   const { meData } = useSelector((state) => state.auth);
 
-//   if (!meData) return null;
+  //   if (!meData) return null;
 
   const userRole = meData.roles?.[0]?.slug;
   const userPermissions = meData.permissions || [];
@@ -32,14 +31,14 @@ const AuthenticatedRoutes = () => {
 
           if (!SelectedComponent) return null;
 
-        //   const allowed = hasAccess({
-        //     userRole,
-        //     userPermissions,
-        //     roles,
-        //     permissions,
-        //   });
+          //   const allowed = hasAccess({
+          //     userRole,
+          //     userPermissions,
+          //     roles,
+          //     permissions,
+          //   });
 
-        const allowed = true;
+          const allowed = true;
 
           return (
             <Route

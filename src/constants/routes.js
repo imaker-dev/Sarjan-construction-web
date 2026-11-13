@@ -10,6 +10,31 @@ export const ROUTES = {
   },
 
   // =========================
+  // ONBOARDING
+  // =========================
+  ONBOARDING: {
+    ROOT: "/onboardings",
+    VERIFY: "/verify-onboarding",
+    CREATE: "/onboarding/create",
+  },
+
+
+  DEPARTMENTS: {
+    ROOT: "/departments",
+    CREATE: "/departments/create",
+    DETAILS: "/departments/:id",
+    EDIT: "/departments/:id/edit",
+      OPERATIONS: "/departments/operations",
+
+  },
+
+  EMPLOYEES: {
+    ROOT: "/employees",
+    CREATE: "/employees/create",
+    DETAILS: "/employees/:id",
+    EDIT: "/employees/:id/edit",
+  },
+  // =========================
   // APPS
   // =========================
   APPS: {
@@ -52,8 +77,8 @@ export const ROUTES = {
     RESET_PASSWORD: "/auth/reset-password",
   },
 
-  // USERS 
-  USER:{
+  // USERS
+  USER: {
     ROOT: "/users",
   },
 

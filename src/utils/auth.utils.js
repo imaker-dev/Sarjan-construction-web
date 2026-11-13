@@ -1,21 +1,26 @@
-import { TOKEN_KEYS } from "../constants";
+import { AUTH_CONFIG } from "@config/auth.config";
 
 export const getRawToken = () =>
-  localStorage.getItem(TOKEN_KEYS.ACCESS) ||
-  sessionStorage.getItem(TOKEN_KEYS.ACCESS);
+  localStorage.getItem(AUTH_CONFIG.ACCESS_TOKEN) ||
+  sessionStorage.getItem(AUTH_CONFIG.ACCESS_TOKEN);
 
 export const getBearerToken = () => {
   const token = getRawToken();
   return token ? `Bearer ${token}` : null;
 };
 
+export const getCompanyId = () =>
+  localStorage.getItem(AUTH_CONFIG.COMPANY_ID) ||
+  sessionStorage.getItem(AUTH_CONFIG.COMPANY_ID);
+
 export const isLoggedIn = () => !!getRawToken();
 
 export const clearAuthStorage = () => {
-  localStorage.removeItem(TOKEN_KEYS.ACCESS);
-  localStorage.removeItem(TOKEN_KEYS.REFRESH);
-  localStorage.removeItem(TOKEN_KEYS.QR_SESSION);
-  sessionStorage.removeItem(TOKEN_KEYS.ACCESS);
-  sessionStorage.removeItem(TOKEN_KEYS.REFRESH);
-  localStorage.removeItem(TOKEN_KEYS.LOGIN_SOURCE)
+  localStorage.removeItem(AUTH_CONFIG.ACCESS_TOKEN);
+  localStorage.removeItem(AUTH_CONFIG.REFRESH_TOKEN);
+  localStorage.removeItem(AUTH_CONFIG.COMPANY_ID);
+
+  sessionStorage.removeItem(AUTH_CONFIG.ACCESS_TOKEN);
+  sessionStorage.removeItem(AUTH_CONFIG.REFRESH_TOKEN);
+  sessionStorage.removeItem(AUTH_CONFIG.COMPANY_ID);
 };

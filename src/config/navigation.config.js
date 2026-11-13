@@ -17,6 +17,9 @@ import {
   IconAddressBook,
   IconReceipt,
   IconListCheck,
+  IconBuilding,
+  IconClipboardList,
+  IconBuildingCommunity,
 } from "@tabler/icons-react";
 
 export const NAV_CONFIG = [
@@ -55,6 +58,47 @@ export const NAV_CONFIG = [
             path: ROUTES.HOME.FRONTEND_PAGES.PRICING,
           },
         ],
+      },
+    ],
+  },
+
+  {
+    section: "MANAGEMENT",
+    items: [
+      // {
+      //   title: "Companies",
+      //   icon: IconBuilding,
+      //   path: ROUTES.COMPANIES.ROOT,
+      // },
+      {
+        title: "Onboarding",
+        icon: IconClipboardList,
+        children: [
+          {
+            title: "All Onboardings",
+            path: ROUTES.ONBOARDING.ROOT,
+          },
+          {
+            title: "Create Onboarding",
+            path: ROUTES.ONBOARDING.CREATE,
+          },
+        ],
+      },
+    ],
+  },
+
+  {
+    section: "ORGANIZATION",
+    items: [
+      {
+        title: "Departments",
+        icon: IconBuilding,
+        path: ROUTES.DEPARTMENTS.ROOT,
+      },
+      {
+        title: "Employees",
+        icon: IconUsers,
+        path: ROUTES.EMPLOYEES.ROOT,
       },
     ],
   },
@@ -103,7 +147,7 @@ export const NAV_CONFIG = [
       {
         title: "Ecommerce",
         icon: IconShoppingCart,
-      
+
         children: [
           {
             title: "Shop",

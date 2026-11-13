@@ -22,6 +22,8 @@ const errorPatterns = {
 };
 
 export const identifyError = (errorMessage) => {
+  if (typeof errorMessage !== "string") return null;
+
   for (const [type, messages] of Object.entries(errorPatterns)) {
     if (messages.some((msg) => errorMessage.includes(msg))) {
       return type;

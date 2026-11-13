@@ -1,22 +1,22 @@
 import { LogOut } from "lucide-react";
 import Avatar from "@components/ui/Avatar";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import ModalAction from "@components/ui/ModalAction";
+import { logout } from "@store/slices/auth.slice";
 
-export default function LogoutModal({
-  isOpen,
-  onClose,
-  onConfirm,
-  loading = false,
-}) {
+export default function LogoutModal({ isOpen, onClose, loading = false }) {
+  const dispatch = useDispatch();
+  const handleConfirm = () => {
+    dispatch(logout());
+  };
   const { meData } = useSelector((state) => state.auth);
-
+  const { displayName, loginId } = meData || {};
   return (
     <ModalAction
       id="logout-modal"
       isOpen={isOpen}
       onClose={onClose}
-      onSubmit={onConfirm}
+      onSubmit={handleConfirm}
       title="Log out of your account?"
       desc="You'll need to sign back in to access your workspace and continue where you left off."
       icon={LogOut}
@@ -26,16 +26,16 @@ export default function LogoutModal({
       loading={loading}
     >
       {meData && (
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/60 px-3.5 py-3">
-          <Avatar name={meData.name} size={36} />
+        <div className="flex items-center gap-3 rounded-xl bg-muted/60 px-3.5 py-3">
+          <Avatar name={displayName} size={36} />
 
           <div className="min-w-0">
             <p className="truncate text-[13px] font-medium text-foreground">
-              {meData.name}
+              {displayName}
             </p>
 
             <p className="truncate text-[12.5px] text-muted-foreground">
-              {meData.email}
+              {loginId}
             </p>
           </div>
         </div>

@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { User, Inbox, LayoutGrid, LogOut, X } from "lucide-react";
-
-const DEFAULT_USER = {
-  name: "Mathew Anderson",
-  role: "Designer",
-  email: "info@modernize.com",
-  avatar: "https://i.pravatar.cc/150?img=13",
-};
+import { useSelector } from "react-redux";
+import Avatar from "@components/ui/Avatar";
 
 const DEFAULT_MENU_ITEMS = [
   {
@@ -52,10 +47,13 @@ function MenuRow({ icon: Icon, label, caption, href }) {
 }
 
 export default function ProfileDropdown({
-  user = DEFAULT_USER,
   menuItems = DEFAULT_MENU_ITEMS,
   onLogout,
 }) {
+  const { meData } = useSelector((state) => state.auth);
+
+  const { displayName, role, loginId } = meData || {};
+
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   const triggerRef = useRef(null);
@@ -107,11 +105,7 @@ export default function ProfileDropdown({
         aria-expanded={open}
         className="relative rounded-full p-2 transition-all duration-200 ease-in-out hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 dark:hover:bg-primary-950/40 dark:focus-visible:ring-primary-500/40"
       >
-        <img
-          src={user.avatar}
-          alt={user.name}
-          className="h-9 w-9 rounded-full object-cover"
-        />
+        <Avatar name={displayName || "Guest"} size={36} />
       </button>
 
       {/* Mobile backdrop */}
@@ -148,23 +142,19 @@ export default function ProfileDropdown({
 
           {/* Identity */}
           <div className="flex items-center gap-3 px-4 pb-4">
-            <img
-              src={user.avatar}
-              alt={user.name}
-              className="h-14 w-14 flex-none rounded-full object-cover ring-4 ring-muted"
-            />
+            <Avatar name={displayName || "Guest"} size={56} />
 
             <div className="min-w-0">
               <p className="truncate text-[15px] font-bold text-foreground">
-                {user.name}
+                {displayName}
               </p>
 
               <p className="truncate text-[13px] font-medium text-primary-500 dark:text-primary-400">
-                {user.role}
+                {role}
               </p>
 
               <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
-                {user.email}
+                {loginId}
               </p>
             </div>
           </div>

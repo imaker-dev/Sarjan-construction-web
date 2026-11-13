@@ -7,7 +7,7 @@ import { Provider } from "react-redux";
 import store from "./store.js";
 import { Toaster } from "sonner";
 import RouteLoader from "@components/feedback/RouteLoader.jsx";
-import { ThemeProvider } from "@contexts/ThemeContext.jsx";
+import ThemeProvider from "@contexts/ThemeProvider.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

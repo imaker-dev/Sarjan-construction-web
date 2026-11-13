@@ -65,8 +65,8 @@ axiosInstance.interceptors.response.use(
 
       const errorType = identifyError(apiError.message);
       if (errorType === ERROR_TYPES.AUTH) {
-        // clearAuthStorage();
-        // window.location.replace("/auth");
+        clearAuthStorage();
+        window.location.replace("/auth");
       }
 
       return Promise.reject(apiError);

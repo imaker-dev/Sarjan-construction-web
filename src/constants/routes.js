@@ -16,6 +16,7 @@ export const ROUTES = {
     ROOT: "/onboardings",
     VERIFY: "/verify-onboarding",
     CREATE: "/onboarding/create",
+    VERIFY_USER: "/verify-user",
   },
 
 

@@ -17,4 +17,14 @@ export default false
       updateEmployeeApi: ({ id, values }) => {
         return Api.patch(`/employees/${id}`, values);
       },
+
+      sendEmployeeInviteApi: ({ id, values }) => {
+        return Api.post(`/employees/${id}/invite`, values);
+      },
+      resendEmployeeInviteApi: ({ id, values }) => {
+        return Api.post(`/employees/${id}/invite/resend`, values);
+      },
+      employeeClaimAccountApi: (values) => {
+        return Api.post(`/auth/claim`, values);
+      },
     };

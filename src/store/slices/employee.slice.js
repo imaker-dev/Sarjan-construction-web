@@ -39,18 +39,57 @@ export const updateEmployee = createAsyncThunk(
   },
 );
 
+// Send Employee Invitation
+export const sendEmployeeInvite = createAsyncThunk(
+  "employee/sendEmployeeInvite",
+  async ({ id, values }) => {
+    const res = await employeeApi.sendEmployeeInviteApi({ id, values });
+    return res.data;
+  },
+);
+
+// Resend Employee Invitation
+export const resendEmployeeInvite = createAsyncThunk(
+  "employee/resendEmployeeInvite",
+  async ({ id, values = {} }) => {
+    const res = await employeeApi.resendEmployeeInviteApi({ id, values });
+    return res.data;
+  },
+);
+
+// Claim Employee Account
+export const employeeClaimAccount = createAsyncThunk(
+  "employee/employeeClaimAccount",
+  async (values) => {
+    const res = await employeeApi.employeeClaimAccountApi(values);
+    return res.data;
+  },
+);
+
 const employeeSlice = createSlice({
   name: "employee",
+
   initialState: {
     isListingEmployees: false,
     isGettingEmployeeDetails: false,
     isCreatingEmployee: false,
     isUpdatingEmployee: false,
+    isSendingEmployeeInvite: false,
+    isResendingEmployeeInvite: false,
+    isClaimingEmployeeAccount: false,
 
     employeesData: null,
     employeeData: null,
+    employeeInviteData: null,
+    employeeClaimData: null,
   },
-  reducers: {},
+
+  reducers: {
+    clearEmployeeInviteData: (state) => {
+      state.employeeInviteData = null;
+    },
+  },
+
   extraReducers: (builder) => {
     builder
       // List Employees
@@ -109,8 +148,66 @@ const employeeSlice = createSlice({
       .addCase(updateEmployee.rejected, (state, action) => {
         state.isUpdatingEmployee = false;
         toast.error(action.error.message || "Failed to update employee");
+      })
+
+      // Send Employee Invitation
+      .addCase(sendEmployeeInvite.pending, (state) => {
+        state.isSendingEmployeeInvite = true;
+        state.employeeInviteData = null;
+      })
+      .addCase(sendEmployeeInvite.fulfilled, (state, action) => {
+        state.isSendingEmployeeInvite = false;
+        state.employeeInviteData = action.payload;
+        toast.success(
+          action.payload?.message || "Employee invitation created successfully!",
+        );
+      })
+      .addCase(sendEmployeeInvite.rejected, (state, action) => {
+        state.isSendingEmployeeInvite = false;
+        toast.error(
+          action.error.message || "Failed to send employee invitation",
+        );
+      })
+
+      // Resend Employee Invitation
+      .addCase(resendEmployeeInvite.pending, (state) => {
+        state.isResendingEmployeeInvite = true;
+        state.employeeInviteData = null;
+      })
+      .addCase(resendEmployeeInvite.fulfilled, (state, action) => {
+        state.isResendingEmployeeInvite = false;
+        state.employeeInviteData = action.payload;
+        toast.success(
+          action.payload?.message || "Employee invitation resent successfully!",
+        );
+      })
+      .addCase(resendEmployeeInvite.rejected, (state, action) => {
+        state.isResendingEmployeeInvite = false;
+        toast.error(
+          action.error.message || "Failed to resend employee invitation",
+        );
+      })
+
+      // Claim Employee Account
+      .addCase(employeeClaimAccount.pending, (state) => {
+        state.isClaimingEmployeeAccount = true;
+      })
+      .addCase(employeeClaimAccount.fulfilled, (state, action) => {
+        state.isClaimingEmployeeAccount = false;
+        state.employeeClaimData = action.payload;
+        toast.success(
+          action.payload?.message || "Account claimed successfully!",
+        );
+      })
+      .addCase(employeeClaimAccount.rejected, (state, action) => {
+        state.isClaimingEmployeeAccount = false;
+        toast.error(
+          action.error.message || "Failed to claim employee account",
+        );
       });
   },
 });
+
+export const { clearEmployeeInviteData } = employeeSlice.actions;
 
 export default employeeSlice.reducer;

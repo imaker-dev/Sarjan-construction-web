@@ -4,6 +4,7 @@ import AllDepartmentsPage from "@features/departments/pages/AllDepartmentsPage";
 import CreateDepartmentPage from "@features/departments/pages/CreateDepartmentPage";
 import DepartmentOperationsPage from "@features/departments/pages/DepartmentOperationsPage";
 import AllEmployeesPage from "@features/employees/pages/AllEmployeesPage";
+import CreateEmployeePage from "@features/employees/pages/CreateEmployeePage";
 import CreateOnboardingPage from "@features/onboard/pages/CreateOnboardingPage";
 import OnboardingsPage from "@features/onboard/pages/OnboardingsPage";
 import VerifyOnboardingPage from "@features/onboard/pages/VerifyOnboardingPage";
@@ -33,5 +34,6 @@ export const routeConfig = [
   { path: ROUTES.DEPARTMENTS.OPERATIONS, element: DepartmentOperationsPage },
 
   // employees routes
-  { path: ROUTES.EMPLOYEES.ROOT, element: AllEmployeesPage }
+  { path: ROUTES.EMPLOYEES.ROOT, element: AllEmployeesPage },
+  { path: ROUTES.EMPLOYEES.CREATE, element: CreateEmployeePage }
 ];

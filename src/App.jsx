@@ -1,6 +1,7 @@
 import { ROUTES } from "@constants/routes";
 import LoginPage from "@features/auth/pages/LoginPage";
 import VerifyOnboardingPage from "@features/onboard/pages/VerifyOnboardingPage";
+import VerifyUserPage from "@features/onboard/pages/VerifyUserPage";
 import AuthenticatedRoutes from "@layout/AuthenticatedRoutes";
 import { fetchMe } from "@store/slices/auth.slice";
 import { Suspense, useEffect } from "react";
@@ -23,6 +24,7 @@ function App() {
       <Routes>
         
         <Route path={ROUTES.ONBOARDING.VERIFY} element={<VerifyOnboardingPage />} />
+        <Route path={ROUTES.ONBOARDING.VERIFY_USER} element={<VerifyUserPage />} />
 
         {/* AUTH */}
         {!logIn && <Route path={ROUTES.AUTH.ROOT} element={<LoginPage />} />}

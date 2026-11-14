@@ -10,6 +10,10 @@ import OnboardingsPage from "@features/onboard/pages/OnboardingsPage";
 import VerifyOnboardingPage from "@features/onboard/pages/VerifyOnboardingPage";
 import ThemeSelectionPage from "@features/theme/pages/ThemeSelectionPage";
 import AllUsersPage from "@features/users/pages/AllUsersPage";
+import CompaniesListPage from "@features/platform/pages/CompaniesListPage";
+import CreateCompanyPage from "@features/platform/pages/CreateCompanyPage";
+import CompanyDetailsPage from "@features/platform/pages/CompanyDetailsPage";
+import MasterOperationsPage from "@features/platform/pages/MasterOperationsPage";
 
 export const routeConfig = [
   {
@@ -21,6 +25,12 @@ export const routeConfig = [
   },
   { path: ROUTES.USER.ROOT, element: AllUsersPage },
   { path: ROUTES.THEME.ROOT, element: ThemeSelectionPage },
+
+  // platform admin routes
+  { path: ROUTES.PLATFORM.COMPANIES, element: CompaniesListPage },
+  { path: ROUTES.PLATFORM.COMPANY_CREATE, element: CreateCompanyPage },
+  { path: ROUTES.PLATFORM.COMPANY_DETAILS, element: CompanyDetailsPage },
+  { path: ROUTES.PLATFORM.OPERATIONS, element: MasterOperationsPage },
 
   { path: ROUTES.ONBOARDING.ROOT, element: OnboardingsPage },
   { path: ROUTES.ONBOARDING.CREATE, element: CreateOnboardingPage },

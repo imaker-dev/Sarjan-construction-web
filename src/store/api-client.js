@@ -26,7 +26,17 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = token;
     }
 
-    if (companyId) {
+    // Platform routes and global operations routes operate across all companies.
+    // Do NOT send x-company-id header for platform endpoints.
+    const isPlatformRoute =
+      config.skipCompanyId ||
+      (config.url &&
+        (config.url.startsWith("/platform") ||
+          config.url.includes("/platform/") ||
+          config.url === "/operations" ||
+          config.url.startsWith("/operations")));
+
+    if (companyId && !isPlatformRoute) {
       config.headers["x-company-id"] = companyId;
     }
 
@@ -82,6 +92,9 @@ export const get = async (url, params, config = {}) =>
 
 export const post = async (url, data, config = {}) =>
   axiosInstance.post(url, data, config);
+
+export const patch = async (url, data, config = {}) =>
+  axiosInstance.patch(url, data, config);
 
 export const put = async (url, data, config = {}) =>
   axiosInstance.put(url, data, config);

@@ -63,6 +63,22 @@ export const NAV_CONFIG = [
   },
 
   {
+    section: "PLATFORM ADMIN",
+    items: [
+      {
+        title: "Companies",
+        icon: IconBuilding,
+        path: ROUTES.PLATFORM.COMPANIES,
+      },
+      {
+        title: "Master Operations",
+        icon: IconListCheck,
+        path: ROUTES.PLATFORM.OPERATIONS,
+      },
+    ],
+  },
+
+  {
     section: "MANAGEMENT",
     items: [
       // {

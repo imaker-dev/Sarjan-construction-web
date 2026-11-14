@@ -86,4 +86,15 @@ export const ROUTES = {
   THEME: {
     ROOT: "/themes",
   },
+
+  // =========================
+  // PLATFORM ADMIN
+  // =========================
+  PLATFORM: {
+    ROOT: "/platform",
+    COMPANIES: "/platform/companies",
+    COMPANY_CREATE: "/platform/companies/create",
+    COMPANY_DETAILS: "/platform/companies/:companyId",
+    OPERATIONS: "/platform/operations",
+  },
 };

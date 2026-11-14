@@ -21,7 +21,6 @@ axiosInstance.interceptors.request.use(
     const token = getBearerToken();
     const companyId = getCompanyId();
 
-    console.log(companyId);
     if (token) {
       config.headers.Authorization = token;
     }
@@ -75,8 +74,8 @@ axiosInstance.interceptors.response.use(
 
       const errorType = identifyError(apiError.message);
       if (errorType === ERROR_TYPES.AUTH) {
-        // clearAuthStorage();
-        // window.location.replace("/auth");
+        clearAuthStorage();
+        window.location.replace("/auth");
       }
 
       return Promise.reject(apiError);

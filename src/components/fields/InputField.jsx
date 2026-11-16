@@ -20,6 +20,7 @@ export function InputField({
   autoComplete = "off",
   tooltip,
   maxLength, // NEW
+  uppercase = false,
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -56,7 +57,13 @@ export function InputField({
           type={actualType}
           placeholder={placeholder}
           value={value ?? ""}
-          onChange={onChange}
+          onChange={(e) => {
+            if (uppercase) {
+              e.target.value = e.target.value.toUpperCase();
+            }
+
+            onChange?.(e);
+          }}
           onBlur={onBlur}
           disabled={disabled}
           autoComplete={autoComplete}

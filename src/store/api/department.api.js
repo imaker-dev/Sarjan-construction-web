@@ -14,10 +14,13 @@ export default false
       updateDepartmentApi: ({ id, values }) => {
         return Api.patch(`/departments/${id}`, values);
       },
+      updateDepartmentStatusApi: ({ id, values }) => {
+        return Api.post(`/departments/${id}/status`, values);
+      },
       getDepartmentOperationsApi: (departmentId) => {
         return Api.get(`/departments/${departmentId}/operations`);
       },
-      
+
       createDepartmentOperationApi: (departmentId, values) => {
         return Api.post(`/departments/${departmentId}/operations`, values);
       },
@@ -31,5 +34,5 @@ export default false
         return Api.delete(
           `/departments/${departmentId}/operations/${operationId}`,
         );
-      }
+      },
     };

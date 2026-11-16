@@ -1,4 +1,3 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import departmentApi from "@store/api/department.api";
 import { toast } from "sonner";
@@ -30,6 +29,18 @@ export const updateDepartment = createAsyncThunk(
   },
 );
 
+// Update department status
+export const updateDepartmentStatus = createAsyncThunk(
+  "department/updateDepartmentStatus",
+  async ({ id, values }) => {
+    const res = await departmentApi.updateDepartmentStatusApi({
+      id,
+      values,
+    });
+    return res.data;
+  },
+);
+
 const departmentSlice = createSlice({
   name: "department",
 
@@ -37,6 +48,7 @@ const departmentSlice = createSlice({
     isListingDepartments: false,
     isCreatingDepartment: false,
     isUpdatingDepartment: false,
+    isUpdatingDepartmentStatus: false,
 
     departmentsData: null,
     departmentData: null,
@@ -57,9 +69,7 @@ const departmentSlice = createSlice({
       })
       .addCase(listDepartments.rejected, (state, action) => {
         state.isListingDepartments = false;
-        toast.error(
-          action.error.message || "Failed to fetch departments",
-        );
+        toast.error(action.error.message || "Failed to fetch departments");
       })
 
       // Create department
@@ -76,9 +86,7 @@ const departmentSlice = createSlice({
       })
       .addCase(createDepartment.rejected, (state, action) => {
         state.isCreatingDepartment = false;
-        toast.error(
-          action.error.message || "Failed to create department",
-        );
+        toast.error(action.error.message || "Failed to create department");
       })
 
       // Update department
@@ -95,8 +103,45 @@ const departmentSlice = createSlice({
       })
       .addCase(updateDepartment.rejected, (state, action) => {
         state.isUpdatingDepartment = false;
+        toast.error(action.error.message || "Failed to update department");
+      })
+
+      // Update department status
+      .addCase(updateDepartmentStatus.pending, (state) => {
+        state.isUpdatingDepartmentStatus = true;
+      })
+      .addCase(updateDepartmentStatus.fulfilled, (state, action) => {
+        state.isUpdatingDepartmentStatus = false;
+
+        const updatedDepartment = action.payload;
+
+        const updateDepartmentInList = (departments) =>
+          departments?.map((department) =>
+            department.id === updatedDepartment.id
+              ? { ...department, ...updatedDepartment }
+              : department,
+          );
+
+        if (Array.isArray(state.departmentsData)) {
+          state.departmentsData = updateDepartmentInList(state.departmentsData);
+        } else if (Array.isArray(state.departmentsData?.data)) {
+          state.departmentsData.data = updateDepartmentInList(
+            state.departmentsData.data,
+          );
+        }
+
+        state.departmentData = updatedDepartment;
+
+        toast.success(
+          updatedDepartment?.message ||
+            "Department status updated successfully!",
+        );
+      })
+
+      .addCase(updateDepartmentStatus.rejected, (state, action) => {
+        state.isUpdatingDepartmentStatus = false;
         toast.error(
-          action.error.message || "Failed to update department",
+          action.error.message || "Failed to update department status",
         );
       });
   },

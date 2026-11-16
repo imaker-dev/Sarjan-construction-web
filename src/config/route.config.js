@@ -14,6 +14,12 @@ import AllOperationsPage from "@features/operations/pages/AllOperationsPage";
 import AllCompaniesPage from "@features/companies/pages/AllCompaniesPage";
 import CreateCompanyPage from "@features/companies/pages/CreateCompanyPage";
 import VerifyCompanyPage from "@features/companies/pages/VerifyCompanyPage";
+import AllHeadOfficesPage from "@features/head-offices/pages/AllHeadOfficesPage";
+import CreateHeadOfficePage from "@features/head-offices/pages/CreateHeadOfficePage";
+import AllProjectsPage from "@features/projects/pages/AllProjectsPage";
+import CreateProjectPage from "@features/projects/pages/CreateProjectPage";
+import AllSitesPage from "@features/sites/pages/AllSitesPage";
+import CreateSitePage from "@features/sites/pages/CreateSitePage";
 
 export const routeConfig = [
   {
@@ -35,6 +41,21 @@ export const routeConfig = [
   { path: ROUTES.COMPANIES.ROOT, element: AllCompaniesPage },
   { path: ROUTES.COMPANIES.CREATE, element: CreateCompanyPage },
   { path: ROUTES.COMPANIES.VERIFY, element: VerifyCompanyPage },
+
+  // Head Offices routes
+  { path: ROUTES.HEAD_OFFICES.ROOT, element: AllHeadOfficesPage },
+  { path: ROUTES.HEAD_OFFICES.CREATE, element: CreateHeadOfficePage },
+
+  //Projects routes
+  { path: ROUTES.PROJECTS.ROOT, element: AllProjectsPage },
+  { path: ROUTES.PROJECTS.CREATE, element: CreateProjectPage },
+
+
+  //Sites Routes
+  { path: ROUTES.SITES.ROOT, element: AllSitesPage },
+  { path: ROUTES.SITES.CREATE, element: CreateSitePage },
+
+
 
   // Operations routes
   { path: ROUTES.OPERATIONS.ROOT, element: AllOperationsPage },

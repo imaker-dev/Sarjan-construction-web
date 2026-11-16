@@ -6,6 +6,9 @@ import {
   IconUsers,
   IconListCheck,
   IconBuilding,
+  IconBuildingSkyscraper,
+  IconBriefcase,
+  IconMapPin,
 } from "@tabler/icons-react";
 
 export const NAV_CONFIG = [
@@ -52,6 +55,21 @@ export const NAV_CONFIG = [
   {
     section: "ORGANIZATION",
     items: [
+      {
+        title: "Head Offices",
+        icon: IconBuildingSkyscraper,
+        path: ROUTES.HEAD_OFFICES.ROOT,
+      },
+      {
+        title: "Projects",
+        icon: IconBriefcase,
+        path: ROUTES.PROJECTS.ROOT,
+      },
+      {
+        title: "Sites",
+        icon: IconMapPin,
+        path: ROUTES.SITES.ROOT,
+      },
       {
         title: "Departments",
         icon: IconBuilding,

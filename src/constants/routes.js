@@ -21,6 +21,36 @@ export const ROUTES = {
   },
 
   // =========================
+  // HEAD OFFICES
+  // =========================
+  HEAD_OFFICES: {
+    ROOT: "/head-offices",
+    CREATE: "/head-offices/create",
+    DETAILS: "/head-offices/:id",
+    EDIT: "/head-offices/:id/edit",
+  },
+
+  // =========================
+  // PROJECTS
+  // =========================
+  PROJECTS: {
+    ROOT: "/projects",
+    CREATE: "/projects/create",
+    DETAILS: "/projects/:id",
+    EDIT: "/projects/:id/edit",
+  },
+
+  // =========================
+  // SITES
+  // =========================
+  SITES: {
+    ROOT: "/sites",
+    CREATE: "/sites/create",
+    DETAILS: "/sites/:id",
+    EDIT: "/sites/:id/edit",
+  },
+
+  // =========================
   // OPERATIONS
   // =========================
   OPERATIONS: {
@@ -46,7 +76,7 @@ export const ROUTES = {
     CREATE: "/employees/create",
     DETAILS: "/employees/:id",
     EDIT: "/employees/:id/edit",
-    VERIFY: "/verify-employee"
+    VERIFY: "/verify-employee",
   },
 
   // =========================

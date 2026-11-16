@@ -10,31 +10,45 @@ export const ROUTES = {
   },
 
   // =========================
-  // ONBOARDING
+  // COMPANIES
   // =========================
-  ONBOARDING: {
-    ROOT: "/onboardings",
-    VERIFY: "/verify-onboarding",
-    CREATE: "/onboarding/create",
-    VERIFY_USER: "/verify-user",
+  COMPANIES: {
+    ROOT: "/companies",
+    CREATE: "/companies/create",
+    DETAILS: "/companies/:id",
+    EDIT: "/companies/:id/edit",
+    VERIFY: "/verify-company",
   },
 
+  // =========================
+  // OPERATIONS
+  // =========================
+  OPERATIONS: {
+    ROOT: "/operations",
+    CREATE: "/operations/create",
+    DETAILS: "/operations/:id",
+    EDIT: "/operations/:id/edit",
+  },
 
   DEPARTMENTS: {
     ROOT: "/departments",
     CREATE: "/departments/create",
     DETAILS: "/departments/:id",
     EDIT: "/departments/:id/edit",
-      OPERATIONS: "/departments/operations",
-
+    OPERATIONS: "/departments/operations",
   },
 
+  // =========================
+  // EMPLOYEES
+  // =========================
   EMPLOYEES: {
     ROOT: "/employees",
     CREATE: "/employees/create",
     DETAILS: "/employees/:id",
     EDIT: "/employees/:id/edit",
+    VERIFY: "/verify-employee"
   },
+
   // =========================
   // APPS
   // =========================
@@ -76,11 +90,6 @@ export const ROUTES = {
     REGISTER: "/auth/register",
     FORGOT_PASSWORD: "/auth/forgot-password",
     RESET_PASSWORD: "/auth/reset-password",
-  },
-
-  // USERS
-  USER: {
-    ROOT: "/users",
   },
 
   THEME: {

@@ -4,12 +4,9 @@ import { useDispatch, useSelector } from "react-redux";
 
 import {
   IconUser,
-  IconLock,
   IconShieldCheck,
   IconShieldX,
   IconCheck,
-  IconEye,
-  IconEyeOff,
   IconClipboardCheck,
 } from "@tabler/icons-react";
 
@@ -21,7 +18,7 @@ import { useQueryParams } from "@hooks/useQueryParams";
 import { employeeClaimAccount } from "@store/slices/employee.slice";
 import { ROUTES } from "@constants/routes";
 
-const VerifyUserPage = () => {
+const VerifyEmployeePage = () => {
   const { get } = useQueryParams();
   const token = get("token");
 
@@ -264,4 +261,4 @@ const VerifyUserPage = () => {
   );
 };
 
-export default VerifyUserPage;
+export default VerifyEmployeePage;

@@ -32,8 +32,7 @@
 
   /* Checkbox / radio row: <label class="form-check"><input .../> <span>Text</span></label> */
   .form-check {
-    @apply flex w-fit cursor-pointer items-center gap-3 py-0.5
-      text-sm text-slate-700 dark:text-slate-300;
+    @apply flex w-fit cursor-pointer items-center gap-3 py-0.5 text-sm text-slate-700 dark:text-slate-300;
   }
 
   .form-check:has(:disabled) {
@@ -63,11 +62,7 @@
   .form-textarea,
   .form-multiselect,
   .form-select {
-    @apply rounded-lg border bg-white shadow-sm
-      transition duration-150 ease-out
-      focus:ring-0 focus:ring-offset-0
-      dark:bg-slate-900/30
-      disabled:cursor-not-allowed disabled:shadow-none;
+    @apply rounded-lg border bg-white shadow-sm transition duration-150 ease-out focus:ring-0 focus:ring-offset-0 dark:bg-slate-900/30 disabled:cursor-not-allowed disabled:shadow-none;
   }
 
   /* ---------- Text-like controls ---------- */
@@ -75,24 +70,16 @@
   .form-textarea,
   .form-multiselect,
   .form-select {
-    @apply w-full px-3.5 py-2.5
-      text-sm leading-5 text-slate-800
-      border-slate-200 outline-none
-      hover:border-primary-400
-      focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/20
-      dark:border-slate-700 dark:text-slate-100
-      dark:hover:border-primary-500/60
-      dark:focus:border-primary-500 dark:focus:ring-primary-500/30;
+    @apply w-full px-3.5 py-2.5 text-sm leading-5 text-slate-800 border-slate-200 outline-none hover:border-primary-400 focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/20 dark:border-slate-700 dark:text-slate-100 dark:hover:border-primary-500/60 dark:focus:border-primary-500 dark:focus:ring-primary-500/30;
   }
 
   .form-input,
   .form-textarea {
-    @apply placeholder-slate-400 dark:placeholder-slate-500
-      focus:placeholder-slate-300 dark:focus:placeholder-slate-600;
+    @apply placeholder-slate-400 dark:placeholder-slate-500 focus:placeholder-slate-300 dark:focus:placeholder-slate-600;
   }
 
   /* Label picks up the accent colour while its field is focused */
-  .form-group:focus-within > .form-label {
+  .form-group:focus-within>.form-label {
     @apply text-primary-600 dark:text-primary-400;
   }
 
@@ -208,6 +195,7 @@
      Needs customizable selects (Chrome/Edge 135+).
      Other browsers keep the native list, now readable in dark mode. */
   @supports (appearance: base-select) {
+
     .form-select,
     .form-select::picker(select) {
       appearance: base-select;
@@ -274,13 +262,13 @@
         overlay 0.15s allow-discrete;
     }
 
-    .form-select::picker(select):popover-open {
+    .form-select:open::picker(select) {
       opacity: 1;
       transform: none;
     }
 
     @starting-style {
-      .form-select::picker(select):popover-open {
+      .form-select:open::picker(select) {
         opacity: 0;
         transform: translateY(-0.25rem) scale(0.98);
       }
@@ -293,6 +281,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
+
       .form-select::picker(select),
       .form-select::picker-icon {
         transition: none;
@@ -362,22 +351,7 @@
   /* Fully custom: appearance-none so it looks identical in every browser */
   .form-checkbox,
   .form-radio {
-    @apply h-[1.125rem] w-[1.125rem] shrink-0 cursor-pointer appearance-none
-      border border-slate-300 bg-white bg-center bg-no-repeat
-      text-primary-500 shadow-sm
-      transition duration-150 ease-out
-      hover:border-primary-400
-      focus:outline-none focus:ring-0 focus:ring-offset-0
-      focus-visible:ring-2 focus-visible:ring-primary-500/40
-      focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900
-      checked:border-primary-500 checked:bg-primary-500
-      checked:hover:border-primary-600 checked:hover:bg-primary-600
-      disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:shadow-none
-      disabled:checked:border-slate-300 disabled:checked:bg-slate-300
-      dark:border-slate-600 dark:bg-slate-800 dark:hover:border-primary-400
-      dark:checked:border-primary-500 dark:checked:bg-primary-500
-      dark:disabled:border-slate-700 dark:disabled:bg-slate-700/40
-      dark:disabled:checked:border-slate-600 dark:disabled:checked:bg-slate-600;
+    @apply h-[1.125rem] w-[1.125rem] shrink-0 cursor-pointer appearance-none border border-slate-300 bg-white bg-center bg-no-repeat text-primary-500 shadow-sm transition duration-150 ease-out hover:border-primary-400 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 checked:border-primary-500 checked:bg-primary-500 checked:hover:border-primary-600 checked:hover:bg-primary-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:shadow-none disabled:checked:border-slate-300 disabled:checked:bg-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-primary-400 dark:checked:border-primary-500 dark:checked:bg-primary-500 dark:disabled:border-slate-700 dark:disabled:bg-slate-700/40 dark:disabled:checked:border-slate-600 dark:disabled:checked:bg-slate-600;
 
     background-size: 100% 100%;
   }
@@ -409,27 +383,16 @@
 
   /* ---------- File input ---------- */
   .form-file {
-    @apply block w-full cursor-pointer text-sm text-slate-500
-      file:mr-3 file:cursor-pointer file:rounded-md file:border-0
-      file:bg-primary-500 file:px-3 file:py-2
-      file:text-sm file:font-medium file:text-white
-      hover:file:bg-primary-600
-      dark:text-slate-400;
+    @apply block w-full cursor-pointer text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-primary-500 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary-600 dark:text-slate-400;
   }
 
   /* ---------- Validation states ---------- */
   :is(.form-input, .form-textarea, .form-select, .form-multiselect):is(.is-invalid, [aria-invalid="true"]) {
-    @apply border-red-500 hover:border-red-500
-      focus:border-red-500 focus:ring-red-500/15
-      dark:border-red-500/70 dark:hover:border-red-500
-      dark:focus:border-red-500 dark:focus:ring-red-500/30;
+    @apply border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-500/15 dark:border-red-500/70 dark:hover:border-red-500 dark:focus:border-red-500 dark:focus:ring-red-500/30;
   }
 
   :is(.form-input, .form-textarea, .form-select, .form-multiselect).is-valid {
-    @apply border-emerald-500 hover:border-emerald-500
-      focus:border-emerald-500 focus:ring-emerald-500/15
-      dark:border-emerald-500/70 dark:hover:border-emerald-500
-      dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30;
+    @apply border-emerald-500 hover:border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/15 dark:border-emerald-500/70 dark:hover:border-emerald-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30;
   }
 
   :is(.form-checkbox, .form-radio):is(.is-invalid, [aria-invalid="true"]) {
@@ -451,54 +414,51 @@
   }
 
   .form-switch label {
-    @apply block h-6 cursor-pointer overflow-hidden rounded-full
-      bg-slate-300 transition-colors duration-150
-      dark:bg-slate-600;
+    @apply block h-6 cursor-pointer overflow-hidden rounded-full bg-slate-300 transition-colors duration-150 dark:bg-slate-600;
   }
 
   /* Knob */
-  .form-switch label > span:first-child {
+  .form-switch label>span:first-child {
     @apply absolute left-0.5 top-0.5 block h-5 w-5 rounded-full bg-white shadow-sm;
 
     transition: transform 0.15s ease-out, width 0.15s ease-out;
   }
 
-  .form-switch input[type="checkbox"]:checked + label {
+  .form-switch input[type="checkbox"]:checked+label {
     @apply bg-primary-500;
   }
 
-  .form-switch input[type="checkbox"]:checked + label > span:first-child {
+  .form-switch input[type="checkbox"]:checked+label>span:first-child {
     transform: translateX(20px);
   }
 
-  .form-switch input[type="checkbox"]:focus-visible + label {
+  .form-switch input[type="checkbox"]:focus-visible+label {
     @apply ring-2 ring-primary-500/50 ring-offset-2 dark:ring-offset-slate-900;
   }
 
-  .form-switch input[type="checkbox"]:disabled + label {
-    @apply cursor-not-allowed border border-slate-200 bg-slate-100
-      dark:border-slate-700 dark:bg-slate-700/20;
+  .form-switch input[type="checkbox"]:disabled+label {
+    @apply cursor-not-allowed border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-700/20;
   }
 
-  .form-switch input[type="checkbox"]:disabled + label > span:first-child {
+  .form-switch input[type="checkbox"]:disabled+label>span:first-child {
     @apply bg-slate-400 dark:bg-slate-600;
   }
 
   /* Hover */
-  .form-switch input:not(:checked):not(:disabled) + label:hover {
+  .form-switch input:not(:checked):not(:disabled)+label:hover {
     @apply bg-slate-400 dark:bg-slate-500;
   }
 
-  .form-switch input:checked:not(:disabled) + label:hover {
+  .form-switch input:checked:not(:disabled)+label:hover {
     @apply bg-primary-600;
   }
 
   /* Press: the knob stretches, like a native toggle */
-  .form-switch input:not(:checked):not(:disabled) + label:active > span:first-child {
+  .form-switch input:not(:checked):not(:disabled)+label:active>span:first-child {
     width: 1.5rem;
   }
 
-  .form-switch input:checked:not(:disabled) + label:active > span:first-child {
+  .form-switch input:checked:not(:disabled)+label:active>span:first-child {
     width: 1.5rem;
     transform: translateX(16px);
   }

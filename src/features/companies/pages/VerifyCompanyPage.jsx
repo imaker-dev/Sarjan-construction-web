@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,8 +9,6 @@ import {
   IconUser,
   IconMapPin,
   IconBuilding,
-  IconChevronDown,
-  IconChevronUp,
   IconShieldCheck,
   IconShieldX,
   IconCheck,
@@ -20,19 +17,17 @@ import {
   IconClipboardCheck,
 } from "@tabler/icons-react";
 
-import PageHeaderBanner from "@components/ui/PageHeaderBanner";
-
 import { useQueryParams } from "@hooks/useQueryParams";
-
-import {
-  verifyOnboardingToken,
-  completeOnboarding,
-} from "@store/slices/onboarding.slice";
-
 import { ROUTES } from "@constants/routes";
 import { InputField } from "@components/fields/InputField";
 import { FieldWrapper } from "@components/fields/FieldWrapper";
 import FormSection from "@components/ui/FormSection";
+import {
+  completeOnboarding,
+  verifyCompanyClaimToken,
+} from "@store/slices/auth.slice";
+import Alert from "@components/ui/Alert";
+import { SelectField } from "@components/fields/SelectField";
 
 /* =========================================================
    VALIDATION SCHEMA
@@ -44,9 +39,9 @@ const validationSchema = Yup.object({
     .max(120, "Maximum 120 characters allowed")
     .required("Administrator name is required"),
 
-password: Yup.string()
-  .min(12, "Password must contain at least 12 characters")
-  .required("Password is required"),
+  password: Yup.string()
+    .min(12, "Password must contain at least 12 characters")
+    .required("Password is required"),
 
   company: Yup.object({
     legalName: Yup.string()
@@ -54,11 +49,9 @@ password: Yup.string()
       .max(200, "Maximum 200 characters allowed")
       .required("Legal company name is required"),
 
-    entityType: Yup.string()
-      .required("Please select an entity type"),
+    entityType: Yup.string().required("Please select an entity type"),
 
-    tradeName: Yup.string()
-      .max(200, "Maximum 200 characters allowed"),
+    tradeName: Yup.string().max(200, "Maximum 200 characters allowed"),
 
     formedOn: Yup.date()
       .max(new Date(), "Formation date cannot be in the future")
@@ -67,10 +60,7 @@ password: Yup.string()
     pan: Yup.string()
       .trim()
       .uppercase()
-      .matches(
-        /^[A-Z]{5}[0-9]{4}[A-Z]$/,
-        "Enter a valid PAN number"
-      )
+      .matches(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Enter a valid PAN number")
       .required("PAN number is required"),
 
     cin: Yup.string()
@@ -79,7 +69,7 @@ password: Yup.string()
       .test(
         "cin-format",
         "Enter a valid 21-character CIN",
-        (value) => !value || /^[A-Z0-9]{21}$/.test(value)
+        (value) => !value || /^[A-Z0-9]{21}$/.test(value),
       ),
 
     website: Yup.string()
@@ -87,38 +77,25 @@ password: Yup.string()
       .transform((value) => (value === "" ? undefined : value))
       .url("Enter a valid website URL"),
 
-    regAddressLine1: Yup.string()
-      .trim()
-      .required("Address line 1 is required"),
+    regAddressLine1: Yup.string().trim().required("Address line 1 is required"),
 
     regAddressLine2: Yup.string(),
 
-    regLocality: Yup.string()
-      .trim()
-      .required("Locality is required"),
+    regLocality: Yup.string().trim().required("Locality is required"),
 
-    regCity: Yup.string()
-      .trim()
-      .required("City is required"),
+    regCity: Yup.string().trim().required("City is required"),
 
-    regDistrict: Yup.string()
-      .trim()
-      .required("District is required"),
+    regDistrict: Yup.string().trim().required("District is required"),
 
-    regStateUt: Yup.string()
-      .trim()
-      .required("State / UT is required"),
+    regStateUt: Yup.string().trim().required("State / UT is required"),
 
     regPin: Yup.string()
       .matches(/^[0-9]{6}$/, "Enter a valid 6-digit PIN code")
       .required("PIN code is required"),
 
-    regCountry: Yup.string()
-      .required("Country is required"),
+    regCountry: Yup.string().required("Country is required"),
 
-    contactName: Yup.string()
-      .trim()
-      .required("Contact name is required"),
+    contactName: Yup.string().trim().required("Contact name is required"),
 
     contactDesignation: Yup.string()
       .trim()
@@ -130,23 +107,14 @@ password: Yup.string()
       .required("Contact email is required"),
 
     contactPhone: Yup.string()
-      .matches(
-        /^\+?[0-9\s()-]{8,18}$/,
-        "Enter a valid contact number"
-      )
+      .matches(/^\+?[0-9\s()-]{8,18}$/, "Enter a valid contact number")
       .required("Contact phone is required"),
   }),
 
   headOffice: Yup.object({
-    code: Yup.string()
-      .trim()
-      .max(30)
-      .required("Office code is required"),
+    code: Yup.string().trim().max(30).required("Office code is required"),
 
-    name: Yup.string()
-      .trim()
-      .max(120)
-      .required("Office name is required"),
+    name: Yup.string().trim().max(120).required("Office name is required"),
 
     isPrimary: Yup.boolean(),
   }),
@@ -193,62 +161,12 @@ const getInitialValues = (token) => ({
 });
 
 /* =========================================================
-   REUSABLE SELECT FIELD
-========================================================= */
-
-const SelectField = ({
-  label,
-  name,
-  value,
-  onChange,
-  onBlur,
-  error,
-  touched,
-  required,
-  options,
-  placeholder = "Select an option",
-}) => {
-  const fieldError = touched && error;
-
-  return (
-    <FieldWrapper
-      label={label}
-      id={name}
-      required={required}
-      error={fieldError}
-    >
-      <select
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
-        onBlur={onBlur}
-        aria-invalid={Boolean(fieldError)}
-        className={`form-input w-full ${
-          fieldError ? "is-invalid" : ""
-        }`}
-      >
-        <option value="">{placeholder}</option>
-
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </FieldWrapper>
-  );
-};
-
-/* =========================================================
    SUMMARY ITEM
 ========================================================= */
 
 const SummaryItem = ({ label, value }) => (
   <div className="min-w-0">
-    <p className="text-xs text-slate-500 dark:text-slate-400">
-      {label}
-    </p>
+    <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
 
     <p className="mt-1 break-words text-sm font-medium text-slate-800 dark:text-slate-200">
       {value || "—"}
@@ -260,22 +178,14 @@ const SummaryItem = ({ label, value }) => (
    CONFIRMATION MODAL
 ========================================================= */
 
-const ConfirmationModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  values,
-  loading,
-}) => {
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, values, loading }) => {
   if (!isOpen) return null;
 
   const company = values.company;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-slate-800">
-
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
           <div>
@@ -301,7 +211,6 @@ const ConfirmationModal = ({
 
         {/* Content */}
         <div className="flex-1 space-y-5 overflow-y-auto p-6">
-
           {/* Administrator */}
           <div>
             <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -309,10 +218,7 @@ const ConfirmationModal = ({
             </h4>
 
             <div className="grid grid-cols-2 gap-4">
-              <SummaryItem
-                label="Display Name"
-                value={values.displayName}
-              />
+              <SummaryItem label="Display Name" value={values.displayName} />
 
               <SummaryItem
                 label="Administrator Email"
@@ -384,15 +290,9 @@ const ConfirmationModal = ({
             </h4>
 
             <div className="grid grid-cols-2 gap-4">
-              <SummaryItem
-                label="Office Code"
-                value={values.headOffice.code}
-              />
+              <SummaryItem label="Office Code" value={values.headOffice.code} />
 
-              <SummaryItem
-                label="Office Name"
-                value={values.headOffice.name}
-              />
+              <SummaryItem label="Office Name" value={values.headOffice.name} />
 
               <SummaryItem
                 label="Primary Office"
@@ -402,14 +302,13 @@ const ConfirmationModal = ({
           </div>
 
           <div className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-            Please ensure all company details are correct. Once submitted,
-            your onboarding will be completed using these details.
+            Please ensure all company details are correct. Once submitted, your
+            onboarding will be completed using these details.
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end dark:border-slate-700">
-
           <button
             type="button"
             className="btn btn-outline"
@@ -434,7 +333,6 @@ const ConfirmationModal = ({
               </>
             )}
           </button>
-
         </div>
       </div>
     </div>
@@ -445,17 +343,16 @@ const ConfirmationModal = ({
    MAIN PAGE
 ========================================================= */
 
-const VerifyOnboardingPage = () => {
+const VerifyCompanyPage = () => {
   const { get } = useQueryParams();
-  const token = get("token");
+  const token = get("claimCode");
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const {
-    isVerifyingToken,
-    isCompletingOnboarding,
-  } = useSelector((state) => state.onboarding);
+  const { isVerifyingCompanyClaimToken, isCompletingOnboarding } = useSelector(
+    (state) => state.auth,
+  );
 
   const [isVerified, setIsVerified] = useState(false);
   const [verificationError, setVerificationError] = useState("");
@@ -481,7 +378,7 @@ const VerifyOnboardingPage = () => {
 
     if (!token) {
       setVerificationError(
-        "The onboarding invitation token is missing. Please use the invitation link provided to you."
+        "The onboarding invitation token is missing. Please use the invitation link provided to you.",
       );
 
       return () => {
@@ -489,7 +386,7 @@ const VerifyOnboardingPage = () => {
       };
     }
 
-    dispatch(verifyOnboardingToken(token))
+    dispatch(verifyCompanyClaimToken(token))
       .unwrap()
       .then(() => {
         if (active) {
@@ -502,7 +399,7 @@ const VerifyOnboardingPage = () => {
             typeof error === "string"
               ? error
               : error?.message ||
-                  "This invitation link is invalid or has expired."
+                  "This invitation link is invalid or has expired.",
           );
         }
       });
@@ -554,9 +451,7 @@ const VerifyOnboardingPage = () => {
     value: formik.values.company[name],
     onChange: formik.handleChange,
     onBlur: formik.handleBlur,
-    error:
-      formik.touched.company?.[name] &&
-      formik.errors.company?.[name],
+    error: formik.touched.company?.[name] && formik.errors.company?.[name],
   });
 
   const getHeadOfficeFieldProps = (name) => ({
@@ -565,8 +460,7 @@ const VerifyOnboardingPage = () => {
     onChange: formik.handleChange,
     onBlur: formik.handleBlur,
     error:
-      formik.touched.headOffice?.[name] &&
-      formik.errors.headOffice?.[name],
+      formik.touched.headOffice?.[name] && formik.errors.headOffice?.[name],
   });
 
   /* -------------------------------------------------------
@@ -598,11 +492,10 @@ const VerifyOnboardingPage = () => {
      VERIFYING STATE
   ------------------------------------------------------- */
 
-  if (isVerifyingToken) {
+  if (isVerifyingCompanyClaimToken) {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-16 dark:bg-slate-900">
         <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
-
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary-500/20 border-t-primary-500" />
 
           <h2 className="mt-5 text-base font-semibold text-slate-800 dark:text-white">
@@ -612,7 +505,6 @@ const VerifyOnboardingPage = () => {
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Please wait while we validate your onboarding invitation.
           </p>
-
         </div>
       </main>
     );
@@ -626,7 +518,6 @@ const VerifyOnboardingPage = () => {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-16 dark:bg-slate-900">
         <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
-
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500 dark:bg-red-500/10">
             <IconShieldX size={29} stroke={1.8} />
           </div>
@@ -640,10 +531,9 @@ const VerifyOnboardingPage = () => {
           </p>
 
           <p className="mt-5 text-xs text-slate-400">
-            Your invitation may have expired or already been used.
-            Please contact your platform administrator for a new link.
+            Your invitation may have expired or already been used. Please
+            contact your platform administrator for a new link.
           </p>
-
         </div>
       </main>
     );
@@ -657,7 +547,6 @@ const VerifyOnboardingPage = () => {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-16 dark:bg-slate-900">
         <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
-
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10">
             <IconCheck size={30} stroke={2} />
           </div>
@@ -667,8 +556,8 @@ const VerifyOnboardingPage = () => {
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Your company has been successfully onboarded and your
-            administrator account is ready.
+            Your company has been successfully onboarded and your administrator
+            account is ready.
           </p>
 
           <button
@@ -678,7 +567,6 @@ const VerifyOnboardingPage = () => {
           >
             Continue to Login
           </button>
-
         </div>
       </main>
     );
@@ -690,42 +578,18 @@ const VerifyOnboardingPage = () => {
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-900">
-
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
-
-        <PageHeaderBanner
-          title="Complete Company Onboarding"
-          description="Provide your company and administrator details to activate your account."
-        />
-
         {/* VERIFIED STATUS */}
-
-        <div className="mb-6 mt-6 flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-
-          <IconShieldCheck
-            size={21}
-            stroke={1.8}
-            className="shrink-0 text-emerald-600 dark:text-emerald-400"
+        <div className="mb-4">
+          <Alert
+            icon={IconShieldCheck}
+            title={"Invitation Verified"}
+            description={`Your invitation is valid. You can now complete your company setup.`}
+            type="success"
           />
-
-          <div>
-            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-              Invitation Verified
-            </p>
-
-            <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
-              Your invitation is valid. You can now complete your company setup.
-            </p>
-          </div>
-
         </div>
 
-        <form
-          onSubmit={formik.handleSubmit}
-          className="space-y-4"
-          noValidate
-        >
-
+        <form onSubmit={formik.handleSubmit} className="space-y-4" noValidate>
           {/* =================================================
               1. ADMINISTRATOR DETAILS
           ================================================= */}
@@ -739,7 +603,6 @@ const VerifyOnboardingPage = () => {
             onToggle={() => toggleSection("administrator")}
           >
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
               <InputField
                 label="Administrator Name"
                 placeholder="Enter administrator name"
@@ -756,10 +619,7 @@ const VerifyOnboardingPage = () => {
                 helperText="Password must contain at least 12 characters."
                 {...getFieldProps("password")}
               />
-
             </div>
-
-          
           </FormSection>
 
           {/* =================================================
@@ -775,7 +635,6 @@ const VerifyOnboardingPage = () => {
             onToggle={() => toggleSection("company")}
           >
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
               <InputField
                 label="Legal Company Name"
                 placeholder="Enter registered legal name"
@@ -789,9 +648,12 @@ const VerifyOnboardingPage = () => {
                 value={formik.values.company.entityType}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                error={formik.errors.company?.entityType}
-                touched={formik.touched.company?.entityType}
+                error={
+                  formik.touched.company?.entityType &&
+                  formik.errors.company?.entityType
+                }
                 required
+                placeholder="Select entity type"
                 options={[
                   { value: "PRIVATE_LIMITED", label: "Private Limited" },
                   { value: "PUBLIC_LIMITED", label: "Public Limited" },
@@ -838,7 +700,6 @@ const VerifyOnboardingPage = () => {
                   {...getCompanyFieldProps("website")}
                 />
               </div>
-
             </div>
           </FormSection>
 
@@ -855,7 +716,6 @@ const VerifyOnboardingPage = () => {
             onToggle={() => toggleSection("registeredOffice")}
           >
             <div className="space-y-6">
-
               {/* Registered Address */}
 
               <div>
@@ -864,7 +724,6 @@ const VerifyOnboardingPage = () => {
                 </h4>
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
                   <div className="md:col-span-2">
                     <InputField
                       label="Address Line 1"
@@ -927,24 +786,19 @@ const VerifyOnboardingPage = () => {
                     error={formik.errors.company?.regCountry}
                     touched={formik.touched.company?.regCountry}
                     required
-                    options={[
-                      { value: "IN", label: "India" },
-                    ]}
+                    options={[{ value: "IN", label: "India" }]}
                   />
-
                 </div>
               </div>
 
               {/* Contact Information */}
 
               <div className="border-t border-slate-100 pt-5 dark:border-slate-700">
-
                 <h4 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
                   Contact Information
                 </h4>
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
                   <InputField
                     label="Contact Person"
                     placeholder="Enter contact person's name"
@@ -974,10 +828,8 @@ const VerifyOnboardingPage = () => {
                     required
                     {...getCompanyFieldProps("contactPhone")}
                   />
-
                 </div>
               </div>
-
             </div>
           </FormSection>
 
@@ -993,7 +845,6 @@ const VerifyOnboardingPage = () => {
             onToggle={() => toggleSection("headOffice")}
           >
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
               <InputField
                 label="Office Code"
                 placeholder="e.g. HQ"
@@ -1011,9 +862,7 @@ const VerifyOnboardingPage = () => {
               />
 
               <div className="md:col-span-2">
-
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-
                   <input
                     type="checkbox"
                     name="headOffice.isPrimary"
@@ -1022,13 +871,9 @@ const VerifyOnboardingPage = () => {
                     className="form-checkbox"
                     // className="h-4 w-4 rounded border-slate-300 text-primary-500 focus:ring-primary-500"
                   />
-
                   Set this as the primary company office
-
                 </label>
-
               </div>
-
             </div>
           </FormSection>
 
@@ -1037,7 +882,6 @@ const VerifyOnboardingPage = () => {
           ================================================= */}
 
           <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
-
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Please review your details before submitting.
             </p>
@@ -1050,9 +894,7 @@ const VerifyOnboardingPage = () => {
               <IconClipboardCheck size={17} stroke={1.8} />
               Review & Continue
             </button>
-
           </div>
-
         </form>
       </div>
 
@@ -1067,9 +909,8 @@ const VerifyOnboardingPage = () => {
         values={formik.values}
         loading={isCompletingOnboarding}
       />
-
     </main>
   );
 };
 
-export default VerifyOnboardingPage;
+export default VerifyCompanyPage;

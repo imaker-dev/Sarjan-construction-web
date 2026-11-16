@@ -58,7 +58,7 @@ export const timeAgo = (input) => {
 };
 
 // ---------- FORMAT DATE ----------
-export const formatDate = (input, type = "short") => {
+export const formatDate = (input, type = "long") => {
   const date = getValidDate(input);
 
   if (!date) return input == null || input === "" ? "Not provided" : "Invalid date";

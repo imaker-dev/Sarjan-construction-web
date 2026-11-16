@@ -1,6 +1,17 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Eye, Pencil, Trash2, Users, MailPlus } from "lucide-react";
+import {
+  Eye,
+  Pencil,
+  Trash2,
+  Users,
+  MailPlus,
+  ShieldCheck,
+  KeyRound,
+  Download,
+  FileSpreadsheet,
+  Plus,
+} from "lucide-react";
 import { IconUserCheck, IconUserX } from "@tabler/icons-react";
 
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
@@ -16,7 +27,17 @@ import {
 } from "@store/slices/employee.slice";
 
 import SendInviteModal from "../components/SendInviteModal";
+import EmployeeRolesModal from "../components/EmployeeRolesModal";
+import EmployeeOperationsModal from "../components/EmployeeOperationsModal";
+
 import { formatDate } from "@utils/date.utils";
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@constants/routes";
+import { formatText } from "@utils/text.utils";
+
+// --------------------------------------------------
+// Constants
+// --------------------------------------------------
 
 const STATUS_STYLES = {
   ACTIVE:
@@ -33,32 +54,21 @@ const STATUS_STYLES = {
 const DEFAULT_STATUS_STYLE =
   "bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400";
 
-const toTitle = (value) =>
-  value
-    ? value
-        .toString()
-        .toLowerCase()
-        .split("_")
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ")
-    : "—";
-
-const StatusBadge = ({ status }) => (
-  <span
-    className={`inline-flex rounded px-2.5 py-1 text-[12px] font-medium ${
-      STATUS_STYLES[status] || DEFAULT_STATUS_STYLE
-    }`}
-  >
-    {toTitle(status)}
-  </span>
-);
+// --------------------------------------------------
+// Helpers
+// --------------------------------------------------
 
 const Muted = ({ children }) => (
   <span className="text-slate-400 dark:text-slate-500">{children}</span>
 );
 
+// --------------------------------------------------
+// All Employees Page
+// --------------------------------------------------
+
 const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     isListingEmployees,
@@ -67,16 +77,27 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
     isUpdatingEmployeeStatus,
   } = useSelector((state) => state.employee);
 
+  // --------------------------------------------------
+  // Modal States
+  // --------------------------------------------------
+
+  const [query, setQuery] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedRoleEmployee, setSelectedRoleEmployee] = useState(null);
+  const [selectedOperationEmployee, setSelectedOperationEmployee] =
+    useState(null);
+
   const [inviteResult, setInviteResult] = useState(null);
   const [statusConfirmation, setStatusConfirmation] = useState(null);
 
-  // Fetch employees.
+  // --------------------------------------------------
+  // Fetch Employees
+  // --------------------------------------------------
+
   useEffect(() => {
     dispatch(listEmployees());
   }, [dispatch]);
 
-  // Supports { employees: [...] } and a plain array.
   const rows = useMemo(() => {
     if (Array.isArray(employeesData?.employees)) {
       return employeesData.employees;
@@ -164,6 +185,30 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
   };
 
   // --------------------------------------------------
+  // Employee Roles
+  // --------------------------------------------------
+
+  const handleOpenRoles = useCallback((employee) => {
+    setSelectedRoleEmployee(employee);
+  }, []);
+
+  const handleCloseRoles = () => {
+    setSelectedRoleEmployee(null);
+  };
+
+  // --------------------------------------------------
+  // Employee Operations
+  // --------------------------------------------------
+
+  const handleOpenOperations = useCallback((employee) => {
+    setSelectedOperationEmployee(employee);
+  }, []);
+
+  const handleCloseOperations = () => {
+    setSelectedOperationEmployee(null);
+  };
+
+  // --------------------------------------------------
   // Table Columns
   // --------------------------------------------------
 
@@ -198,7 +243,7 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
 
               {e.tradeCategory && (
                 <div className="text-[12.5px] text-slate-400 dark:text-slate-500">
-                  {toTitle(e.tradeCategory)}
+                  {formatText(e.tradeCategory)}
                 </div>
               )}
             </div>
@@ -228,7 +273,7 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         key: "engagementType",
         header: "Engagement",
         render: (e) =>
-          e.engagementType ? toTitle(e.engagementType) : <Muted>—</Muted>,
+          e.engagementType ? formatText(e.engagementType) : <Muted>—</Muted>,
       },
       {
         key: "joiningDate",
@@ -262,7 +307,7 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
             </div>
 
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              {toTitle(e.status)}
+              {formatText(e.status)}
             </span>
           </div>
         ),
@@ -288,6 +333,16 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         onClick: onEdit,
       },
       {
+        label: "Manage Roles",
+        icon: ShieldCheck,
+        onClick: handleOpenRoles,
+      },
+      {
+        label: "Manage Operations",
+        icon: KeyRound,
+        onClick: handleOpenOperations,
+      },
+      {
         label: "Send Invite",
         icon: MailPlus,
         onClick: handleOpenInvite,
@@ -299,7 +354,14 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         danger: true,
       },
     ],
-    [onView, onEdit, onDelete, handleOpenInvite],
+    [
+      onView,
+      onEdit,
+      onDelete,
+      handleOpenRoles,
+      handleOpenOperations,
+      handleOpenInvite,
+    ],
   );
 
   // --------------------------------------------------
@@ -316,14 +378,31 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         data={rows}
         actions={actions}
         loading={isListingEmployees}
-        empty={{
+        // search={{
+        //   value: query,
+        //   onChange: setQuery,
+        //   placeholder: "Search employees...",
+        // }}
+        headerActions={[
+          // { label: "Download", icon: Download, variant: "icon", onClick: () => {} },
+          // { label: "Export", icon: FileSpreadsheet, variant: "outline", onClick: () => {} },
+          {
+            label: "Add Employee",
+            icon: Plus,
+            variant: "primary",
+            onClick: () => navigate(ROUTES.EMPLOYEES.CREATE),
+          },
+        ]}
+          empty={{
           icon: Users,
           title: "No employees yet",
           description: "Employees you add will show up here.",
         }}
       />
 
-      {/* Send Invitation Modal */}
+  
+
+      {/* Employee Invitation Modal */}
       <SendInviteModal
         isOpen={!!selectedEmployee}
         onClose={handleCloseInvite}
@@ -331,6 +410,20 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         loading={isSendingEmployeeInvite}
         onSubmit={handleSendInvite}
         inviteResult={inviteResult}
+      />
+
+      {/* Employee Roles Modal */}
+      <EmployeeRolesModal
+        isOpen={!!selectedRoleEmployee}
+        onClose={handleCloseRoles}
+        employee={selectedRoleEmployee}
+      />
+
+      {/* Employee Operations Modal */}
+      <EmployeeOperationsModal
+        isOpen={!!selectedOperationEmployee}
+        onClose={handleCloseOperations}
+        employee={selectedOperationEmployee}
       />
 
       {/* Employee Status Confirmation */}

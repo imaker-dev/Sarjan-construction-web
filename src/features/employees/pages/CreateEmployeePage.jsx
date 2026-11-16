@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
@@ -51,13 +50,9 @@ const validationSchema = Yup.object({
     .oneOf(ENGAGEMENT_OPTIONS.map((option) => option.value))
     .required("Please select an engagement type"),
 
-  designation: Yup.string()
-    .trim()
-    .max(120, "Maximum 120 characters allowed"),
+  designation: Yup.string().trim().max(120, "Maximum 120 characters allowed"),
 
-  tradeCategory: Yup.string()
-    .trim()
-    .max(80, "Maximum 80 characters allowed"),
+  tradeCategory: Yup.string().trim().max(80, "Maximum 80 characters allowed"),
 
   joiningDate: Yup.string()
     .nullable()
@@ -67,13 +62,9 @@ const validationSchema = Yup.object({
       (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
     ),
 
-  contactPhone: Yup.string()
-    .trim()
-    .max(20, "Maximum 20 characters allowed"),
+  contactPhone: Yup.string().trim().max(20, "Maximum 20 characters allowed"),
 
-  contactEmail: Yup.string()
-    .trim()
-    .email("Enter a valid email address"),
+  contactEmail: Yup.string().trim().email("Enter a valid email address"),
 
   emergencyContactName: Yup.string()
     .trim()
@@ -92,9 +83,7 @@ const validationSchema = Yup.object({
     if (hasName === hasPhone) return true;
 
     return this.createError({
-      path: hasName
-        ? "emergencyContactPhone"
-        : "emergencyContactName",
+      path: hasName ? "emergencyContactPhone" : "emergencyContactName",
       message: "Both emergency contact name and phone are required",
     });
   },
@@ -117,9 +106,7 @@ const CreateEmployeePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { isCreatingEmployee } = useSelector(
-    (state) => state.employee,
-  );
+  const { isCreatingEmployee } = useSelector((state) => state.employee);
 
   const formik = useFormik({
     initialValues,
@@ -159,14 +146,8 @@ const CreateEmployeePage = () => {
     },
   });
 
-  const {
-    values,
-    errors,
-    touched,
-    handleChange,
-    handleBlur,
-    setFieldValue,
-  } = formik;
+  const { values, errors, touched, handleChange, handleBlur, setFieldValue } =
+    formik;
 
   const getFieldProps = (name) => ({
     name,
@@ -180,12 +161,11 @@ const CreateEmployeePage = () => {
     <main className="min-h-screen space-y-6">
       <PageHeaderBanner
         title="Create Employee"
-        description="Add an employee to your organization and provide their employment and contact details."
+        // description="Add an employee to your organization and provide their employment and contact details."
       />
 
       <form onSubmit={formik.handleSubmit} noValidate>
         <div className="space-y-5">
-
           {/* Employee Information */}
           <FormSection
             title="Employee Information"
@@ -280,32 +260,20 @@ const CreateEmployeePage = () => {
                 />
               </div>
 
-              <div className="border-t border-border pt-5">
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Emergency Contact
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Provide both the contact name and phone number, or
-                    leave both fields empty.
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <InputField
+                  label="Emergency Contact Name"
+                  placeholder="e.g. Sunita Singh"
+                  maxLength={200}
+                  {...getFieldProps("emergencyContactName")}
+                />
 
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <InputField
-                    label="Emergency Contact Name"
-                    placeholder="e.g. Sunita Singh"
-                    maxLength={200}
-                    {...getFieldProps("emergencyContactName")}
-                  />
-
-                  <InputField
-                    label="Emergency Contact Phone"
-                    placeholder="e.g. +919811122234"
-                    maxLength={20}
-                    {...getFieldProps("emergencyContactPhone")}
-                  />
-                </div>
+                <InputField
+                  label="Emergency Contact Phone"
+                  placeholder="e.g. +919811122234"
+                  maxLength={20}
+                  {...getFieldProps("emergencyContactPhone")}
+                />
               </div>
             </div>
           </FormSection>
@@ -328,9 +296,7 @@ const CreateEmployeePage = () => {
               disabled={isCreatingEmployee}
             >
               <IconDeviceFloppy size={17} stroke={1.8} />
-              {isCreatingEmployee
-                ? "Creating Employee..."
-                : "Create Employee"}
+              {isCreatingEmployee ? "Creating Employee..." : "Create Employee"}
             </button>
           </div>
         </div>

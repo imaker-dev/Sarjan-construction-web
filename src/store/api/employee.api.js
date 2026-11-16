@@ -1,3 +1,4 @@
+
 import Api from "../api-client";
 
 export default false
@@ -5,6 +6,7 @@ export default false
       message: "You are Offline. Please turn on the internet",
     }
   : {
+      // Employee APIs
       listEmployeesApi: (values) => {
         return Api.get("/employees", values);
       },
@@ -28,5 +30,41 @@ export default false
       },
       employeeClaimAccountApi: (values) => {
         return Api.post(`/auth/claim`, values);
+      },
+
+      // ------------------------------------
+      // Employee Role Assignment APIs
+      // ------------------------------------
+
+      getEmployeeAssignmentsApi: (id) => {
+        return Api.get(`/employees/${id}/assignments`);
+      },
+
+      grantEmployeeRoleApi: ({ id, values }) => {
+        return Api.post(`/employees/${id}/assignments`, values);
+      },
+
+      revokeEmployeeRoleApi: ({ id, assignmentId }) => {
+        return Api.delete(
+          `/employees/${id}/assignments/${assignmentId}`
+        );
+      },
+
+      // ------------------------------------
+      // Employee Operations APIs
+      // ------------------------------------
+
+      getEmployeeOperationsApi: (id) => {
+        return Api.get(`/employees/${id}/operations`);
+      },
+
+      assignEmployeeOperationApi: ({ id, values }) => {
+        return Api.post(`/employees/${id}/operations`, values);
+      },
+
+      revokeEmployeeOperationApi: ({ id, operationKey }) => {
+        return Api.delete(
+          `/employees/${id}/operations/${encodeURIComponent(operationKey)}`
+        );
       },
     };

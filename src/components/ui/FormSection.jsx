@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { IconChevronDown } from "@tabler/icons-react";
 
@@ -53,7 +52,7 @@ const FormSection = ({
         <div
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground ${iconClassName}`}
         >
-          <Icon size={19} stroke={1.8} />
+          <Icon size={19} strokeWidth={1.8} />
         </div>
       )}
 
@@ -115,9 +114,7 @@ const FormSection = ({
         )}
 
         {actions && (
-          <div className="flex shrink-0 items-center gap-2">
-            {actions}
-          </div>
+          <div className="flex shrink-0 items-center gap-2">{actions}</div>
         )}
       </div>
 
@@ -131,13 +128,9 @@ const FormSection = ({
         inert={!isContentVisible}
       >
         <div className="min-h-0 overflow-hidden">
-          {showDivider && (
-            <div className="border-t border-border" />
-          )}
+          {showDivider && <div className="border-t border-border" />}
 
-          <div className={`px-5 py-5 ${contentClassName}`}>
-            {children}
-          </div>
+          <div className={`px-5 py-5 ${contentClassName}`}>{children}</div>
         </div>
       </div>
     </section>

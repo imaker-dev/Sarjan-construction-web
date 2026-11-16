@@ -38,22 +38,9 @@ export function TextareaField({
         rows={rows}
         maxLength={maxLength}
         {...props}
-        className={`
-          w-full resize-none rounded-md shadow-sm border px-3 py-2 text-sm
-          transition-colors
-          focus:outline-none
-
-          placeholder:text-slate-400
-          text-slate-700
-
-          ${
-            disabled
-              ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
-              : error
-              ? "border-red-300 bg-red-50"
-              : "bg-white border-slate-200 hover:border-slate-300"
-          }
-        `}
+        className={`form-textarea resize-none
+            ${error ? "is-invalid" : ""}
+          `}
       />
     </FieldWrapper>
   );

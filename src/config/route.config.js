@@ -5,15 +5,15 @@ import CreateDepartmentPage from "@features/departments/pages/CreateDepartmentPa
 import DepartmentOperationsPage from "@features/departments/pages/DepartmentOperationsPage";
 import AllEmployeesPage from "@features/employees/pages/AllEmployeesPage";
 import CreateEmployeePage from "@features/employees/pages/CreateEmployeePage";
-import CreateOnboardingPage from "@features/onboard/pages/CreateOnboardingPage";
-import OnboardingsPage from "@features/onboard/pages/OnboardingsPage";
-import VerifyOnboardingPage from "@features/onboard/pages/VerifyOnboardingPage";
 import ThemeSelectionPage from "@features/theme/pages/ThemeSelectionPage";
-import AllUsersPage from "@features/users/pages/AllUsersPage";
 import CompaniesListPage from "@features/platform/pages/CompaniesListPage";
-import CreateCompanyPage from "@features/platform/pages/CreateCompanyPage";
+// import CreateCompanyPage from "@features/platform/pages/CreateCompanyPage";
 import CompanyDetailsPage from "@features/platform/pages/CompanyDetailsPage";
 import MasterOperationsPage from "@features/platform/pages/MasterOperationsPage";
+import AllOperationsPage from "@features/operations/pages/AllOperationsPage";
+import AllCompaniesPage from "@features/companies/pages/AllCompaniesPage";
+import CreateCompanyPage from "@features/companies/pages/CreateCompanyPage";
+import VerifyCompanyPage from "@features/companies/pages/VerifyCompanyPage";
 
 export const routeConfig = [
   {
@@ -23,20 +23,23 @@ export const routeConfig = [
     // permissions: [PERMISSIONS.VIEW_DASHBOARD],
     // public: true
   },
-  { path: ROUTES.USER.ROOT, element: AllUsersPage },
   { path: ROUTES.THEME.ROOT, element: ThemeSelectionPage },
 
   // platform admin routes
   { path: ROUTES.PLATFORM.COMPANIES, element: CompaniesListPage },
-  { path: ROUTES.PLATFORM.COMPANY_CREATE, element: CreateCompanyPage },
+  // { path: ROUTES.PLATFORM.COMPANY_CREATE, element: CreateCompanyPage },
   { path: ROUTES.PLATFORM.COMPANY_DETAILS, element: CompanyDetailsPage },
   { path: ROUTES.PLATFORM.OPERATIONS, element: MasterOperationsPage },
 
-  { path: ROUTES.ONBOARDING.ROOT, element: OnboardingsPage },
-  { path: ROUTES.ONBOARDING.CREATE, element: CreateOnboardingPage },
-  { path: ROUTES.ONBOARDING.VERIFY, element: VerifyOnboardingPage },
+  // Company routes
+  { path: ROUTES.COMPANIES.ROOT, element: AllCompaniesPage },
+  { path: ROUTES.COMPANIES.CREATE, element: CreateCompanyPage },
+  { path: ROUTES.COMPANIES.VERIFY, element: VerifyCompanyPage },
 
-  // departments routes
+  // Operations routes
+  { path: ROUTES.OPERATIONS.ROOT, element: AllOperationsPage },
+
+  // Departments routes
   { path: ROUTES.DEPARTMENTS.ROOT, element: AllDepartmentsPage },
   { path: ROUTES.DEPARTMENTS.CREATE, element: CreateDepartmentPage },
 
@@ -45,5 +48,5 @@ export const routeConfig = [
 
   // employees routes
   { path: ROUTES.EMPLOYEES.ROOT, element: AllEmployeesPage },
-  { path: ROUTES.EMPLOYEES.CREATE, element: CreateEmployeePage }
+  { path: ROUTES.EMPLOYEES.CREATE, element: CreateEmployeePage },
 ];

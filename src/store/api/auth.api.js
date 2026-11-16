@@ -11,4 +11,10 @@ export default false
       meApi: () => {
         return Api.get("/auth/me");
       },
+      verifyCompanyClaimTokenApi: (token) => {
+        return Api.get(`/auth/claim/verify?token=${encodeURIComponent(token)}`);
+      },
+      completeOnboardingApi: (values) => {
+        return Api.post("/auth/claim/onboard", values);
+      },
     };

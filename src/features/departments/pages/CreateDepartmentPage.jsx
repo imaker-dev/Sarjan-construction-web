@@ -170,7 +170,7 @@ const CreateDepartmentPage = () => {
     <main className="min-h-screen space-y-6">
       <PageHeaderBanner
         title="Create Department"
-        description="Set up a department and define where it belongs within your organization."
+        // description="Set up a department and define where it belongs within your organization."
       />
 
       <form onSubmit={formik.handleSubmit} noValidate>

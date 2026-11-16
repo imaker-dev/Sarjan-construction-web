@@ -9,7 +9,7 @@ import NotFoundPage from "@components/feedback/NotFoundPage";
 const AuthenticatedRoutes = () => {
   const { meData } = useSelector((state) => state.auth);
 
-  //   if (!meData) return null;
+  if (!meData) return null;
 
   const userRole = meData.roles?.[0]?.slug;
   const userPermissions = meData.permissions || [];

@@ -74,6 +74,80 @@ export const employeeClaimAccount = createAsyncThunk(
   },
 );
 
+/* =========================================================
+   EMPLOYEE ROLE ASSIGNMENTS
+========================================================= */
+
+// Get Employee Assignments
+export const getEmployeeAssignments = createAsyncThunk(
+  "employee/getEmployeeAssignments",
+  async (id) => {
+    const res = await employeeApi.getEmployeeAssignmentsApi(id);
+    return res.data;
+  },
+);
+
+// Grant Employee Role
+export const grantEmployeeRole = createAsyncThunk(
+  "employee/grantEmployeeRole",
+  async ({ id, values }) => {
+    const res = await employeeApi.grantEmployeeRoleApi({ id, values });
+    return res.data;
+  },
+);
+
+// Revoke Employee Role
+export const revokeEmployeeRole = createAsyncThunk(
+  "employee/revokeEmployeeRole",
+  async ({ id, assignmentId }) => {
+    const res = await employeeApi.revokeEmployeeRoleApi({
+      id,
+      assignmentId,
+    });
+
+    return res.data;
+  },
+);
+
+/* =========================================================
+   EMPLOYEE OPERATIONS
+========================================================= */
+
+// Get Employee Operations
+export const getEmployeeOperations = createAsyncThunk(
+  "employee/getEmployeeOperations",
+  async (id) => {
+    const res = await employeeApi.getEmployeeOperationsApi(id);
+    return res.data;
+  },
+);
+
+// Assign Employee Operation
+export const assignEmployeeOperation = createAsyncThunk(
+  "employee/assignEmployeeOperation",
+  async ({ id, values }) => {
+    const res = await employeeApi.assignEmployeeOperationApi({
+      id,
+      values,
+    });
+
+    return res.data;
+  },
+);
+
+// Revoke Employee Operation
+export const revokeEmployeeOperation = createAsyncThunk(
+  "employee/revokeEmployeeOperation",
+  async ({ id, operationKey }) => {
+    const res = await employeeApi.revokeEmployeeOperationApi({
+      id,
+      operationKey,
+    });
+
+    return res.data;
+  },
+);
+
 const employeeSlice = createSlice({
   name: "employee",
 
@@ -91,6 +165,18 @@ const employeeSlice = createSlice({
     employeeData: null,
     employeeInviteData: null,
     employeeClaimData: null,
+
+    // Employee Role Assignments
+    isLoadingAssignments: false,
+    isGrantingRole: false,
+    isRevokingRole: false,
+    employeeAssignments: [],
+
+    // Employee Operations
+    isLoadingOperations: false,
+    isAssigningOperation: false,
+    isRevokingOperation: false,
+    employeeOperations: [],
   },
 
   reducers: {
@@ -254,6 +340,100 @@ const employeeSlice = createSlice({
       .addCase(employeeClaimAccount.rejected, (state, action) => {
         state.isClaimingEmployeeAccount = false;
         toast.error(action.error.message || "Failed to claim employee account");
+      })
+
+      // ==================================================
+      // EMPLOYEE ROLE ASSIGNMENTS
+      // ==================================================
+
+      // Get Employee Assignments
+      .addCase(getEmployeeAssignments.pending, (state) => {
+        state.isLoadingAssignments = true;
+      })
+      .addCase(getEmployeeAssignments.fulfilled, (state, action) => {
+        state.isLoadingAssignments = false;
+        state.employeeAssignments = action.payload;
+      })
+      .addCase(getEmployeeAssignments.rejected, (state, action) => {
+        state.isLoadingAssignments = false;
+        toast.error(
+          action.error.message || "Failed to fetch employee assignments",
+        );
+      })
+
+      // Grant Employee Role
+      .addCase(grantEmployeeRole.pending, (state) => {
+        state.isGrantingRole = true;
+      })
+      .addCase(grantEmployeeRole.fulfilled, (state, action) => {
+        state.isGrantingRole = false;
+        toast.success(action.payload?.message || "Role assigned successfully!");
+      })
+      .addCase(grantEmployeeRole.rejected, (state, action) => {
+        state.isGrantingRole = false;
+        toast.error(action.error.message || "Failed to assign role");
+      })
+
+      // Revoke Employee Role
+      .addCase(revokeEmployeeRole.pending, (state) => {
+        state.isRevokingRole = true;
+      })
+      .addCase(revokeEmployeeRole.fulfilled, (state, action) => {
+        state.isRevokingRole = false;
+        toast.success(action.payload?.message || "Role revoked successfully!");
+      })
+      .addCase(revokeEmployeeRole.rejected, (state, action) => {
+        state.isRevokingRole = false;
+        toast.error(action.error.message || "Failed to revoke role");
+      })
+
+      // ==================================================
+      // EMPLOYEE OPERATIONS
+      // ==================================================
+
+      // Get Employee Operations
+      .addCase(getEmployeeOperations.pending, (state) => {
+        state.isLoadingOperations = true;
+      })
+      .addCase(getEmployeeOperations.fulfilled, (state, action) => {
+        state.isLoadingOperations = false;
+        state.employeeOperations = action.payload;
+      })
+      .addCase(getEmployeeOperations.rejected, (state, action) => {
+        state.isLoadingOperations = false;
+        toast.error(
+          action.error.message || "Failed to fetch employee operations",
+        );
+      })
+
+      // Assign Employee Operation
+      .addCase(assignEmployeeOperation.pending, (state) => {
+        state.isAssigningOperation = true;
+      })
+      .addCase(assignEmployeeOperation.fulfilled, (state, action) => {
+        state.isAssigningOperation = false;
+        toast.success(
+          action.payload?.message || "Operation assigned successfully!",
+        );
+      })
+      .addCase(assignEmployeeOperation.rejected, (state, action) => {
+        state.isAssigningOperation = false;
+        toast.error(action.error.message || "Failed to assign operation");
+      })
+
+      // Revoke Employee Operation
+      .addCase(revokeEmployeeOperation.pending, (state) => {
+        state.isRevokingOperation = true;
+      })
+      .addCase(revokeEmployeeOperation.fulfilled, (state, action) => {
+        state.isRevokingOperation = false;
+        toast.success(
+          action.payload?.message || "Operation revoked successfully!",
+        );
+      })
+      .addCase(revokeEmployeeOperation.rejected, (state, action) => {
+        state.isRevokingOperation = false;
+        toast.error(action.error.message || "Failed to revoke operation");
       });
   },
 });

@@ -1,24 +1,17 @@
 import React, { useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import {
-  ChevronDown,
-  Copy,
-  Check,
-  Building2,
-  UserRound,
-  Mail,
-  Hash,
-  ArrowRight,
-  Link2,
-} from "lucide-react";
+import { Building2, UserRound, Mail, Hash, ArrowRight } from "lucide-react";
 
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import ModalAction from "@components/ui/ModalAction";
 import { InputField } from "@components/fields/InputField";
 import { useDispatch, useSelector } from "react-redux";
 import { handleResponse } from "@utils/async.utils";
-import { generateOnboardingLink } from "@store/slices/onboarding.slice";
+import FormSection from "@components/ui/FormSection";
+import Alert from "@components/ui/Alert";
+import { createCompany } from "@store/slices/company.slice";
+import CompanyCreatedModal from "../components/CompanyCreatedModal";
 
 /* -------------------------------------------------------------------------- */
 /* Validation                                                                 */
@@ -58,58 +51,16 @@ const INITIAL_VALUES = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* Collapsible Form Section                                                   */
-/* -------------------------------------------------------------------------- */
-
-const FormSection = ({ title, icon: Icon, children, defaultOpen = true }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className="rounded-xl border border-border bg-card">
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/30"
-      >
-        <div className="flex items-center gap-3">
-          {Icon && (
-            <Icon
-              size={19}
-              strokeWidth={1.8}
-              className="text-muted-foreground"
-            />
-          )}
-
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        </div>
-
-        <ChevronDown
-          size={18}
-          className={`shrink-0 text-muted-foreground transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="border-t border-border px-5 py-5">{children}</div>
-      )}
-    </div>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
 /* Page Component                                                              */
 /* -------------------------------------------------------------------------- */
 
-const CreateOnboardingPage = () => {
+const CreateCompanyPage = () => {
   const dispatch = useDispatch();
-  const { isGeneratingLink } = useSelector((state) => state.onboarding);
+  const { isCreatingCompany } = useSelector((state) => state.company);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [generatedData, setGeneratedData] = useState(null);
-  const [copied, setCopied] = useState(false);
 
   const formik = useFormik({
     initialValues: INITIAL_VALUES,
@@ -132,30 +83,14 @@ const CreateOnboardingPage = () => {
       adminDisplayName: formik.values.adminDisplayName.trim(),
     };
 
-    await handleResponse(
-      dispatch(generateOnboardingLink(payload)),
-      async (res) => {
-        console.log(res)
-        setGeneratedData(res);
-        setCopied(false);
-        setShowConfirmation(false);
-      },
-    );
-  };
+    await handleResponse(dispatch(createCompany(payload)), async (res) => {
+      const response = res.payload;
 
-  /* ------------------------------------------------------------------------ */
-  /* Copy Invitation Link                                                      */
-  /* ------------------------------------------------------------------------ */
-
-  const handleCopyLink = async () => {
-    if (!generatedData?.claimUrl) return;
-
-    try {
-      await navigator.clipboard.writeText(generatedData.claimUrl);
-      setCopied(true);
-    } catch (error) {
-      console.error("Unable to copy invitation link:", error);
-    }
+      setGeneratedData(response);
+      setShowConfirmation(false);
+      setShowInvitationModal(true);
+      formik.resetForm();
+    });
   };
 
   /* ------------------------------------------------------------------------ */
@@ -164,15 +99,16 @@ const CreateOnboardingPage = () => {
 
   const handleReset = () => {
     formik.resetForm();
+    setGeneratedData(null);
+    setShowConfirmation(false);
+    setShowInvitationModal(false);
   };
+
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <PageHeaderBanner
-        title="Create Onboarding"
-        // description="Register a new company and generate an onboarding invitation for its administrator."
-      />
+      <PageHeaderBanner title="Create Onboarding" />
 
       {/* Form */}
       <form onSubmit={formik.handleSubmit}>
@@ -278,7 +214,7 @@ const CreateOnboardingPage = () => {
                 type="submit"
                 className="btn btn-primary inline-flex items-center gap-2"
               >
-                Create Onboarding
+                Create Company
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -286,61 +222,12 @@ const CreateOnboardingPage = () => {
         </div>
       </form>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Generated Invitation Link                                          */}
-      {/* ------------------------------------------------------------------ */}
-
-      {generatedData?.claimUrl && (
-        <div className="mx-auto max-w-5xl rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success-500/10 text-success-600">
-              <Check size={20} />
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold text-foreground">
-                Company Created Successfully
-              </h4>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                The onboarding invitation is ready to share.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <label className="mb-2 block text-sm font-medium text-foreground">
-              Onboarding Invitation Link
-            </label>
-
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                type="text"
-                readOnly
-                value={generatedData.claimUrl}
-                className="form-input min-w-0 flex-1"
-              />
-
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="btn btn-outline-primary inline-flex items-center justify-center gap-2"
-              >
-                {copied ? <Check size={16} /> : <Copy size={16} />}
-                {copied ? "Copied" : "Copy Link"}
-              </button>
-            </div>
-
-            {generatedData.claimExpiresAt && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                <Link2 size={13} className="mr-1 inline-block" />
-                Expires on:{" "}
-                {new Date(generatedData.claimExpiresAt).toLocaleString()}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
+      <CompanyCreatedModal
+        isOpen={showInvitationModal}
+        onClose={() => setShowInvitationModal(false)}
+        company={generatedData}
+        onCreateAnother={handleReset}
+      />
 
       {/* ------------------------------------------------------------------ */}
       {/* Confirmation Modal                                                  */}
@@ -356,7 +243,7 @@ const CreateOnboardingPage = () => {
         theme="primary"
         submitText="Create Company"
         loadingText="Creating Company..."
-        loading={isGeneratingLink}
+        loading={isCreatingCompany}
         size="md"
       >
         <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
@@ -395,15 +282,16 @@ const CreateOnboardingPage = () => {
           </div>
         </div>
 
-        <div className="mt-3 rounded-lg border border-info-500/20 bg-info-500/5 px-3 py-3">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            A single-use onboarding invitation will be generated and remain
-            valid for 24 hours.
-          </p>
+        <div className="mt-3">
+          <Alert
+            description={`A single-use onboarding invitation will be generated and remain
+            valid for 24 hours.`}
+            size="sm"
+          />
         </div>
       </ModalAction>
     </div>
   );
 };
 
-export default CreateOnboardingPage;
+export default CreateCompanyPage;

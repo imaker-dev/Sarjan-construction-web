@@ -1,4 +1,3 @@
-
 import Api from "../api-client";
 
 export default false
@@ -45,9 +44,7 @@ export default false
       },
 
       revokeEmployeeRoleApi: ({ id, assignmentId }) => {
-        return Api.delete(
-          `/employees/${id}/assignments/${assignmentId}`
-        );
+        return Api.delete(`/employees/${id}/assignments/${assignmentId}`);
       },
 
       // ------------------------------------
@@ -61,10 +58,15 @@ export default false
       assignEmployeeOperationApi: ({ id, values }) => {
         return Api.post(`/employees/${id}/operations`, values);
       },
+      updateEmployeeOperationStatusApi: ({ id, operationKey, values }) =>
+        Api.patch(
+          `/employees/${id}/operations/${encodeURIComponent(operationKey)}`,
+          values,
+        ),
 
       revokeEmployeeOperationApi: ({ id, operationKey }) => {
         return Api.delete(
-          `/employees/${id}/operations/${encodeURIComponent(operationKey)}`
+          `/employees/${id}/operations/${encodeURIComponent(operationKey)}`,
         );
       },
     };

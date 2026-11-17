@@ -1,7 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Dialog,
   DialogPanel,
+  DialogTitle,
+  Description,
   Transition,
   TransitionChild,
 } from "@headlessui/react";
@@ -36,6 +38,15 @@ const THEMES = {
   },
 };
 
+const SIZES = {
+  xs: "sm:max-w-xs",
+  sm: "sm:max-w-sm",
+  md: "sm:max-w-md",
+  lg: "sm:max-w-lg",
+  xl: "sm:max-w-xl",
+  "2xl": "sm:max-w-2xl",
+};
+
 export default function ModalAction({
   isOpen,
   onClose,
@@ -59,61 +70,56 @@ export default function ModalAction({
   className = "",
 }) {
   const themeConfig = THEMES[theme] || THEMES.primary;
+  const escapePressed = useRef(false);
 
-  const sizes = {
-    xs: "sm:max-w-xs",
-    sm: "sm:max-w-sm",
-    md: "sm:max-w-md",
-    lg: "sm:max-w-lg",
-    xl: "sm:max-w-xl",
-    "2xl": "sm:max-w-2xl",
-  };
-
-  useEffect(() => {
-    if (!isOpen || !closeOnEscape) return;
-
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape" && !loading) {
-        onClose?.();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, closeOnEscape, loading, onClose]);
-
+  // Headless UI already handles Escape + body scroll lock. We only track
+  // whether a close request came from the Escape key, so that
+  // `closeOnEscape` and `closeOnBackdrop` can be controlled independently.
   useEffect(() => {
     if (!isOpen) return;
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        escapePressed.current = true;
+        setTimeout(() => {
+          escapePressed.current = false;
+        }, 0);
+      }
     };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
   }, [isOpen]);
 
   const handleClose = () => {
     if (!loading) onClose?.();
   };
 
+  const handleDialogClose = () => {
+    if (loading) return;
+
+    if (escapePressed.current) {
+      if (closeOnEscape) onClose?.();
+      return;
+    }
+
+    if (closeOnBackdrop) onClose?.();
+  };
+
   return (
     <Transition show={isOpen} as={React.Fragment}>
       <Dialog
         id={id}
-        onClose={closeOnBackdrop ? handleClose : () => {}}
+        onClose={handleDialogClose}
         className="relative z-[9999]"
       >
         {/* Backdrop */}
         <TransitionChild
           as={React.Fragment}
-          enter="ease-out duration-300"
+          enter="ease-out duration-300 motion-reduce:duration-0"
           enterFrom="opacity-0"
           enterTo="opacity-100"
-          leave="ease-in duration-200"
+          leave="ease-in duration-200 motion-reduce:duration-0"
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
@@ -124,18 +130,18 @@ export default function ModalAction({
         <div className="fixed inset-0 flex items-end justify-center sm:items-center sm:p-6">
           <TransitionChild
             as={React.Fragment}
-            enter="ease-out duration-300"
+            enter="ease-out duration-300 motion-reduce:duration-0"
             enterFrom="opacity-0 translate-y-full sm:translate-y-4 sm:scale-[0.97]"
             enterTo="opacity-100 translate-y-0 sm:scale-100"
-            leave="ease-in duration-200"
+            leave="ease-in duration-200 motion-reduce:duration-0"
             leaveFrom="opacity-100 translate-y-0 sm:scale-100"
             leaveTo="opacity-0 translate-y-full sm:translate-y-2 sm:scale-[0.98]"
           >
             <DialogPanel
-              className={`relative w-full overflow-hidden rounded-t-[20px] border border-border bg-card text-card-foreground shadow-[0_-20px_50px_-12px_rgba(15,23,42,0.25)] dark:shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)] sm:rounded-2xl sm:shadow-[0_28px_70px_-15px_rgba(15,23,42,0.3)] ${sizes[size]} ${className}`}
+              className={`relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[20px] border border-border bg-card text-card-foreground shadow-[0_-20px_50px_-12px_rgba(15,23,42,0.25)] dark:shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)] sm:rounded-2xl sm:shadow-[0_28px_70px_-15px_rgba(15,23,42,0.3)] ${SIZES[size] || SIZES.md} ${className}`}
             >
               {/* Mobile Drag Handle */}
-              <div className="flex justify-center pt-2.5 sm:hidden">
+              <div className="flex flex-none justify-center pt-2.5 sm:hidden">
                 <div className="h-1 w-9 rounded-full bg-border" />
               </div>
 
@@ -152,76 +158,66 @@ export default function ModalAction({
                 </button>
               )}
 
-              {/* Content */}
-              <div className="px-6 pb-6 pt-6 sm:px-7 sm:pb-6 sm:pt-7">
+              {/* Body (scrolls if content is tall) */}
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-6 sm:px-7 sm:pt-7">
                 {/* Header */}
                 <div className="flex items-start gap-3.5 pr-7">
                   {Icon && (
                     <div
                       className={`flex h-10 w-10 flex-none items-center justify-center rounded-full ring-1 ${themeConfig.icon}`}
                     >
-                      <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                      <Icon className="h-5 w-5" strokeWidth={2} />
                     </div>
                   )}
 
                   <div className={`min-w-0 ${Icon ? "pt-0.5" : ""}`}>
-                    <h2
-                      id={`${id}-title`}
+                    <DialogTitle
+                      as="h2"
                       className="text-[16px] font-semibold tracking-[-0.01em] text-foreground"
                     >
                       {title}
-                    </h2>
+                    </DialogTitle>
 
                     {desc && (
-                      <p
-                        id={`${id}-desc`}
+                      <Description
+                        as="p"
                         className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground"
                       >
                         {desc}
-                      </p>
+                      </Description>
                     )}
                   </div>
                 </div>
 
                 {/* Custom Content */}
                 {children && <div className="mt-4">{children}</div>}
+              </div>
 
-                {/* Divider */}
-                <div className="mt-6 border-t border-border" />
-
-                {/* Actions */}
-                <div
-                  className={`mt-5 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end ${
-                    !showCancel ? "sm:justify-end" : ""
-                  }`}
-                >
-                  {showCancel && (
-                    <button
-                      type="button"
-                      onClick={handleClose}
-                      disabled={loading}
-                      className="btn border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
-                    >
-                      {cancelText}
-                    </button>
-                  )}
-
+              {/* Footer: full width, edge-to-edge divider */}
+              <div className="flex flex-none flex-col-reverse gap-2.5 border-t border-border bg-muted/30 px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-7 sm:pb-4">
+                {showCancel && (
                   <button
                     type="button"
-                    onClick={() => onSubmit?.()}
-                    disabled={loading || submitDisabled}
-                    className={`btn text-white shadow-sm focus:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60 ${themeConfig.button}`}
+                    onClick={handleClose}
+                    disabled={loading}
+                    autoFocus={theme === "danger"}
+                    className="btn w-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 sm:w-auto sm:min-w-[96px]"
                   >
-                    {loading && (
-                      <IconLoader className="w-4 h-4 animate-spin mr-2" />
-                    )}
-
-                    {loading ? loadingText : submitText}
+                    {cancelText}
                   </button>
-                </div>
+                )}
 
-                {/* iOS Safe Area */}
-                <div className="pb-[env(safe-area-inset-bottom)] sm:hidden" />
+                <button
+                  type="button"
+                  onClick={() => onSubmit?.()}
+                  disabled={loading || submitDisabled}
+                  className={`btn w-full text-white shadow-sm focus:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-[96px] ${themeConfig.button}`}
+                >
+                  {loading && (
+                    <IconLoader className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {loading ? loadingText : submitText}
+                </button>
               </div>
             </DialogPanel>
           </TransitionChild>

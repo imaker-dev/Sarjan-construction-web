@@ -28,12 +28,6 @@ export const NAV_CONFIG = [
         icon: IconLayoutDashboard,
         path: ROUTES.HOME.ANALYTICAL,
       },
-
-      {
-        title: "eCommerce",
-        icon: IconShoppingBag,
-        path: ROUTES.HOME.ECOMMERCE,
-      },
     ],
   },
 

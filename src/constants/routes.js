@@ -5,8 +5,6 @@ export const ROUTES = {
   HOME: {
     ROOT: "/",
     ANALYTICAL: "/analytical",
-    ECOMMERCE: "/ecommerce",
-    FRONTEND_PAGES: "/frontend-pages",
   },
 
   // =========================
@@ -76,6 +74,9 @@ export const ROUTES = {
     CREATE: "/employees/create",
     DETAILS: "/employees/:id",
     EDIT: "/employees/:id/edit",
+    MEMBERSHIPS: "/employees/membership",
+    ROLES: "/employees/role-assignments",
+    OPERATIONS: "/employees/operations",
     VERIFY: "/verify-employee",
   },
 

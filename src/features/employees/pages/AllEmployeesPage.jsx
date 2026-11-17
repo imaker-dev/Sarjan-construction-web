@@ -8,8 +8,6 @@ import {
   MailPlus,
   ShieldCheck,
   KeyRound,
-  Download,
-  FileSpreadsheet,
   Plus,
 } from "lucide-react";
 import { IconUserCheck, IconUserX } from "@tabler/icons-react";
@@ -27,32 +25,10 @@ import {
 } from "@store/slices/employee.slice";
 
 import SendInviteModal from "../components/SendInviteModal";
-import EmployeeRolesModal from "../components/EmployeeRolesModal";
-import EmployeeOperationsModal from "../components/EmployeeOperationsModal";
-
 import { formatDate } from "@utils/date.utils";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@constants/routes";
 import { formatText } from "@utils/text.utils";
-
-// --------------------------------------------------
-// Constants
-// --------------------------------------------------
-
-const STATUS_STYLES = {
-  ACTIVE:
-    "bg-emerald-50 text-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-400",
-  DRAFT: "bg-amber-50 text-amber-500 dark:bg-amber-500/15 dark:text-amber-400",
-  ON_LEAVE:
-    "bg-amber-50 text-amber-500 dark:bg-amber-500/15 dark:text-amber-400",
-  INACTIVE: "bg-rose-50 text-rose-400 dark:bg-rose-500/15 dark:text-rose-400",
-  TERMINATED: "bg-rose-50 text-rose-400 dark:bg-rose-500/15 dark:text-rose-400",
-  ARCHIVED:
-    "bg-indigo-50 text-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-400",
-};
-
-const DEFAULT_STATUS_STYLE =
-  "bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400";
 
 // --------------------------------------------------
 // Helpers
@@ -335,13 +311,22 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
       {
         label: "Manage Roles",
         icon: ShieldCheck,
-        onClick: handleOpenRoles,
+        onClick: (employee) =>
+          navigate(`${ROUTES.EMPLOYEES.ROLES}?employeeId=${employee.id}`),
+      },
+      {
+        label: "View Memberships",
+        icon: Users,
+        onClick: (employee) =>
+          navigate(`${ROUTES.EMPLOYEES.MEMBERSHIPS}?employeeId=${employee.id}`),
       },
       {
         label: "Manage Operations",
         icon: KeyRound,
-        onClick: handleOpenOperations,
+        onClick: (employee) =>
+          navigate(`${ROUTES.EMPLOYEES.OPERATIONS}?employeeId=${employee.id}`),
       },
+
       {
         label: "Send Invite",
         icon: MailPlus,
@@ -409,20 +394,6 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         loading={isSendingEmployeeInvite}
         onSubmit={handleSendInvite}
         inviteResult={inviteResult}
-      />
-
-      {/* Employee Roles Modal */}
-      <EmployeeRolesModal
-        isOpen={!!selectedRoleEmployee}
-        onClose={handleCloseRoles}
-        employee={selectedRoleEmployee}
-      />
-
-      {/* Employee Operations Modal */}
-      <EmployeeOperationsModal
-        isOpen={!!selectedOperationEmployee}
-        onClose={handleCloseOperations}
-        employee={selectedOperationEmployee}
       />
 
       {/* Employee Status Confirmation */}

@@ -35,7 +35,7 @@ axiosInstance.interceptors.request.use(
           config.url === "/operations" ||
           config.url.startsWith("/operations")));
 
-    if (companyId && !isPlatformRoute) {
+    if (companyId ) {
       config.headers["x-company-id"] = companyId;
     }
 

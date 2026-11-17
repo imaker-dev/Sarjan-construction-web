@@ -29,6 +29,15 @@ export const deleteOperation = createAsyncThunk(
   },
 );
 
+// Browse Operations Catalogue
+export const getOperationsCatalogue = createAsyncThunk(
+  "operation/getOperationsCatalogue",
+  async () => {
+    const res = await operationApi.getOperationsCatalogueApi();
+    return res.data;
+  },
+);
+
 const operationSlice = createSlice({
   name: "operation",
 
@@ -38,6 +47,9 @@ const operationSlice = createSlice({
     isCreatingOperation: false,
 
     operationsData: null,
+
+    isListingOperationsCatalogue: false,
+    operationsCatalogueData: [],
   },
 
   reducers: {},
@@ -99,6 +111,21 @@ const operationSlice = createSlice({
       .addCase(deleteOperation.rejected, (state, action) => {
         state.isDeletingOperation = false;
         toast.error(action.error.message || "Failed to delete operation");
+      })
+
+      // Browse Operations Catalogue
+      .addCase(getOperationsCatalogue.pending, (state) => {
+        state.isListingOperationsCatalogue = true;
+      })
+      .addCase(getOperationsCatalogue.fulfilled, (state, action) => {
+        state.isListingOperationsCatalogue = false;
+        state.operationsCatalogueData = action.payload;
+      })
+      .addCase(getOperationsCatalogue.rejected, (state, action) => {
+        state.isListingOperationsCatalogue = false;
+        toast.error(
+          action.error.message || "Failed to fetch operations catalogue",
+        );
       });
   },
 });

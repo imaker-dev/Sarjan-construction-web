@@ -135,6 +135,24 @@ export const assignEmployeeOperation = createAsyncThunk(
   },
 );
 
+//Toggle employee operation status
+export const updateEmployeeOperationStatus = createAsyncThunk(
+  "employee/updateEmployeeOperationStatus",
+  async ({ id, operationKey, values }) => {
+    const res = await employeeApi.updateEmployeeOperationStatusApi({
+      id,
+      operationKey,
+      values,
+    });
+
+    return {
+      operationKey,
+      status: values.status,
+      ...res.data,
+    };
+  },
+);
+
 // Revoke Employee Operation
 export const revokeEmployeeOperation = createAsyncThunk(
   "employee/revokeEmployeeOperation",
@@ -176,6 +194,7 @@ const employeeSlice = createSlice({
     isLoadingOperations: false,
     isAssigningOperation: false,
     isRevokingOperation: false,
+    isUpdatingOperationStatus: false,
     employeeOperations: [],
   },
 
@@ -419,6 +438,34 @@ const employeeSlice = createSlice({
       .addCase(assignEmployeeOperation.rejected, (state, action) => {
         state.isAssigningOperation = false;
         toast.error(action.error.message || "Failed to assign operation");
+      })
+
+      // Update Employee Operation Status
+      .addCase(updateEmployeeOperationStatus.pending, (state) => {
+        state.isUpdatingOperationStatus = true;
+      })
+      .addCase(updateEmployeeOperationStatus.fulfilled, (state, action) => {
+        state.isUpdatingOperationStatus = false;
+
+        const { operationKey, status, message } = action.payload;
+
+        const operation = state.employeeOperations.find(
+          (item) =>
+            (item.operationKey || item.operation?.key || item.key) ===
+            operationKey,
+        );
+
+        if (operation) {
+          operation.status = status;
+        }
+
+        toast.success(message || "Operation status updated successfully!");
+      })
+      .addCase(updateEmployeeOperationStatus.rejected, (state, action) => {
+        state.isUpdatingOperationStatus = false;
+        toast.error(
+          action.error.message || "Failed to update operation status",
+        );
       })
 
       // Revoke Employee Operation

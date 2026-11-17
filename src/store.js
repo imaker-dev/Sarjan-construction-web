@@ -8,6 +8,8 @@ import companySlice from "./store/slices/company.slice";
 import headOfficeSlice from "./store/slices/head-office.slice";
 import projectSlice from './store/slices/project.slice';
 import siteSlice from './store/slices/site.slice';
+import employeeMembershipSlice from './store/slices/employeeMembership.slice';
+import employeeRoleSlice from './store/slices/employeeRole.slice';
 
 const reducer = {
   auth: authSlice,
@@ -19,6 +21,8 @@ const reducer = {
   headOffice: headOfficeSlice,
   project: projectSlice,
   site: siteSlice,
+  employeeMembership: employeeMembershipSlice,
+  employeeRole: employeeRoleSlice,
 };
 
 const store = configureStore({

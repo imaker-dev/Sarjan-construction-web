@@ -20,6 +20,9 @@ import CreateProjectPage from "@features/projects/pages/CreateProjectPage";
 import AllSitesPage from "@features/sites/pages/AllSitesPage";
 import CreateSitePage from "@features/sites/pages/CreateSitePage";
 import { ROLES } from "@constants/roles";
+import EmployeeMembershipPage from "@features/employees/pages/EmployeeMembershipPage";
+import EmployeeRoleAssignmentPage from "@features/employees/pages/EmployeeRoleAssignmentPage";
+import EmployeeOperationsPage from "@features/employees/pages/EmployeeOperationsPage";
 
 export const routeConfig = [
   {
@@ -31,25 +34,25 @@ export const routeConfig = [
   },
   { path: ROUTES.THEME.ROOT, element: ThemeSelectionPage },
 
-  // platform admin routes
+  // platform admin Routes
   { path: ROUTES.PLATFORM.COMPANIES, element: CompaniesListPage },
   // { path: ROUTES.PLATFORM.COMPANY_CREATE, element: CreateCompanyPage },
   { path: ROUTES.PLATFORM.COMPANY_DETAILS, element: CompanyDetailsPage },
   { path: ROUTES.PLATFORM.OPERATIONS, element: MasterOperationsPage },
 
-  // Company routes
+  // Company Routes
   { path: ROUTES.COMPANIES.ROOT, element: AllCompaniesPage, roles: [ROLES.PLATFORM_ADMIN], },
   { path: ROUTES.COMPANIES.CREATE, element: CreateCompanyPage, roles: [ROLES.PLATFORM_ADMIN], },
   { path: ROUTES.COMPANIES.VERIFY, element: VerifyCompanyPage, roles: [ROLES.PLATFORM_ADMIN], },
 
-  // Operations routes
+  // Operations Routes
   { path: ROUTES.OPERATIONS.ROOT, element: AllOperationsPage, roles: [ROLES.PLATFORM_ADMIN] },
 
-  // Head Offices routes
+  // Head Offices Routes
   { path: ROUTES.HEAD_OFFICES.ROOT, element: AllHeadOfficesPage, roles: [ROLES.COMPANY_OWNER], },
   { path: ROUTES.HEAD_OFFICES.CREATE, element: CreateHeadOfficePage,roles: [ROLES.COMPANY_OWNER] },
 
-  //Projects routes
+  //Projects Routes
   { path: ROUTES.PROJECTS.ROOT, element: AllProjectsPage, roles: [ROLES.COMPANY_OWNER] },
   { path: ROUTES.PROJECTS.CREATE, element: CreateProjectPage, roles: [ROLES.COMPANY_OWNER] },
 
@@ -57,14 +60,15 @@ export const routeConfig = [
   { path: ROUTES.SITES.ROOT, element: AllSitesPage, roles: [ROLES.COMPANY_OWNER] },
   { path: ROUTES.SITES.CREATE, element: CreateSitePage, roles: [ROLES.COMPANY_OWNER] },
 
-  // Departments routes
+  // Departments Routes
   { path: ROUTES.DEPARTMENTS.ROOT, element: AllDepartmentsPage, roles: [ROLES.COMPANY_OWNER] },
   { path: ROUTES.DEPARTMENTS.CREATE, element: CreateDepartmentPage, roles: [ROLES.COMPANY_OWNER] },
-
-  // operations route
   { path: ROUTES.DEPARTMENTS.OPERATIONS, element: DepartmentOperationsPage },
 
-  // employees routes
+  // Employees Routes
   { path: ROUTES.EMPLOYEES.ROOT, element: AllEmployeesPage, roles: [ROLES.COMPANY_OWNER] },
   { path: ROUTES.EMPLOYEES.CREATE, element: CreateEmployeePage, roles: [ROLES.COMPANY_OWNER] },
+  { path: ROUTES.EMPLOYEES.MEMBERSHIPS, element: EmployeeMembershipPage, roles: [ROLES.COMPANY_OWNER] },
+  { path: ROUTES.EMPLOYEES.ROLES, element: EmployeeRoleAssignmentPage, roles: [ROLES.COMPANY_OWNER] },
+  { path: ROUTES.EMPLOYEES.OPERATIONS, element: EmployeeOperationsPage, roles: [ROLES.COMPANY_OWNER] },
 ];

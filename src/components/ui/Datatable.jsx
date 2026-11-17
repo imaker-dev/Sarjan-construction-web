@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Inbox, Loader2, Search, X } from "lucide-react";
 import RowActionsMenu from "./RowActionsMenu";
 
@@ -7,12 +7,16 @@ import RowActionsMenu from "./RowActionsMenu";
  *
  * Props
  *  columns        [{ key, header, render?(row, index), align?, width?, className?,
- *                    hideOnMobile?, mobilePosition?: "header" }]
+ *                    hideOnMobile?, mobilePosition?: "header", mobileStacked?: boolean,
+ *                    mobileRender?(row, index) }]
  *                 - `key` supports dot paths ("user.name"); `render` overrides it.
  *                 - On mobile the first visible column is the card title, columns with
  *                   mobilePosition="header" sit beside it, the rest become label/value rows.
+ *                 - mobileRender replaces `render` on mobile only (e.g. drop desktop widths).
+ *                 - mobileStacked puts the label above the value (use it for long text
+ *                   such as descriptions); otherwise the value sits right of the label.
  *  data           array of rows
- *  actions        [{ label, icon, onClick(row), danger?, disabled?, hidden?(row) }]
+ *  actions        [{ label, icon, onClick(row), danger?, disabled?, divider?, hidden?(row) }]
  *                 or a function (row) => that array. Omit for no action column.
  *  loading        shows skeleton rows
  *  rowKey         field name or (row, index) => key   (default "id")
@@ -26,6 +30,31 @@ import RowActionsMenu from "./RowActionsMenu";
  *  empty          { icon, title, description }
  *  skeletonRows   number of placeholder rows (default 5)
  */
+
+const DESKTOP_QUERY = "(min-width: 640px)"; // Tailwind `sm`
+
+/**
+ * True on desktop-width screens. Used to render ONE layout (table or cards) instead of
+ * both, which avoids duplicate DOM ids and double-mounted cells/menus.
+ */
+function useIsDesktop(query = DESKTOP_QUERY) {
+  const read = () =>
+    typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia(query).matches
+      : true;
+  const [matches, setMatches] = useState(read);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return undefined;
+    const mq = window.matchMedia(query);
+    const onChange = (e) => setMatches(e.matches);
+    setMatches(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [query]);
+
+  return matches;
+}
 
 const ALIGN = { left: "text-left", center: "text-center", right: "text-right" };
 const SKELETON_WIDTHS = ["w-28", "w-20", "w-24", "w-16", "w-24"];
@@ -127,6 +156,42 @@ function EmptyState({
   );
 }
 
+const renderMobileCell = (col, row, index) =>
+  col.mobileRender ? col.mobileRender(row, index) : renderCell(col, row, index);
+
+// Direct children of a mobile value may carry desktop sizing (min-w-*, w-*, nowrap).
+// Clamp them so they can never push wider than the card.
+const MOBILE_VALUE_GUARD = "[&>*]:!min-w-0 [&>*]:!max-w-full";
+
+/** One label/value line inside a mobile card. Long values wrap instead of overlapping the label. */
+function MobileField({ col, row, index }) {
+  const value = renderMobileCell(col, row, index);
+
+  if (col.mobileStacked) {
+    return (
+      <div>
+        <dt className="text-[11.5px] font-medium text-slate-400 dark:text-slate-500">
+          {col.header}
+        </dt>
+        <dd className={`mt-1 min-w-0 break-words text-[13px] leading-relaxed text-slate-700 dark:text-slate-200 ${MOBILE_VALUE_GUARD}`}>
+          {value}
+        </dd>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <dt className="w-24 shrink-0 pt-px text-slate-400 dark:text-slate-500">
+        {col.header}
+      </dt>
+      <dd className={`flex min-w-0 flex-1 justify-end break-words text-right text-slate-700 dark:text-slate-200 ${MOBILE_VALUE_GUARD}`}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 export default function DataTable({
   columns = [],
   data = [],
@@ -151,6 +216,7 @@ export default function DataTable({
   const headerCols = restCols.filter((c) => c.mobilePosition === "header");
   const bodyCols = restCols.filter((c) => c.mobilePosition !== "header");
 
+  const isDesktop = useIsDesktop();
   const isEmpty = !loading && data.length === 0;
   const searchTerm = search?.value?.trim();
   const visibleHeaderActions = (headerActions || []).filter((a) => !a.hidden);
@@ -166,14 +232,14 @@ export default function DataTable({
           {(title || hasHeaderRight) && (
             <div className="flex items-center justify-between gap-3">
               {title ? (
-                <h2 className="text-[15px] font-semibold text-slate-800 dark:text-white">
+                <h2 className="min-w-0 truncate text-[15px] font-semibold text-slate-800 dark:text-white">
                   {title}
                 </h2>
               ) : (
                 <span />
               )}
               {hasHeaderRight && (
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   {visibleHeaderActions.map((action) => (
                     <HeaderButton key={action.label} {...action} />
                   ))}
@@ -187,8 +253,8 @@ export default function DataTable({
       )}
 
       {/* Desktop */}
-      {!isEmpty && (
-        <div className="hidden overflow-x-auto sm:block">
+      {!isEmpty && isDesktop && (
+        <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-slate-50/70 text-left text-slate-800 dark:bg-slate-800/30 dark:text-slate-200">
@@ -261,8 +327,8 @@ export default function DataTable({
       )}
 
       {/* Mobile */}
-      {!isEmpty && (
-        <div className="divide-y divide-slate-100 dark:divide-slate-700 sm:hidden">
+      {!isEmpty && !isDesktop && (
+        <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {loading
             ? Array.from({ length: Math.min(skeletonRows, 3) }).map((_, i) => (
                 <div key={i} className="px-5 py-4">
@@ -271,14 +337,14 @@ export default function DataTable({
               ))
             : data.map((row, i) => (
                 <div key={getRowKey(row, i, rowKey)} className="px-5 py-4">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      {titleCol && renderCell(titleCol, row, i)}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 break-words">
+                      {titleCol && renderMobileCell(titleCol, row, i)}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       {headerCols.map((col) => (
                         <React.Fragment key={col.key}>
-                          {renderCell(col, row, i)}
+                          {renderMobileCell(col, row, i)}
                         </React.Fragment>
                       ))}
                       {hasActions && (
@@ -288,18 +354,11 @@ export default function DataTable({
                   </div>
 
                   {bodyCols.length > 0 && (
-                    <div className="grid grid-cols-2 gap-y-2 pl-1 text-[12.5px]">
+                    <dl className="mt-3.5 space-y-2.5 border-t border-dashed border-slate-100 pt-3.5 text-[12.5px] dark:border-slate-700/70">
                       {bodyCols.map((col) => (
-                        <React.Fragment key={col.key}>
-                          <div className="text-slate-400 dark:text-slate-500">
-                            {col.header}
-                          </div>
-                          <div className="flex justify-end text-right text-slate-700 dark:text-slate-200">
-                            {renderCell(col, row, i)}
-                          </div>
-                        </React.Fragment>
+                        <MobileField key={col.key} col={col} row={row} index={i} />
                       ))}
-                    </div>
+                    </dl>
                   )}
                 </div>
               ))}

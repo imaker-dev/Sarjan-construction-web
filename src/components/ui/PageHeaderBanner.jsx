@@ -1,9 +1,6 @@
+import { formatText } from "@utils/text.utils";
+import { House } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
-
-const formatBreadcrumb = (segment) =>
-  segment
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
 
 export default function PageHeaderBanner({
   title,
@@ -14,6 +11,7 @@ export default function PageHeaderBanner({
 }) {
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
+  const showHomeIcon = segments.length >= 2;
 
   return (
     <section
@@ -87,7 +85,11 @@ export default function PageHeaderBanner({
                     dark:hover:text-primary-300
                   "
                 >
-                  Dashboard
+                  {showHomeIcon ? (
+                    <House size={15} strokeWidth={2} />
+                  ) : (
+                    "Dashboard"
+                  )}
                 </NavLink>
               </li>
 
@@ -97,10 +99,7 @@ export default function PageHeaderBanner({
                 const isLast = index === segments.length - 1;
 
                 return (
-                  <li
-                    key={path}
-                    className="flex min-w-0 items-center gap-1.5"
-                  >
+                  <li key={path} className="flex min-w-0 items-center gap-1.5">
                     {/* Separator */}
                     <span
                       className="
@@ -123,7 +122,7 @@ export default function PageHeaderBanner({
                         "
                         aria-current="page"
                       >
-                        {formatBreadcrumb(segment)}
+                        {formatText(segment)}
                       </span>
                     ) : (
                       <NavLink
@@ -136,7 +135,7 @@ export default function PageHeaderBanner({
                           dark:hover:text-primary-300
                         "
                       >
-                        {formatBreadcrumb(segment)}
+                        {formatText(segment)}
                       </NavLink>
                     )}
                   </li>

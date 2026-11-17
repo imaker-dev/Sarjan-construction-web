@@ -30,9 +30,9 @@ export default false
           values,
         );
       },
-      deleteDepartmentOperationApi: (departmentId, operationId) => {
+      deleteDepartmentOperationApi: (departmentId, operationKey) => {
         return Api.delete(
-          `/departments/${departmentId}/operations/${operationId}`,
+          `/departments/${departmentId}/operations/${operationKey}`,
         );
       },
     };

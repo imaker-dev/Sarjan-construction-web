@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Building2, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { Building2, Eye, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import {
   listDepartments,
@@ -145,7 +145,15 @@ const AllDepartmentsPage = ({ onView, onEdit, onDelete }) => {
         label: "View",
         icon: Eye,
         onClick: (d) =>
-          navigate(ROUTES.DEPARTMENTS.OPERATIONS + `?departmentId=${d.id}`),
+          navigate(ROUTES.DEPARTMENTS.DETAILS + `?departmentId=${d.id}`),
+      },
+      {
+        label: "Manage Operations",
+        icon: Settings2,
+        onClick: (department) =>
+          navigate(
+            `${ROUTES.DEPARTMENTS.OPERATIONS}?departmentId=${department.id}`,
+          ),
       },
       { label: "Edit", icon: Pencil, onClick: onEdit },
       { label: "Delete", icon: Trash2, onClick: onDelete, danger: true },

@@ -14,4 +14,10 @@ export default false
       deleteOperationApi: ({ id, key }) => {
         return Api.delete(`/departments/${id}/operations/${key}`);
       },
+      
+      // Browse available operations catalogue
+      getOperationsCatalogueApi: () => {
+        return Api.get("/operations");
+      },
+      
     };

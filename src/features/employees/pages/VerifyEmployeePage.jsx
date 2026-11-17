@@ -17,6 +17,7 @@ import { InputField } from "@components/fields/InputField";
 import { useQueryParams } from "@hooks/useQueryParams";
 import { employeeClaimAccount } from "@store/slices/employee.slice";
 import { ROUTES } from "@constants/routes";
+import Alert from "@components/ui/Alert";
 
 const VerifyEmployeePage = () => {
   const { get } = useQueryParams();
@@ -128,10 +129,7 @@ const VerifyEmployeePage = () => {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
-        <PageHeaderBanner
-          title="Activate Employee Account"
-          description="Complete your account setup by creating a secure password to access your organization's workspace."
-        />
+
 
         <div className="mx-auto mt-6">
           {/* SUCCESS STATE */}
@@ -177,23 +175,11 @@ const VerifyEmployeePage = () => {
           ) : (
             <>
               {/* INVITATION STATUS */}
-              <div className="mb-6 flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-                <IconShieldCheck
-                  size={21}
-                  stroke={1.8}
-                  className="shrink-0 text-emerald-600 dark:text-emerald-400"
-                />
-
-                <div>
-                  <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                    Invitation Link Received
-                  </p>
-
-                  <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
-                    Set up your password to activate your employee account.
-                  </p>
-                </div>
+              <div className="mb-6">
+                
+              <Alert icon={IconShieldCheck} title="Invitation Link Received" description="Set up your password to activate your employee account." type="success"/>
               </div>
+
 
               <form onSubmit={handleSubmit} noValidate className="space-y-4">
                 {/* ACCOUNT DETAILS */}

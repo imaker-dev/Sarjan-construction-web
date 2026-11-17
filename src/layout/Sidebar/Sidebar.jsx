@@ -4,9 +4,17 @@ import SidebarFooter from "./SidebarFooter";
 import { NAV_CONFIG } from "@config/navigation.config";
 import { APP_CONFIG } from "@config/app.config";
 import { IconChevronDown, IconPoint } from "@tabler/icons-react";
+import useAccess from "@hooks/useAccess";
 
 function Sidebar({ mobileOpen, setMobileOpen, collapsed, onLogout }) {
   const { pathname } = useLocation();
+
+  const { can } = useAccess();
+
+  const visibleNavConfig = NAV_CONFIG.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => can(item)),
+  })).filter((group) => group.items.length > 0);
 
   const isItemActive = (item) => {
     if (item.path)
@@ -70,7 +78,7 @@ function Sidebar({ mobileOpen, setMobileOpen, collapsed, onLogout }) {
 
         {/* Navigation */}
         <nav className="no-scrollbar flex-1 space-y-7 overflow-y-auto p-5">
-          {NAV_CONFIG.map((group) => (
+          {visibleNavConfig.map((group) => (
             <div key={group.section}>
               <p
                 className={`mb-2.5 h-4 text-[12px] font-semibold uppercase tracking-wide text-gray-800 dark:text-slate-400 ${

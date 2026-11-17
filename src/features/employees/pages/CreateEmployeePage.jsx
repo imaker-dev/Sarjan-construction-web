@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
@@ -13,11 +14,14 @@ import {
 
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import FormSection from "@components/ui/FormSection";
+import ModalAction from "@components/ui/ModalAction";
+
 import { InputField } from "@components/fields/InputField";
 import { SelectField } from "@components/fields/SelectField";
 
 import { createEmployee } from "@store/slices/employee.slice";
 import { ROUTES } from "@constants/routes";
+import { handleResponse } from "@utils/async.utils";
 
 const ENGAGEMENT_OPTIONS = [
   { value: "DIRECT_EMPLOYEE", label: "Direct Employee" },
@@ -106,43 +110,15 @@ const CreateEmployeePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+
   const { isCreatingEmployee } = useSelector((state) => state.employee);
 
   const formik = useFormik({
     initialValues,
     validationSchema,
-    onSubmit: async (values) => {
-      const payload = {
-        employeeCode: values.employeeCode.trim().toUpperCase(),
-        displayName: values.displayName.trim(),
-        engagementType: values.engagementType,
-      };
-
-      // Optional fields: include only when provided.
-      const optionalFields = [
-        "designation",
-        "tradeCategory",
-        "joiningDate",
-        "contactPhone",
-        "contactEmail",
-        "emergencyContactName",
-        "emergencyContactPhone",
-      ];
-
-      optionalFields.forEach((field) => {
-        const value = values[field];
-
-        if (value?.trim()) {
-          payload[field] = value.trim();
-        }
-      });
-
-      try {
-        await dispatch(createEmployee(payload)).unwrap();
-        navigate(ROUTES.EMPLOYEES.ROOT);
-      } catch (error) {
-        // Error notification is handled by the Redux slice.
-      }
+    onSubmit: () => {
+      setIsConfirmationOpen(true);
     },
   });
 
@@ -157,12 +133,48 @@ const CreateEmployeePage = () => {
     error: touched[name] && errors[name],
   });
 
+  const handleCloseConfirmation = () => {
+    if (isCreatingEmployee) return;
+    setIsConfirmationOpen(false);
+  };
+
+  const handleConfirm = async () => {
+    const currentValues = formik.values;
+
+    const payload = {
+      employeeCode: currentValues.employeeCode.trim().toUpperCase(),
+      displayName: currentValues.displayName.trim(),
+      engagementType: currentValues.engagementType,
+    };
+
+    // Optional fields: include only when provided.
+    const optionalFields = [
+      "designation",
+      "tradeCategory",
+      "joiningDate",
+      "contactPhone",
+      "contactEmail",
+      "emergencyContactName",
+      "emergencyContactPhone",
+    ];
+
+    optionalFields.forEach((field) => {
+      const value = currentValues[field];
+
+      if (value?.trim()) {
+        payload[field] = value.trim();
+      }
+    });
+
+    await handleResponse(dispatch(createEmployee(payload)), () => {
+      setIsConfirmationOpen(false);
+      navigate(ROUTES.EMPLOYEES.ROOT);
+    });
+  };
+
   return (
     <main className="min-h-screen space-y-6">
-      <PageHeaderBanner
-        title="Create Employee"
-        // description="Add an employee to your organization and provide their employment and contact details."
-      />
+      <PageHeaderBanner title="Create Employee" />
 
       <form onSubmit={formik.handleSubmit} noValidate>
         <div className="space-y-5">
@@ -178,14 +190,9 @@ const CreateEmployeePage = () => {
                 placeholder="e.g. EMP-002"
                 required
                 maxLength={40}
+                uppercase
                 helperText="Use uppercase letters, numbers, hyphens or underscores."
                 {...getFieldProps("employeeCode")}
-                onChange={(event) =>
-                  setFieldValue(
-                    "employeeCode",
-                    event.target.value.toUpperCase(),
-                  )
-                }
               />
 
               <InputField
@@ -296,11 +303,30 @@ const CreateEmployeePage = () => {
               disabled={isCreatingEmployee}
             >
               <IconDeviceFloppy size={17} stroke={1.8} />
-              {isCreatingEmployee ? "Creating Employee..." : "Create Employee"}
+              Create Employee
             </button>
           </div>
         </div>
       </form>
+
+      {/* Create Employee Confirmation */}
+      <ModalAction
+        id="create-employee-confirmation"
+        isOpen={isConfirmationOpen}
+        onClose={handleCloseConfirmation}
+        onSubmit={handleConfirm}
+        title="Create Employee?"
+        desc="Are you sure you want to create this employee?"
+        icon={IconUser}
+        theme="primary"
+        submitText="Confirm & Create"
+        loadingText="Creating..."
+        cancelText="Go Back"
+        loading={isCreatingEmployee}
+        closeOnBackdrop={!isCreatingEmployee}
+        closeOnEscape={!isCreatingEmployee}
+        showCancel
+      />
     </main>
   );
 };

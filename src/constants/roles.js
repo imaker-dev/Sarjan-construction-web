@@ -1,5 +1,5 @@
 export const ROLES = Object.freeze({
-    PLATFORM_ADMIN: "platform_admin",
-    COMPANY_OWNER: "company_owner",
+    PLATFORM_ADMIN: "PLATFORM_ADMIN",
+    COMPANY_OWNER: "COMPANY_OWNER",
     HO_ADMIN: "ho_admin",
 });

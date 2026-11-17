@@ -1,6 +1,7 @@
 import Alert from "@components/ui/Alert";
 import Avatar from "@components/ui/Avatar";
 import ModalBasic from "@components/ui/ModalBasic";
+import { ROUTES } from "@constants/routes";
 import { formatDate } from "@utils/date.utils";
 import { Check, Copy, MailPlus } from "lucide-react";
 import React, { useState } from "react";
@@ -20,7 +21,7 @@ const SendInviteModal = ({
 
   // Build invitation URL.
   const invitationUrl = inviteResult?.claimCode
-    ? `${window.location.origin}/verify-user?token=${encodeURIComponent(
+    ? `${window.location.origin}${ROUTES.EMPLOYEES.VERIFY}?token=${encodeURIComponent(
         inviteResult.claimCode,
       )}`
     : "";

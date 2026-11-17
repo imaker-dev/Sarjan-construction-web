@@ -346,6 +346,7 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         label: "Send Invite",
         icon: MailPlus,
         onClick: handleOpenInvite,
+        hidden: (employee) => employee.accountStatus != "NOT_INVITED",
       },
       {
         label: "Delete",
@@ -393,14 +394,12 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
             onClick: () => navigate(ROUTES.EMPLOYEES.CREATE),
           },
         ]}
-          empty={{
+        empty={{
           icon: Users,
           title: "No employees yet",
           description: "Employees you add will show up here.",
         }}
       />
-
-  
 
       {/* Employee Invitation Modal */}
       <SendInviteModal

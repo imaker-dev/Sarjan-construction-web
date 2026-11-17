@@ -1,3 +1,5 @@
+
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
@@ -13,12 +15,17 @@ import {
 } from "@tabler/icons-react";
 
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
+import FormSection from "@components/ui/FormSection";
+import ModalAction from "@components/ui/ModalAction";
+
 import { InputField } from "@components/fields/InputField";
+import { SelectField } from "@components/fields/SelectField";
 
 import { createDepartment } from "@store/slices/department.slice";
+import { listProjects } from "@store/slices/project.slice";
+import { listSites } from "@store/slices/site.slice";
+
 import { ROUTES } from "@constants/routes";
-import FormSection from "@components/ui/FormSection";
-import { SelectField } from "@components/fields/SelectField";
 
 const CATEGORY_OPTIONS = [
   { value: "FINANCE", label: "Finance" },
@@ -64,7 +71,7 @@ const validationSchema = Yup.object({
   scopeId: Yup.string().when("scopeType", {
     is: (value) => value === "PROJECT" || value === "SITE",
     then: (schema) =>
-      schema.uuid("Enter a valid UUID").required("Scope ID is required"),
+      schema.uuid("Enter a valid UUID").required("Please select a scope"),
     otherwise: (schema) => schema.notRequired(),
   }),
 
@@ -113,35 +120,23 @@ const CreateDepartmentPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+
   const { isCreatingDepartment } = useSelector((state) => state.department);
+
+  const { isListingProjects, projectsData } = useSelector(
+    (state) => state.project,
+  );
+
+  const { isListingSites, sitesData } = useSelector(
+    (state) => state.site,
+  );
 
   const formik = useFormik({
     initialValues,
     validationSchema,
-    onSubmit: async (values) => {
-      const payload = {
-        scopeType: values.scopeType,
-        code: values.code.trim().toUpperCase(),
-        name: values.name.trim(),
-        category: values.category,
-      };
-
-      // Scope ID is required only for PROJECT and SITE.
-      if (values.scopeType !== "COMPANY") {
-        payload.scopeId = values.scopeId.trim();
-      }
-
-      // Category label is required only for CUSTOM.
-      if (values.category === "CUSTOM") {
-        payload.categoryLabel = values.categoryLabel.trim();
-      }
-
-      try {
-        await dispatch(createDepartment(payload)).unwrap();
-        navigate(ROUTES.DEPARTMENTS.ROOT);
-      } catch (error) {
-        // Error notification is handled by the Redux slice.
-      }
+    onSubmit: () => {
+      setIsConfirmationOpen(true);
     },
   });
 
@@ -166,12 +161,83 @@ const CreateDepartmentPage = () => {
   const isScoped = values.scopeType !== "COMPANY";
   const isCustomCategory = values.category === "CUSTOM";
 
+  const getListData = (data) => {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+  };
+
+  const projects = getListData(projectsData);
+  const sites = getListData(sitesData);
+
+  const scopeOptions =
+    values.scopeType === "PROJECT"
+      ? projects.map((project) => ({
+          value: project.id,
+          label: `${project.name || "Untitled Project"}${
+            project.code ? ` (${project.code})` : ""
+          }`,
+        }))
+      : sites.map((site) => ({
+          value: site.id,
+          label: `${site.name || "Untitled Site"}${
+            site.code ? ` (${site.code})` : ""
+          }`,
+        }));
+
+  const isLoadingScope =
+    values.scopeType === "PROJECT" ? isListingProjects : isListingSites;
+
+  const handleScopeChange = (scopeType) => {
+    setFieldValue("scopeType", scopeType);
+    setFieldValue("scopeId", "");
+    setFieldTouched("scopeId", false);
+
+    if (scopeType === "PROJECT" && !projectsData && !isListingProjects) {
+      dispatch(listProjects());
+    }
+
+    if (scopeType === "SITE" && !sitesData && !isListingSites) {
+      dispatch(listSites());
+    }
+  };
+
+  const handleCloseConfirmation = () => {
+    if (isCreatingDepartment) return;
+    setIsConfirmationOpen(false);
+  };
+
+  const handleConfirm = async () => {
+    const currentValues = formik.values;
+
+    const payload = {
+      scopeType: currentValues.scopeType,
+      code: currentValues.code.trim().toUpperCase(),
+      name: currentValues.name.trim(),
+      category: currentValues.category,
+    };
+
+    if (currentValues.scopeType !== "COMPANY") {
+      payload.scopeId = currentValues.scopeId.trim();
+    }
+
+    if (currentValues.category === "CUSTOM") {
+      payload.categoryLabel = currentValues.categoryLabel.trim();
+    }
+
+    try {
+      await dispatch(createDepartment(payload)).unwrap();
+
+      setIsConfirmationOpen(false);
+      navigate(ROUTES.DEPARTMENTS.ROOT);
+    } catch (error) {
+      // Error notification is handled by the Redux slice.
+    }
+  };
+
   return (
     <main className="min-h-screen space-y-6">
-      <PageHeaderBanner
-        title="Create Department"
-        // description="Set up a department and define where it belongs within your organization."
-      />
+      <PageHeaderBanner title="Create Department" />
 
       <form onSubmit={formik.handleSubmit} noValidate>
         <div className="space-y-5">
@@ -190,11 +256,7 @@ const CreateDepartmentPage = () => {
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => {
-                      setFieldValue("scopeType", option.value);
-                      setFieldValue("scopeId", "");
-                      setFieldTouched("scopeId", false);
-                    }}
+                    onClick={() => handleScopeChange(option.value)}
                     className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${
                       selected
                         ? "border-primary-500 bg-primary-500/5 ring-1 ring-primary-500/20"
@@ -235,13 +297,25 @@ const CreateDepartmentPage = () => {
             </div>
 
             {isScoped && (
-              <div className="mt-5 max-w-xl">
-                <InputField
-                  label={`${values.scopeType === "PROJECT" ? "Project" : "Site"} ID`}
-                  placeholder="Enter the project/site UUID"
+              <div className="mt-5 w-full">
+                <SelectField
+                  label={values.scopeType === "PROJECT" ? "Project" : "Site"}
+                  name="scopeId"
                   required
-                  helperText={`Enter the UUID of the ${values.scopeType.toLowerCase()} this department belongs to.`}
-                  {...getFieldProps("scopeId")}
+                  placeholder={
+                    isLoadingScope
+                      ? `Loading ${values.scopeType.toLowerCase()}s...`
+                      : `Select ${values.scopeType.toLowerCase()}`
+                  }
+                  options={scopeOptions}
+                  value={values.scopeId}
+                  onChange={(event) =>
+                    setFieldValue("scopeId", event.target.value)
+                  }
+                  onBlur={() => setFieldTouched("scopeId", true)}
+                  error={touched.scopeId && errors.scopeId}
+                  loading={isLoadingScope}
+                  emptyText={`No ${values.scopeType.toLowerCase()}s available`}
                 />
               </div>
             )}
@@ -327,13 +401,30 @@ const CreateDepartmentPage = () => {
               disabled={isCreatingDepartment}
             >
               <IconDeviceFloppy size={17} stroke={1.8} />
-              {isCreatingDepartment
-                ? "Creating Department..."
-                : "Create Department"}
+              Create Department
             </button>
           </div>
         </div>
       </form>
+
+      {/* Create Department Confirmation */}
+      <ModalAction
+        id="create-department-confirmation"
+        isOpen={isConfirmationOpen}
+        onClose={handleCloseConfirmation}
+        onSubmit={handleConfirm}
+        title="Create Department?"
+        desc="Are you sure you want to create this department?"
+        icon={IconBuilding}
+        theme="primary"
+        submitText="Confirm & Create"
+        loadingText="Creating..."
+        cancelText="Go Back"
+        loading={isCreatingDepartment}
+        closeOnBackdrop={!isCreatingDepartment}
+        closeOnEscape={!isCreatingDepartment}
+        showCancel
+      />
     </main>
   );
 };

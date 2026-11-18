@@ -1,15 +1,10 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 
-import {
-  IconMapPin,
-  IconBuilding,
-  IconMap,
-} from "@tabler/icons-react";
+import { IconMapPin, IconBuilding, IconMap } from "@tabler/icons-react";
 
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import FormSection from "@components/ui/FormSection";
@@ -23,6 +18,7 @@ import { listProjects } from "@store/slices/project.slice";
 
 import { ROUTES } from "@constants/routes";
 import { ArrowLeft, Check, LoaderCircle } from "lucide-react";
+import LocationPicker from "@components/fields/LocationPicker";
 
 const validationSchema = Yup.object({
   projectId: Yup.string().required("Please select a project"),
@@ -37,17 +33,11 @@ const validationSchema = Yup.object({
     .max(150, "Site name cannot exceed 150 characters")
     .required("Site name is required"),
 
-  addressLine1: Yup.string()
-    .trim()
-    .required("Address is required"),
+  addressLine1: Yup.string().trim().required("Address is required"),
 
-  city: Yup.string()
-    .trim()
-    .required("City is required"),
+  city: Yup.string().trim().required("City is required"),
 
-  state: Yup.string()
-    .trim()
-    .required("State is required"),
+  state: Yup.string().trim().required("State is required"),
 
   pinCode: Yup.string()
     .trim()
@@ -184,12 +174,16 @@ const CreateSitePage = () => {
     setIsConfirmationOpen(false);
   };
 
+  const handleLocationSelect = ({ latitude, longitude }) => {
+    formik.setFieldValue("geoLatitude", latitude);
+    formik.setFieldValue("geoLongitude", longitude);
+  };
+
   return (
     <div className="space-y-5">
       <PageHeaderBanner title="Create Site" />
 
       <form onSubmit={formik.handleSubmit} className="space-y-5">
-
         {/* Project & Site Details */}
         <FormSection
           title="Site Details"
@@ -197,16 +191,13 @@ const CreateSitePage = () => {
           icon={IconBuilding}
         >
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
             <SelectField
               label="Project"
               name="projectId"
               required
               options={projectOptions}
               placeholder={
-                isListingProjects
-                  ? "Loading projects..."
-                  : "Select project"
+                isListingProjects ? "Loading projects..." : "Select project"
               }
               loading={isListingProjects}
               emptyText="No projects available"
@@ -229,7 +220,6 @@ const CreateSitePage = () => {
               uppercase
               {...getFieldProps("code")}
             />
-
           </div>
         </FormSection>
 
@@ -240,7 +230,6 @@ const CreateSitePage = () => {
           icon={IconMapPin}
         >
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
             <InputField
               label="Address Line 1"
               name="addressLine1"
@@ -272,50 +261,64 @@ const CreateSitePage = () => {
               required
               {...getFieldProps("pinCode")}
             />
-
           </div>
         </FormSection>
 
         {/* Geographical Settings */}
         <FormSection
           title="Geographical Settings"
-          description="Configure the geographical coordinates and geofence radius for this site."
+          description="Select the site location on Google Maps and configure its geofence radius."
           icon={IconMap}
         >
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="space-y-5">
+            <div>
+              <LocationPicker
+                latitude={formik.values.geoLatitude}
+                longitude={formik.values.geoLongitude}
+                onLocationSelect={handleLocationSelect}
+              />
 
-            <InputField
-              label="Latitude"
-              name="geoLatitude"
-              type="number"
-              placeholder="e.g. 28.3957"
-              required
-              {...getFieldProps("geoLatitude")}
-            />
+              {(formik.touched.geoLatitude && formik.errors.geoLatitude) ||
+              (formik.touched.geoLongitude && formik.errors.geoLongitude) ? (
+                <p className="mt-2 text-xs text-red-500">
+                  {formik.errors.geoLatitude || formik.errors.geoLongitude}
+                </p>
+              ) : null}
+            </div>
 
-            <InputField
-              label="Longitude"
-              name="geoLongitude"
-              type="number"
-              placeholder="e.g. 77.3219"
-              required
-              {...getFieldProps("geoLongitude")}
-            />
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Latitude
+                </label>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  {formik.values.geoLatitude || "Select location on map"}
+                </div>
+              </div>
 
-            <InputField
-              label="Geofence Radius (Meters)"
-              name="geoFenceRadiusM"
-              type="number"
-              placeholder="10 - 5000"
-              required
-              {...getFieldProps("geoFenceRadiusM")}
-            />
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Longitude
+                </label>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  {formik.values.geoLongitude || "Select location on map"}
+                </div>
+              </div>
 
+              <InputField
+                label="Geofence Radius (Meters)"
+                name="geoFenceRadiusM"
+                type="number"
+                placeholder="10 - 5000"
+                required
+                {...getFieldProps("geoFenceRadiusM")}
+              />
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Allowed geofence radius: 10 to 5,000 metres.
+            </p>
           </div>
-
-          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-            Allowed geofence radius: 10 to 5,000 metres.
-          </p>
         </FormSection>
 
         {/* Form Actions */}
@@ -332,11 +335,7 @@ const CreateSitePage = () => {
 
           <button
             type="submit"
-            disabled={
-              isCreatingSite ||
-              isListingProjects ||
-              !projects.length
-            }
+            disabled={isCreatingSite || isListingProjects || !projects.length}
             className="btn btn-primary"
           >
             {isCreatingSite ? (

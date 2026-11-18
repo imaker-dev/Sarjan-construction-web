@@ -190,7 +190,7 @@ const AllHeadOfficesPage = () => {
 
   const actions = [
     {
-      label: "View Details",
+      label: "View",
       icon: IconEye,
       onClick: (row) =>
         navigate(ROUTES.HEAD_OFFICES.DETAILS.replace(":id", row.id)),
@@ -199,7 +199,7 @@ const AllHeadOfficesPage = () => {
       label: "Edit",
       icon: IconPencil,
       onClick: (row) =>
-        navigate(ROUTES.HEAD_OFFICES.EDIT.replace(":id", row.id)),
+        navigate(ROUTES.HEAD_OFFICES.EDIT + "?headofficeId="+row.id),
     },
   ];
 

@@ -25,7 +25,7 @@ export const ROUTES = {
     ROOT: "/head-offices",
     CREATE: "/head-offices/create",
     DETAILS: "/head-offices/:id",
-    EDIT: "/head-offices/:id/edit",
+    EDIT: "/head-offices/create",
   },
 
   // =========================

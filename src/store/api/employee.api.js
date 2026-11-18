@@ -24,8 +24,8 @@ export default false
       sendEmployeeInviteApi: ({ id, values }) => {
         return Api.post(`/employees/${id}/invite`, values);
       },
-      resendEmployeeInviteApi: ({ id, values }) => {
-        return Api.post(`/employees/${id}/invite/resend`, values);
+      resendEmployeeInviteApi: (id) => {
+        return Api.post(`/employees/${id}/invite/resend`);
       },
       employeeClaimAccountApi: (values) => {
         return Api.post(`/auth/claim`, values);

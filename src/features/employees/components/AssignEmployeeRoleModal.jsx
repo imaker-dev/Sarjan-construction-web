@@ -9,7 +9,10 @@ const AssignEmployeeRoleModal = ({
   onClose,
   roles = [],
   headOffices = [],
+  projects = [],
   loading = false,
+  headOfficesLoading = false,
+  projectsLoading = false,
   onSubmit,
 }) => {
   const [roleKey, setRoleKey] = useState("");
@@ -28,22 +31,42 @@ const AssignEmployeeRoleModal = ({
 
   const roleOptions = useMemo(
     () =>
-      roles.map((role) => ({
-        label: role.name || role.label || role.roleKey,
-        value: role.roleKey,
-      })),
+      roles
+        .map((role) => ({
+          label: role.name || role.label || role.roleKey || "Unnamed Role",
+          value: role.roleKey || role.value,
+        }))
+        .filter((option) => option.value),
     [roles],
   );
 
   const headOfficeOptions = useMemo(
     () =>
-      headOffices
+      (Array.isArray(headOffices) ? headOffices : [])
         .filter((office) => office.status === "ACTIVE")
         .map((office) => ({
-          label: office.name || office.code,
-          value: office.id,
-        })),
+          label:
+            office.name || office.code || `Head Office #${office.id || "N/A"}`,
+          value: office.id ?? office.code,
+        }))
+        .filter((option) => option.value != null),
     [headOffices],
+  );
+
+  const projectOptions = useMemo(
+    () =>
+      (Array.isArray(projects) ? projects : [])
+        .filter((project) => project.status === "ACTIVE")
+        .map((project) => ({
+          label:
+            project.name ||
+            project.projectName ||
+            project.code ||
+            `Project #${project.id || "N/A"}`,
+          value: project.id ?? project.projectId ?? project.code,
+        }))
+        .filter((option) => option.value != null),
+    [projects],
   );
 
   const handleScopeChange = (e) => {
@@ -62,8 +85,11 @@ const AssignEmployeeRoleModal = ({
       nextErrors.roleKey = "Please select a role";
     }
 
-    if (scopeType === "HEAD_OFFICE" && !scopeId) {
-      nextErrors.scopeId = "Please select a head office";
+    if (scopeType !== "COMPANY" && !scopeId) {
+      nextErrors.scopeId =
+        scopeType === "HEAD_OFFICE"
+          ? "Please select a head office"
+          : "Please select a project";
     }
 
     if (Object.keys(nextErrors).length) {
@@ -74,7 +100,7 @@ const AssignEmployeeRoleModal = ({
     onSubmit?.({
       roleKey,
       scopeType,
-      scopeId: scopeType === "HEAD_OFFICE" ? scopeId : null,
+      scopeId: scopeType === "COMPANY" ? null : scopeId,
     });
   };
 
@@ -105,6 +131,7 @@ const AssignEmployeeRoleModal = ({
             options={[
               { label: "Company", value: "COMPANY" },
               { label: "Head Office", value: "HEAD_OFFICE" },
+              { label: "Project", value: "PROJECT" },
             ]}
             value={scopeType}
             onChange={handleScopeChange}
@@ -116,13 +143,40 @@ const AssignEmployeeRoleModal = ({
               name="scopeId"
               id="scopeId"
               required
-              placeholder="Select head office"
+              placeholder={
+                headOfficesLoading
+                  ? "Loading head offices"
+                  : "Select head office"
+              }
               options={headOfficeOptions}
               value={scopeId}
               onChange={(e) => {
                 setScopeId(e.target.value);
                 setErrors((prev) => ({ ...prev, scopeId: "" }));
               }}
+              loading={headOfficesLoading}
+              disabled={headOfficesLoading}
+              error={errors.scopeId}
+            />
+          )}
+
+          {scopeType === "PROJECT" && (
+            <SelectField
+              label="Project"
+              name="scopeId"
+              id="scopeId"
+              required
+              placeholder={
+                projectsLoading ? "Loading projects..." : "Select project"
+              }
+              options={projectOptions}
+              value={scopeId}
+              onChange={(e) => {
+                setScopeId(e.target.value);
+                setErrors((prev) => ({ ...prev, scopeId: "" }));
+              }}
+              loading={projectsLoading}
+              disabled={projectsLoading}
               error={errors.scopeId}
             />
           )}
@@ -134,7 +188,9 @@ const AssignEmployeeRoleModal = ({
             description={
               scopeType === "COMPANY"
                 ? "This role will apply at the company level."
-                : "This role will apply only to the selected head office."
+                : scopeType === "HEAD_OFFICE"
+                  ? "This role will apply only to the selected head office."
+                  : "This role will apply only to the selected project."
             }
           />
         </div>

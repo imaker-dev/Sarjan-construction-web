@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
@@ -19,6 +19,7 @@ import { InputField } from "@components/fields/InputField";
 
 import { ROUTES } from "@constants/routes";
 import { createHeadOffice } from "@store/slices/head-office.slice";
+import { useQueryParams } from "@hooks/useQueryParams";
 
 // --------------------------------------------------
 // VALIDATION SCHEMA
@@ -101,10 +102,17 @@ const initialValues = {
 const CreateHeadOfficePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const {get} = useQueryParams();
+  const headofficeId = get("headofficeId")
 
   const { isCreatingHeadOffice } = useSelector((state) => state.headOffice);
-
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+
+
+  // useEffect(() => {
+  //   if(!headofficeId) return;
+  //   dispatch()
+  // },[headofficeId])
 
   // --------------------------------------------------
   // FORMIK

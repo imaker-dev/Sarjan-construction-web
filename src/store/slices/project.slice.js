@@ -1,4 +1,3 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import projectApi from "@store/api/project.api";
 import { toast } from "sonner";
@@ -139,9 +138,7 @@ const projectSlice = createSlice({
       })
       .addCase(updateProjectStatus.rejected, (state, action) => {
         state.isUpdatingProjectStatus = false;
-        toast.error(
-          action.error.message || "Failed to update project status",
-        );
+        toast.error(action.error.message || "Failed to update project status");
       });
   },
 });

@@ -59,8 +59,8 @@ export const sendEmployeeInvite = createAsyncThunk(
 // Resend Employee Invitation
 export const resendEmployeeInvite = createAsyncThunk(
   "employee/resendEmployeeInvite",
-  async ({ id, values = {} }) => {
-    const res = await employeeApi.resendEmployeeInviteApi({ id, values });
+  async (id) => {
+    const res = await employeeApi.resendEmployeeInviteApi(id);
     return res.data;
   },
 );

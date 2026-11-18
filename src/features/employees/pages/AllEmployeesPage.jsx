@@ -22,6 +22,7 @@ import {
   sendEmployeeInvite,
   clearEmployeeInviteData,
   updateEmployeeStatus,
+  resendEmployeeInvite,
 } from "@store/slices/employee.slice";
 
 import SendInviteModal from "../components/SendInviteModal";
@@ -29,6 +30,7 @@ import { formatDate } from "@utils/date.utils";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@constants/routes";
 import { formatText } from "@utils/text.utils";
+import { handleResponse } from "@utils/async.utils";
 
 // --------------------------------------------------
 // Helpers
@@ -51,6 +53,7 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
     employeesData,
     isSendingEmployeeInvite,
     isUpdatingEmployeeStatus,
+    isResendingEmployeeInvite,
   } = useSelector((state) => state.employee);
 
   // --------------------------------------------------
@@ -59,12 +62,10 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
 
   const [query, setQuery] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [selectedRoleEmployee, setSelectedRoleEmployee] = useState(null);
-  const [selectedOperationEmployee, setSelectedOperationEmployee] =
-    useState(null);
 
   const [inviteResult, setInviteResult] = useState(null);
   const [statusConfirmation, setStatusConfirmation] = useState(null);
+  const [resendConfirmation, setResendConfirmation] = useState(null);
 
   // --------------------------------------------------
   // Fetch Employees
@@ -110,13 +111,28 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
   };
 
   const handleSendInvite = async (payload) => {
-    try {
-      const response = await dispatch(sendEmployeeInvite(payload)).unwrap();
+    await handleResponse(dispatch(sendEmployeeInvite(payload)), (res) => {
+      setInviteResult(res.payload);
+    });
+  };
 
-      setInviteResult(response);
-    } catch (error) {
-      // Error notification is handled by Redux.
-    }
+  const handleOpenResendConfirmation = useCallback((employee) => {
+    setResendConfirmation(employee);
+  }, []);
+
+  const handleCloseResendConfirmation = () => {
+    if (isResendingEmployeeInvite) return;
+    setResendConfirmation(null);
+  };
+
+  const handleResendInvite = async () => {
+    if (!resendConfirmation) return;
+    await handleResponse(
+      dispatch(resendEmployeeInvite(resendConfirmation.id)),
+      () => {
+        setResendConfirmation(null);
+      },
+    );
   };
 
   // --------------------------------------------------
@@ -158,30 +174,6 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
     if (isUpdatingEmployeeStatus) return;
 
     setStatusConfirmation(null);
-  };
-
-  // --------------------------------------------------
-  // Employee Roles
-  // --------------------------------------------------
-
-  const handleOpenRoles = useCallback((employee) => {
-    setSelectedRoleEmployee(employee);
-  }, []);
-
-  const handleCloseRoles = () => {
-    setSelectedRoleEmployee(null);
-  };
-
-  // --------------------------------------------------
-  // Employee Operations
-  // --------------------------------------------------
-
-  const handleOpenOperations = useCallback((employee) => {
-    setSelectedOperationEmployee(employee);
-  }, []);
-
-  const handleCloseOperations = () => {
-    setSelectedOperationEmployee(null);
   };
 
   // --------------------------------------------------
@@ -334,20 +326,20 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         hidden: (employee) => employee.accountStatus != "NOT_INVITED",
       },
       {
+        label: "Resend Invite",
+        icon: MailPlus,
+        onClick: handleOpenResendConfirmation,
+        // hidden: (employee) => employee.accountStatus === "NOT_INVITED",
+        hidden: (employee) => employee.accountStatus !== "INVITED",
+      },
+      {
         label: "Delete",
         icon: Trash2,
         onClick: onDelete,
         danger: true,
       },
     ],
-    [
-      onView,
-      onEdit,
-      onDelete,
-      handleOpenRoles,
-      handleOpenOperations,
-      handleOpenInvite,
-    ],
+    [onView, onEdit, onDelete, handleOpenInvite, handleOpenResendConfirmation],
   );
 
   // --------------------------------------------------
@@ -450,6 +442,44 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
           {statusConfirmation?.nextStatus === "ACTIVE"
             ? "This employee will be activated and can access the assigned system features."
             : "This employee will be deactivated and will no longer be considered active."}
+        </p>
+      </ModalAction>
+
+      {/* Resend Employee Invitation Confirmation */}
+      <ModalAction
+        id="resend-employee-invite-confirmation"
+        isOpen={!!resendConfirmation}
+        onClose={handleCloseResendConfirmation}
+        onSubmit={handleResendInvite}
+        title="Resend Employee Invitation"
+        desc="Are you sure you want to resend the invitation to this employee?"
+        icon={MailPlus}
+        theme="primary"
+        submitText="Resend Invitation"
+        loadingText="Resending Invitation..."
+        loading={isResendingEmployeeInvite}
+        submitDisabled={!resendConfirmation}
+        cancelText="Cancel"
+      >
+        <div className="rounded-xl border border-border bg-muted/30 p-4">
+          <div className="flex items-center gap-3">
+            <Avatar name={resendConfirmation?.displayName} size={42} />
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {resendConfirmation?.displayName}
+              </p>
+
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {resendConfirmation?.loginId || "No email available"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+          A new invitation email will be sent to this employee. They can use the
+          invitation to complete their account setup.
         </p>
       </ModalAction>
     </div>

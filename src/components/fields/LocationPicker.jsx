@@ -36,7 +36,7 @@ const SELECTED_ZOOM = 17;
 // Pass `regionCodes={[]}` to search worldwide.
 const DEFAULT_REGION_CODES = ["in"];
 
-const MARKER_COLOR = "#2563eb"; // change to match your primary colour
+const MARKER_COLOR = "#ff1a1a"; // pin colour
 
 const MAP_FRAME_STYLE = { width: "100%", height: "100%" };
 
@@ -405,12 +405,55 @@ const LocationPicker = ({
   const markerIcon = useMemo(() => {
     if (!isLoaded) return undefined;
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="-2 -2 44 56"><path d="M20 0C9 0 0 8.9 0 19.9 0 34.5 20 52 20 52s20-17.5 20-32.1C40 8.9 31 0 20 0z" fill="${MARKER_COLOR}" stroke="#ffffff" stroke-width="2.5"/><circle cx="20" cy="19.5" r="7" fill="#ffffff"/></svg>`;
+    const pinPath = `
+    M24 1
+    C10.75 1 0 11.75 0 25
+    C0 40 17 58 24 67
+    C31 58 48 40 48 25
+    C48 11.75 37.25 1 24 1
+    Z
+  `;
+
+    const svg = `
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="64"
+      height="80"
+      viewBox="-8 -4 64 80"
+    >
+      <defs>
+        <linearGradient id="pinShade" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#000000" stop-opacity="0.22" />
+          <stop offset="45%" stop-color="#000000" stop-opacity="0" />
+          <stop offset="100%" stop-color="#000000" stop-opacity="0.16" />
+        </linearGradient>
+
+        <filter id="pinShadow" x="-40%" y="-20%" width="180%" height="160%">
+          <feDropShadow
+            dx="0"
+            dy="2"
+            stdDeviation="2"
+            flood-color="#000000"
+            flood-opacity="0.22"
+          />
+        </filter>
+      </defs>
+
+      <!-- Pin body (colour comes from MARKER_COLOR) -->
+      <path d="${pinPath}" fill="${MARKER_COLOR}" filter="url(#pinShadow)" />
+
+      <!-- Edge shading -->
+      <path d="${pinPath}" fill="url(#pinShade)" />
+
+      <!-- Hollow white centre -->
+      <circle cx="24" cy="25" r="13.5" fill="#ffffff" />
+    </svg>
+  `;
 
     return {
       url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-      scaledSize: new window.google.maps.Size(36, 46),
-      anchor: new window.google.maps.Point(18, 44),
+      scaledSize: new window.google.maps.Size(56, 70),
+      anchor: new window.google.maps.Point(28, 62), // tip of the pin
     };
   }, [isLoaded]);
 

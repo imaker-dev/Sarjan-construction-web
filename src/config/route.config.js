@@ -23,6 +23,7 @@ import { ROLES } from "@constants/roles";
 import EmployeeMembershipPage from "@features/employees/pages/EmployeeMembershipPage";
 import EmployeeRoleAssignmentPage from "@features/employees/pages/EmployeeRoleAssignmentPage";
 import EmployeeOperationsPage from "@features/employees/pages/EmployeeOperationsPage";
+import MyProfilePage from "@features/profile/pages/MyProfilePage";
 
 export const routeConfig = [
   {
@@ -33,6 +34,10 @@ export const routeConfig = [
     // public: true
   },
   { path: ROUTES.THEME.ROOT, element: ThemeSelectionPage },
+
+  //Profile Routes
+  { path: ROUTES.PROFILE.ROOT, element: MyProfilePage },
+
 
   // platform admin Routes
   { path: ROUTES.PLATFORM.COMPANIES, element: CompaniesListPage },

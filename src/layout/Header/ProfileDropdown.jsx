@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { User, Inbox, LayoutGrid, LogOut, X } from "lucide-react";
 import { useSelector } from "react-redux";
 import Avatar from "@components/ui/Avatar";
+import { ROUTES } from "@constants/routes";
 
 const DEFAULT_MENU_ITEMS = [
   {
     icon: User,
     label: "My Profile",
     caption: "Account settings",
-    href: "#",
+    href: ROUTES.PROFILE.ROOT,
   },
   {
     icon: Inbox,

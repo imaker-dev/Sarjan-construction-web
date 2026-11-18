@@ -7,6 +7,10 @@ export const ROUTES = {
     ANALYTICAL: "/analytical",
   },
 
+  PROFILE: {
+    ROOT: "/my-profile",
+  },
+
   // =========================
   // COMPANIES
   // =========================

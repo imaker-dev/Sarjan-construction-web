@@ -10,6 +10,7 @@ import projectSlice from './store/slices/project.slice';
 import siteSlice from './store/slices/site.slice';
 import employeeMembershipSlice from './store/slices/employeeMembership.slice';
 import employeeRoleSlice from './store/slices/employeeRole.slice';
+import profileSlice from './store/slices/profile.slice';
 
 const reducer = {
   auth: authSlice,
@@ -23,6 +24,7 @@ const reducer = {
   site: siteSlice,
   employeeMembership: employeeMembershipSlice,
   employeeRole: employeeRoleSlice,
+  profile: profileSlice,
 };
 
 const store = configureStore({

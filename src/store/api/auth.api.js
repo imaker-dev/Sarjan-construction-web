@@ -8,6 +8,9 @@ export default false
       logInApi: (values) => {
         return Api.post("/auth/login", values);
       },
+      verifyMfaApi: (values) => {
+        return Api.post("/auth/mfa/verify", values);
+      },
       meApi: () => {
         return Api.get("/auth/me");
       },

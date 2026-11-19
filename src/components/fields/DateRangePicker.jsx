@@ -25,11 +25,11 @@ const RangeList = memo(({ activeRange, onSelect, isMobile }) => {
           key={range}
           type="button"
           onClick={() => onSelect(range)}
-          className={`w-full text-left px-3 py-2 text-sm font-medium transition-colors rounded
+          className={`w-full text-left px-3 py-2 text-sm font-medium transition-colors
             ${
               activeRange === range
                 ? "bg-primary-500 text-white shadow-sm"
-                : "hover:bg-gray-100 text-gray-700"
+                : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
             }`}
         >
           {range}
@@ -239,15 +239,15 @@ export default function DateRangePicker({
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="form-input flex items-center gap-2 bg-white"
+        className="form-input flex items-center gap-2 bg-white dark:bg-gray-800 dark:border-gray-700"
         aria-label="Select date range"
         aria-expanded={isOpen}
       >
         <Calendar
-          className="w-4 h-4 text-gray-500 flex-shrink-0"
+          className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0"
           aria-hidden="true"
         />
-        <span className="text-sm text-gray-700 whitespace-nowrap overflow-hidden text-ellipsis">
+        <span className="text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
           {formatDisplayValue()}
         </span>
       </button>
@@ -258,7 +258,7 @@ export default function DateRangePicker({
           {/* Mobile Overlay */}
           {isMobile && showCustomPicker && (
             <div
-              className="fixed inset-0 bg-black/50 z-40"
+              className="fixed inset-0 bg-black/50 dark:bg-black/70 z-40"
               onClick={closePopover}
               aria-hidden="true"
             />
@@ -266,7 +266,7 @@ export default function DateRangePicker({
 
           <div
             className={`
-              bg-white rounded-lg shadow-xl border border-gray-200 z-50
+              bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50
               ${
                 isMobile && showCustomPicker
                   ? "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-2rem)] max-w-md max-h-[90vh]"
@@ -289,17 +289,20 @@ export default function DateRangePicker({
               <div className="flex flex-col h-full max-h-[90vh]">
                 {/* Mobile Header */}
                 {isMobile && (
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                    <h3 className="text-lg font-semibold text-gray-800">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                       Select Date Range
                     </h3>
                     <button
                       type="button"
                       onClick={closePopover}
-                      className="p-1 hover:bg-gray-200 rounded transition-colors"
+                      className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                       aria-label="Close"
                     >
-                      <X className="w-5 h-5 text-gray-600" aria-hidden="true" />
+                      <X
+                        className="w-5 h-5 text-gray-600 dark:text-gray-300"
+                        aria-hidden="true"
+                      />
                     </button>
                   </div>
                 )}
@@ -310,7 +313,7 @@ export default function DateRangePicker({
                 >
                   {/* Sidebar */}
                   <div
-                    className={`${isMobile ? "border-b overflow-y-auto" : "border-r w-[200px]"} border-gray-200 flex-shrink-0`}
+                    className={`${isMobile ? "border-b overflow-y-auto" : "border-r w-[200px]"} border-gray-200 dark:border-gray-700 flex-shrink-0`}
                   >
                     <div className="py-2">
                       <RangeList
@@ -341,8 +344,8 @@ export default function DateRangePicker({
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-between items-center px-4 py-3 border-t border-gray-200 bg-gray-50 gap-4 flex-shrink-0">
-                  <span className="text-sm text-gray-600 overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">
+                <div className="flex justify-between items-center px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 gap-4 flex-shrink-0">
+                  <span className="text-sm text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">
                     {formatDisplayValue(tempRange)}
                   </span>
                   <div className="flex gap-2 flex-shrink-0">

@@ -141,4 +141,19 @@ export const ROUTES = {
     COMPANY_DETAILS: "/platform/companies/:companyId",
     OPERATIONS: "/platform/operations",
   },
+
+  // =========================
+  // ATTENDANCE
+  // =========================
+
+  ATTENDANCE: {
+    ROOT: "/attendance",
+  },
+  // =========================
+  // NOTIFICATION
+  // =========================
+
+  NOTIFICATIONS: {
+    ROOT: "/notifications",
+  },
 };

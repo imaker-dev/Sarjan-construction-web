@@ -10,6 +10,7 @@ import {
   IconBuildingSkyscraper,
   IconBriefcase,
   IconMapPin,
+  IconClockCheck,
 } from "@tabler/icons-react";
 
 export const NAV_CONFIG = [
@@ -56,35 +57,44 @@ export const NAV_CONFIG = [
         title: "Head Offices",
         icon: IconBuildingSkyscraper,
         path: ROUTES.HEAD_OFFICES.ROOT,
-        roles: [ROLES.COMPANY_OWNER]
+        roles: [ROLES.COMPANY_OWNER],
       },
       {
         title: "Projects",
         icon: IconBriefcase,
         path: ROUTES.PROJECTS.ROOT,
-        roles: [ROLES.COMPANY_OWNER]
+        roles: [ROLES.COMPANY_OWNER],
       },
       {
         title: "Sites",
         icon: IconMapPin,
         path: ROUTES.SITES.ROOT,
-        roles: [ROLES.COMPANY_OWNER]
+        roles: [ROLES.COMPANY_OWNER],
       },
       {
         title: "Departments",
         icon: IconBuilding,
         path: ROUTES.DEPARTMENTS.ROOT,
-        roles: [ROLES.COMPANY_OWNER]
+        roles: [ROLES.COMPANY_OWNER],
       },
       {
         title: "Employees",
         icon: IconUsers,
         path: ROUTES.EMPLOYEES.ROOT,
-        roles: [ROLES.COMPANY_OWNER]
+        roles: [ROLES.COMPANY_OWNER],
         //  badge: {
         //   text: "New",
         //   color: "primary",
         // },
+      },
+      {
+        title: "Attendance",
+        icon: IconClockCheck,
+        path: ROUTES.ATTENDANCE.ROOT,
+          badge: {
+          text: "New",
+          color: "primary",
+        },
       },
     ],
   },

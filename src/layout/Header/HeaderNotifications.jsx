@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { IconBell, IconX } from "@tabler/icons-react";
+import {  IconBellRinging, IconX } from "@tabler/icons-react";
 import Avatar from "@components/ui/Avatar";
+import { ROUTES } from "@constants/routes";
 
 const NOTIFICATIONS = [
   {
@@ -63,7 +64,7 @@ function NotificationRow({ notification }) {
         <Avatar name={notification.user.name} size={36} />
       ) : (
         <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary-50 text-primary-500 dark:bg-primary-950/40 dark:text-primary-400">
-          <IconBell className="h-[17px] w-[17px]" strokeWidth={1.8} />
+          <IconBellRinging className="h-[17px] w-[17px]" strokeWidth={1.8} />
         </span>
       )}
 
@@ -145,10 +146,10 @@ export default function HeaderNotifications({
           open ? "bg-primary-50 text-primary-500 dark:bg-primary-950/40" : ""
         }`}
       >
-        <IconBell className="h-[19px] w-[19px]" strokeWidth={1.8} />
+        <IconBellRinging className="h-[19px] w-[19px]" strokeWidth={1.8} />
 
         {unreadCount > 0 && (
-          <span className="absolute right-[7px] top-[6px] h-2.5 w-2.5 rounded-full bg-primary-500 ring-2 ring-card" />
+          <span className="absolute right-[6px] top-[5px] h-2 w-2 rounded-full bg-primary-500 " />
         )}
       </button>
 
@@ -211,7 +212,7 @@ export default function HeaderNotifications({
           {/* Footer */}
           <div className="border-t border-border p-4">
             <Link
-              to="/notifications"
+              to={ROUTES.NOTIFICATIONS.ROOT}
               onClick={() => {
                 setOpen(false);
                 onViewAll?.();

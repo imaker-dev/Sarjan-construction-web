@@ -1,746 +1,984 @@
-import PageHeaderBanner from '@components/ui/PageHeaderBanner'
-import { getProfile } from '@store/slices/profile.slice'
-import React, { useEffect, useMemo, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import PageHeaderBanner from "@components/ui/PageHeaderBanner";
+import { getProfile } from "@store/slices/profile.slice";
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   BadgeCheck,
   Briefcase,
   Building2,
   CalendarDays,
   Check,
-  Eye,
-  EyeOff,
+  ChevronRight,
+  Clock,
   Fingerprint,
+  Globe,
+  HeartPulse,
+  IdCard,
   KeyRound,
   Layers,
   Loader2,
+  LockKeyhole,
   Mail,
   MapPin,
   Phone,
   Search,
+  ShieldAlert,
   ShieldCheck,
+  Smartphone,
+  User,
   Users,
   Wrench,
-  X,
-} from 'lucide-react'
+} from "lucide-react";
+import Avatar from "@components/ui/Avatar";
+import ChangePasswordModal from "../components/ChangePasswordModal";
+import { formatDate } from "@utils/date.utils";
+import { handleResponse } from "@utils/async.utils";
+import {
+  changePassword,
+  disableMfa,
+  enableMfa,
+  getMfaStatus,
+  resendMfaOtp,
+  setupMfa,
+} from "@store/slices/security.slice";
+import MfaOtpModal from "../components/MfaOtpModal";
+import Alert from "@components/ui/Alert";
 
 /* -------------------------------------------------------------------------- */
-/*  Helpers                                                                   */
+/* Helpers                                                                    */
 /* -------------------------------------------------------------------------- */
 
-const dash = (v) => (v === null || v === undefined || v === '' ? '—' : v)
+const isEmpty = (v) => v === null || v === undefined || v === "";
 
-const formatDate = (v) => {
-  if (!v) return '—'
-  const d = new Date(v)
-  return Number.isNaN(d.getTime())
-    ? '—'
-    : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-const initials = (name = '') =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((n) => n[0]?.toUpperCase())
-    .join('') || 'U'
-
-// Solid avatar colours, same idea as the Employees list.
-// If you already have a util for this, import it and delete this.
-const AVATAR_COLORS = [
-  'bg-orange-500',
-  'bg-lime-500',
-  'bg-red-500',
-  'bg-sky-500',
-  'bg-emerald-500',
-  'bg-amber-500',
-  'bg-pink-500',
-]
-const avatarColor = (name = '') =>
-  AVATAR_COLORS[[...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % AVATAR_COLORS.length]
-
-const humanize = (s = '') =>
-  s
+const humanize = (s = "") =>
+  String(s)
     .toLowerCase()
-    .split('_')
+    .split("_")
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
+    .join(" ");
 
 const GROUP_LABELS = {
-  ORG: 'Organization',
-  PLATFORM: 'Platform',
-  DEPARTMENT: 'Departments',
-  EMPLOYEE: 'Employees',
-  COMPLIANCE: 'Compliance',
-  ROLE: 'Role Assignment',
-  ACCESS: 'Access Control',
-  ATTENDANCE: 'Attendance',
-  LEAVE: 'Leave',
-  OPERATION: 'Operations',
-  FORM: 'Forms',
-}
+  ORG: "Organization",
+  PLATFORM: "Platform",
+  DEPARTMENT: "Departments",
+  EMPLOYEE: "Employees",
+  COMPLIANCE: "Compliance",
+  ROLE: "Role assignment",
+  ACCESS: "Access control",
+  ATTENDANCE: "Attendance",
+  LEAVE: "Leave",
+  OPERATION: "Operations",
+  FORM: "Forms",
+};
 
 const groupPermissions = (permissions = []) => {
-  const map = {}
+  const map = {};
+
   permissions.forEach((p) => {
-    const [prefix, ...rest] = p.split('_')
-    if (!map[prefix]) map[prefix] = []
-    map[prefix].push({ key: p, label: humanize(rest.join('_') || prefix) })
-  })
+    const [prefix, ...rest] = p.split("_");
+    if (!map[prefix]) map[prefix] = [];
+    map[prefix].push({ key: p, label: humanize(rest.join("_") || prefix) });
+  });
+
   return Object.entries(map).map(([prefix, items]) => ({
     prefix,
     label: GROUP_LABELS[prefix] || humanize(prefix),
     items,
-  }))
-}
+  }));
+};
 
 const STATUS_STYLES = {
   ACTIVE:
-    'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400',
-  INACTIVE: 'bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-500/10 dark:text-slate-300',
-  SUSPENDED: 'bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400',
-}
-
-const PASSWORD_RULES = [
-  { id: 'len', label: 'At least 8 characters', test: (v) => v.length >= 8 },
-  { id: 'upper', label: 'One uppercase letter', test: (v) => /[A-Z]/.test(v) },
-  { id: 'lower', label: 'One lowercase letter', test: (v) => /[a-z]/.test(v) },
-  { id: 'num', label: 'One number', test: (v) => /\d/.test(v) },
-  { id: 'special', label: 'One special character', test: (v) => /[^A-Za-z0-9]/.test(v) },
-]
-
-const STRENGTH = [
-  { label: 'Too weak', bar: 'bg-red-500', text: 'text-red-600' },
-  { label: 'Weak', bar: 'bg-red-500', text: 'text-red-600' },
-  { label: 'Fair', bar: 'bg-amber-500', text: 'text-amber-600' },
-  { label: 'Good', bar: 'bg-lime-500', text: 'text-lime-600' },
-  { label: 'Strong', bar: 'bg-emerald-500', text: 'text-emerald-600' },
-  { label: 'Excellent', bar: 'bg-emerald-500', text: 'text-emerald-600' },
-]
+    "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400",
+  INACTIVE:
+    "bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-500/10 dark:text-slate-300",
+  SUSPENDED:
+    "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400",
+};
 
 /* -------------------------------------------------------------------------- */
-/*  Small building blocks                                                     */
+/* Shared settings-style UI                                                   */
 /* -------------------------------------------------------------------------- */
 
-const Card = ({ title, subtitle, icon: Icon, action, children, className = '' }) => (
-  <section
-    className={`rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 ${className}`}
-  >
-    {title && (
-      <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-6">
-        <div className="flex items-center gap-3">
-          {Icon && (
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400">
-              <Icon size={18} />
-            </span>
-          )}
-          <div>
-            <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">{title}</h2>
-            {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>}
-          </div>
-        </div>
-        {action}
-      </header>
-    )}
-    <div className="px-5 py-5 sm:px-6">{children}</div>
-  </section>
-)
+const IconBox = ({ icon: Icon, tone = "default" }) => {
+  const tones = {
+    default:
+      "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+    primary:
+      "bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400",
+    danger: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
+  };
 
-const InfoRow = ({ icon: Icon, label, value }) => (
-  <div className="flex items-start gap-3 py-3">
-    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-      <Icon size={16} />
+  return (
+    <span
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${tones[tone]}`}
+    >
+      <Icon size={18} />
     </span>
-    <div className="min-w-0">
-      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-0.5 break-words text-sm font-medium text-slate-900 dark:text-slate-100">
-        {value}
-      </p>
-    </div>
-  </div>
-)
+  );
+};
 
-const Skeleton = ({ className = '' }) => (
-  <div className={`animate-pulse rounded-lg bg-slate-200/70 dark:bg-slate-800 ${className}`} />
-)
+/** A titled block of rows, like a group in Instagram / Facebook settings. */
+const Section = ({ title, description, action, children }) => (
+  <section>
+    <div className="mb-3 flex items-end justify-between gap-3 px-1">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            {description}
+          </p>
+        )}
+      </div>
+      {action}
+    </div>
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      {children}
+    </div>
+  </section>
+);
+
+/** One row inside a Section. Pass `onClick` to make it an actionable row. */
+const Row = ({
+  icon,
+  tone,
+  label,
+  value,
+  hint,
+  badge,
+  onClick,
+  trailing,
+  disabled,
+}) => {
+  const empty = isEmpty(value) && !hint;
+  const Tag = onClick ? "button" : "div";
+
+  return (
+    <Tag
+      {...(onClick ? { type: "button", onClick, disabled } : {})}
+      className={`flex w-full items-center gap-4 px-4 py-3.5 text-left sm:px-5 ${
+        onClick
+          ? "transition hover:bg-slate-50 focus:outline-none focus-visible:bg-slate-50 disabled:opacity-60 dark:hover:bg-slate-800/60 dark:focus-visible:bg-slate-800/60"
+          : ""
+      }`}
+    >
+      {icon && <IconBox icon={icon} tone={tone} />}
+
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {label}
+        </p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+          <p
+            className={`break-words text-sm ${
+              empty || isEmpty(value)
+                ? "text-slate-400 dark:text-slate-500"
+                : "font-medium text-slate-900 dark:text-slate-100"
+            }`}
+          >
+            {isEmpty(value) ? hint || "Not set" : value}
+          </p>
+          {badge}
+        </div>
+      </div>
+
+      {trailing ||
+        (onClick && (
+          <ChevronRight
+            size={18}
+            className="shrink-0 text-slate-300 dark:text-slate-600"
+          />
+        ))}
+    </Tag>
+  );
+};
+
+const RowList = ({ children }) => (
+  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+    {children}
+  </div>
+);
+
+const Pill = ({ children, tone = "slate" }) => {
+  const tones = {
+    slate: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+    primary:
+      "bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300",
+    green:
+      "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${tones[tone]}`}
+    >
+      {children}
+    </span>
+  );
+};
+
+const EmptyState = ({ icon: Icon, title, text }) => (
+  <div className="flex flex-col items-center px-6 py-10 text-center">
+    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
+      <Icon size={20} />
+    </span>
+    <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+      {title}
+    </p>
+    <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
+      {text}
+    </p>
+  </div>
+);
+
+const Skeleton = ({ className = "" }) => (
+  <div
+    className={`animate-pulse rounded-lg bg-slate-200/70 dark:bg-slate-800 ${className}`}
+  />
+);
 
 const ProfileSkeleton = () => (
   <div className="space-y-6">
-    <Skeleton className="h-44 w-full rounded-xl" />
-    <div className="grid gap-6 lg:grid-cols-3">
-      <Skeleton className="h-96 rounded-xl lg:col-span-1" />
-      <Skeleton className="h-96 rounded-xl lg:col-span-2" />
+    <Skeleton className="h-52 w-full rounded-2xl" />
+    <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+      <Skeleton className="h-72 rounded-2xl" />
+      <Skeleton className="h-96 rounded-2xl" />
     </div>
   </div>
-)
+);
 
 /* -------------------------------------------------------------------------- */
-/*  Change password modal                                                     */
+/* Tabs                                                                       */
 /* -------------------------------------------------------------------------- */
 
-const PasswordField = ({ id, label, value, onChange, error, autoFocus, autoComplete }) => {
-  const [show, setShow] = useState(false)
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          id={id}
-          type={show ? 'text' : 'password'}
-          value={value}
-          onChange={onChange}
-          autoFocus={autoFocus}
-          autoComplete={autoComplete}
-          className={`block w-full rounded-lg border bg-white py-2.5 pl-3.5 pr-11 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 dark:bg-slate-950 dark:text-white ${
-            error
-              ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
-              : 'border-slate-300 focus:border-primary-500 focus:ring-primary-500/15 dark:border-slate-700'
-          }`}
-        />
+const TABS = [
+  { id: "personal", label: "Personal details", icon: User },
+  { id: "security", label: "Password & security", icon: ShieldCheck },
+  { id: "access", label: "Roles & permissions", icon: Layers },
+  { id: "work", label: "Work", icon: Briefcase },
+];
+
+const SettingsNav = ({ active, onChange, counts }) => (
+  <nav
+    aria-label="Profile sections"
+    className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-0 sm:px-0 lg:sticky lg:top-20 lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:p-2 lg:shadow-sm dark:lg:border-slate-800 dark:lg:bg-slate-900 [&::-webkit-scrollbar]:hidden"
+  >
+    {TABS.map(({ id, label, icon: Icon }) => {
+      const isActive = active === id;
+
+      return (
         <button
+          key={id}
           type="button"
-          onClick={() => setShow((s) => !s)}
-          aria-label={show ? 'Hide password' : 'Show password'}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+          onClick={() => onChange(id)}
+          aria-current={isActive ? "page" : undefined}
+          className={`flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/30 lg:w-full lg:rounded-xl lg:px-3.5 lg:py-3 ${
+            isActive
+              ? "bg-primary-500 text-white shadow-sm lg:bg-primary-50 lg:text-primary-700 lg:shadow-none dark:lg:bg-primary-500/10 dark:lg:text-primary-300"
+              : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 lg:bg-transparent lg:ring-0 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800 dark:hover:bg-slate-800 dark:lg:bg-transparent"
+          }`}
         >
-          {show ? <EyeOff size={17} /> : <Eye size={17} />}
-        </button>
-      </div>
-      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
-    </div>
-  )
-}
-
-const ChangePasswordModal = ({ open, onClose, onSubmit }) => {
-  const [form, setForm] = useState({ current: '', next: '', confirm: '' })
-  const [errors, setErrors] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
-
-  useEffect(() => {
-    if (!open) return undefined
-    const onKey = (e) => e.key === 'Escape' && !loading && onClose()
-    document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-    }
-  }, [open, loading, onClose])
-
-  useEffect(() => {
-    if (!open) {
-      setForm({ current: '', next: '', confirm: '' })
-      setErrors({})
-      setDone(false)
-      setLoading(false)
-    }
-  }, [open])
-
-  const passed = useMemo(() => PASSWORD_RULES.filter((r) => r.test(form.next)).length, [form.next])
-  const strength = STRENGTH[form.next ? passed : 0]
-
-  if (!open) return null
-
-  const set = (key) => (e) => {
-    setForm((f) => ({ ...f, [key]: e.target.value }))
-    setErrors((er) => ({ ...er, [key]: undefined, form: undefined }))
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    const next = {}
-    if (!form.current) next.current = 'Enter your current password.'
-    if (passed < PASSWORD_RULES.length) next.next = 'Password does not meet all requirements.'
-    else if (form.next === form.current) next.next = 'New password must differ from the current one.'
-    if (form.confirm !== form.next) next.confirm = 'Passwords do not match.'
-    if (Object.keys(next).length) return setErrors(next)
-
-    try {
-      setLoading(true)
-      await onSubmit({ currentPassword: form.current, newPassword: form.next })
-      setDone(true)
-      setTimeout(onClose, 1400)
-    } catch (err) {
-      setErrors({ form: err?.message || 'Could not change password. Please try again.' })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-      onMouseDown={(e) => e.target === e.currentTarget && !loading && onClose()}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="change-password-title"
-        className="max-h-[95vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900 sm:max-w-md sm:rounded-xl"
-      >
-        {done ? (
-          <div className="flex flex-col items-center px-6 py-12 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10">
-              <Check size={28} />
+          <Icon size={17} className="shrink-0" />
+          <span className="flex-1 text-left">{label}</span>
+          {counts[id] > 0 && (
+            <span
+              className={`hidden rounded-full px-2 py-0.5 text-[11px] font-semibold lg:inline ${
+                isActive
+                  ? "bg-white text-primary-700 dark:bg-primary-500/20 dark:text-primary-300"
+                  : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+              }`}
+            >
+              {counts[id]}
             </span>
-            <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">Password updated</h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Use your new password the next time you sign in.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400">
-                  <KeyRound size={19} />
-                </span>
-                <div>
-                  <h3 id="change-password-title" className="text-base font-semibold text-slate-900 dark:text-white">
-                    Change password
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Choose a strong password you don&apos;t use elsewhere.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={loading}
-                aria-label="Close"
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-4 px-6 py-5">
-              <PasswordField
-                id="current-password"
-                label="Current password"
-                value={form.current}
-                onChange={set('current')}
-                error={errors.current}
-                autoFocus
-                autoComplete="current-password"
-              />
-              <PasswordField
-                id="new-password"
-                label="New password"
-                value={form.next}
-                onChange={set('next')}
-                error={errors.next}
-                autoComplete="new-password"
-              />
-
-              {form.next && (
-                <div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 dark:text-slate-400">Password strength</span>
-                    <span className={`font-semibold ${strength.text}`}>{strength.label}</span>
-                  </div>
-                  <div className="mt-1.5 flex gap-1.5">
-                    {PASSWORD_RULES.map((_, i) => (
-                      <span
-                        key={i}
-                        className={`h-1.5 flex-1 rounded-full transition-colors ${
-                          i < passed ? strength.bar : 'bg-slate-200 dark:bg-slate-700'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <ul className="grid grid-cols-1 gap-1.5 rounded-xl bg-slate-50 p-3.5 text-xs dark:bg-slate-800/60 sm:grid-cols-2">
-                {PASSWORD_RULES.map((r) => {
-                  const ok = r.test(form.next)
-                  return (
-                    <li
-                      key={r.id}
-                      className={`flex items-center gap-2 ${
-                        ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'
-                      }`}
-                    >
-                      <span
-                        className={`flex h-4 w-4 items-center justify-center rounded-full ${
-                          ok ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700'
-                        }`}
-                      >
-                        {ok && <Check size={10} strokeWidth={3} />}
-                      </span>
-                      {r.label}
-                    </li>
-                  )
-                })}
-              </ul>
-
-              <PasswordField
-                id="confirm-password"
-                label="Confirm new password"
-                value={form.confirm}
-                onChange={set('confirm')}
-                error={errors.confirm}
-                autoComplete="new-password"
-              />
-
-              {errors.form && (
-                <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
-                  {errors.form}
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-col-reverse gap-3 border-t border-slate-100 px-6 py-4 dark:border-slate-800 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={loading}
-                className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-500 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-primary-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/30 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {loading && <Loader2 size={16} className="animate-spin" />}
-                {loading ? 'Updating…' : 'Update password'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
-  )
-}
+          )}
+        </button>
+      );
+    })}
+  </nav>
+);
 
 /* -------------------------------------------------------------------------- */
-/*  Page                                                                      */
+/* Page                                                                       */
 /* -------------------------------------------------------------------------- */
 
 const MyProfilePage = () => {
-  const dispatch = useDispatch()
-  const { isGettingProfile, profileData } = useSelector((state) => state.profile)
+  const dispatch = useDispatch();
 
-  const [passwordOpen, setPasswordOpen] = useState(false)
-  const [permQuery, setPermQuery] = useState('')
+  const { isGettingProfile, profileData } = useSelector(
+    (state) => state.profile,
+  );
+
+  const {
+    isChangingPassword,
+    isGettingMfaStatus,
+    isSettingUpMfa,
+    isEnablingMfa,
+    isResendingMfaOtp,
+    isDisablingMfa,
+    mfaStatusData,
+    mfaSetupData,
+  } = useSelector((state) => state.security);
+
+  const [activeTab, setActiveTab] = useState("personal");
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [permQuery, setPermQuery] = useState("");
+
+  const [mfaModalOpen, setMfaModalOpen] = useState(false);
+  const [mfaToken, setMfaToken] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [mfaConfirmationOpen, setMfaConfirmationOpen] = useState(false);
 
   useEffect(() => {
-    dispatch(getProfile())
-  }, [dispatch])
+    dispatch(getProfile());
+    dispatch(getMfaStatus());
+  }, [dispatch]);
 
-  const groups = useMemo(() => groupPermissions(profileData?.permissions), [profileData])
+  const permissions = profileData?.permissions;
+
+  const groups = useMemo(() => groupPermissions(permissions), [permissions]);
 
   const filteredGroups = useMemo(() => {
-    const q = permQuery.trim().toLowerCase()
-    if (!q) return groups
+    const q = permQuery.trim().toLowerCase();
+
+    if (!q) return groups;
+
     return groups
       .map((g) => ({
         ...g,
         items: g.items.filter(
-          (i) => i.label.toLowerCase().includes(q) || g.label.toLowerCase().includes(q)
+          (i) =>
+            i.label.toLowerCase().includes(q) ||
+            g.label.toLowerCase().includes(q),
         ),
       }))
-      .filter((g) => g.items.length)
-  }, [groups, permQuery])
+      .filter((g) => g.items.length);
+  }, [groups, permQuery]);
 
-  /**
-   * TODO: wire this to your API / redux thunk, e.g.
-   *   await dispatch(changePassword({ currentPassword, newPassword })).unwrap()
-   * Throw an Error with a readable message on failure; the modal will show it.
-   */
-  const handleChangePassword = async ({ currentPassword, newPassword }) => {
-    // eslint-disable-next-line no-unused-vars
-    const _payload = { currentPassword, newPassword }
-    await new Promise((resolve) => setTimeout(resolve, 900)) // placeholder
-  }
+  const handleChangePassword = async (payload) => {
+    await handleResponse(dispatch(changePassword(payload)), () => {
+      setPasswordOpen(false);
+    });
+  };
+
+  const handleSetupMfa = async () => {
+    await handleResponse(dispatch(setupMfa()), (res) => {
+      setMfaToken(res.payload?.mfaToken || "");
+      setMaskedEmail(res.payload?.maskedEmail || "");
+      setMfaModalOpen(true);
+    });
+  };
+
+  const handleEnableMfa = async ({ code }) => {
+    if (!mfaToken || !code) return;
+
+    await handleResponse(dispatch(enableMfa({ mfaToken, code })), () => {
+      setMfaModalOpen(false);
+      setMfaToken("");
+      dispatch(getMfaStatus());
+    });
+  };
+
+  const handleResendMfaOtp = async () => {
+    if (!mfaToken) return;
+    await handleResponse(dispatch(resendMfaOtp({ mfaToken })), (res) => {
+      setMaskedEmail(res.payload?.maskedEmail || maskedEmail);
+    });
+  };
+
+  const handleDisableMfa = async () => {
+    await handleResponse(dispatch(disableMfa()), () => {
+      setMfaConfirmationOpen(false);
+      dispatch(getMfaStatus());
+    });
+  };
+
+  const handleCloseMfaModal = () => {
+    if (isEnablingMfa) return;
+
+    setMfaModalOpen(false);
+    setMfaToken("");
+  };
 
   if (isGettingProfile && !profileData) {
     return (
       <div>
-        <PageHeaderBanner title={'My Profile'} />
+        <PageHeaderBanner title="My Profile" />
         <div className="mt-6">
           <ProfileSkeleton />
         </div>
       </div>
-    )
+    );
   }
 
   if (!profileData) {
     return (
       <div>
-        <PageHeaderBanner title={'My Profile'} />
-        <div className="mt-6 rounded-xl border border-dashed border-slate-300 p-12 text-center text-sm text-slate-500 dark:border-slate-700">
-          We couldn&apos;t load your profile. Refresh the page to try again.
+        <PageHeaderBanner title="My Profile" />
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-12 text-center text-sm text-slate-500 dark:border-slate-700">
+          We couldn't load your profile. Refresh the page to try again.
         </div>
       </div>
-    )
+    );
   }
 
-  const p = profileData
-  const assignments = p.assignments || []
-  const departments = p.departments || []
-  const status = (p.status || '').toUpperCase()
+  /* ---- Map the nested API response ---- */
+  const principal = profileData.principal || {};
+  const employee = profileData.employee || {};
+  const company = profileData.company || {};
+  const roles = profileData.roles || [];
+  const assignments = profileData.assignments || [];
+  const departments = profileData.departments || [];
+  const attendance = profileData.attendance || {};
+  const leaveBalances = profileData.leaveBalances || [];
+
+  const displayName = employee.displayName || principal.loginId || "User";
+  const status = (principal.status || employee.status || "").toUpperCase();
+  const primaryRole = profileData.primaryRole || roles[0];
+  const mfaEnabled = isGettingMfaStatus
+    ? !!principal.mfaEnabled
+    : !!(mfaStatusData?.mfaEnabled ?? principal.mfaEnabled);
+  const mfaType = mfaStatusData?.mfaType || principal.mfaType || "EMAIL_OTP";
 
   const scopeLabel = (a) =>
-    a.siteName || a.projectName || a.headOfficeName || p.company?.name || '—'
-  const scopeType = (a) => humanize(a.scopeType || '')
+    a.siteName || a.projectName || a.headOfficeName || company.name || "—";
+
+  const counts = {
+    access: (permissions || []).length,
+    work: departments.length,
+  };
 
   return (
     <div>
-      <PageHeaderBanner title={'My Profile'} />
-
-      <div className="mt-6 space-y-6">
-        {/* ------------------------------ Header card ------------------------------ */}
-        <section className="rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div className="flex min-w-0 items-center gap-4">
-              <div
-                className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-medium text-white sm:h-20 sm:w-20 sm:text-2xl ${avatarColor(
-                  p.displayName
-                )}`}
-              >
-                {initials(p.displayName)}
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-white sm:text-xl">
-                    {dash(p.displayName)}
-                  </h1>
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
-                      STATUS_STYLES[status] || STATUS_STYLES.INACTIVE
-                    }`}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                    {humanize(status)}
-                  </span>
-                </div>
-                <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
-                  {dash(p.employeeCode)} · {dash(p.loginId)}
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-md bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">
-                    <BadgeCheck size={13} />
-                    {humanize(p.role)}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    <Building2 size={13} />
-                    {dash(p.company?.name)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setPasswordOpen(true)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/30 sm:w-auto"
-            >
-              <KeyRound size={16} />
-              Change Password
-            </button>
+      <div className="space-y-6">
+        {/* ------------------------------------------------------------------ */}
+        {/* Profile header                                                      */}
+        {/* ------------------------------------------------------------------ */}
+        <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          {/* Banner */}
+          <div className="relative h-24 overflow-hidden bg-primary-500 dark:bg-primary-700 sm:h-32">
+            {/* Dot pattern, fading out toward the left */}
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                backgroundImage:
+                  "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1.5px)",
+                backgroundSize: "18px 18px",
+                WebkitMaskImage:
+                  "linear-gradient(to left, black, transparent 75%)",
+                maskImage: "linear-gradient(to left, black, transparent 75%)",
+              }}
+            />
+            {/* Soft sheen */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/10" />
           </div>
 
-          <dl className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800 sm:grid-cols-4 sm:divide-y-0">
-            {[
-              ['Roles', (p.roles || []).length],
-              ['Permissions', (p.permissions || []).length],
-              ['Assignments', assignments.length],
-              ['Departments', departments.length],
-            ].map(([label, value]) => (
-              <div key={label} className="px-5 py-3.5 sm:px-6">
-                <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
-                <dd className="mt-0.5 text-base font-semibold text-slate-900 dark:text-white">{value}</dd>
+          <div className="px-5 pb-6 sm:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+              {/* Avatar: size is controlled by this wrapper, so it can be responsive */}
+              <div className="relative z-10 -mt-12 h-24 w-24 shrink-0 overflow-hidden rounded-full bg-white ring-4 ring-white dark:bg-slate-900 dark:ring-slate-900 sm:-mt-14 sm:h-28 sm:w-28 lg:-mt-16 lg:h-32 lg:w-32">
+                <Avatar
+                  name={displayName}
+                  size={128}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    minWidth: 0,
+                    minHeight: 0,
+                  }}
+                />
               </div>
-            ))}
-          </dl>
-        </section>
+              {/* Identity: sits fully on the white area */}
+              <div className="min-w-0 flex-1 sm:pt-4">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <h1 className="truncate text-xl font-semibold text-slate-900 dark:text-white sm:text-2xl">
+                    {displayName}
+                  </h1>
 
-        {/* ------------------------------ Body ------------------------------ */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left column */}
-          <div className="space-y-6 lg:col-span-1">
-            <Card title="Account details" subtitle="Your personal and work information" icon={Fingerprint}>
-              <div className="-my-3 divide-y divide-slate-100 dark:divide-slate-800">
-                <InfoRow icon={Fingerprint} label="Employee code" value={dash(p.employeeCode)} />
-                <InfoRow icon={Mail} label="Login ID" value={dash(p.loginId)} />
-                <InfoRow icon={Mail} label="Contact email" value={dash(p.contactEmail)} />
-                <InfoRow icon={Phone} label="Contact phone" value={dash(p.contactPhone)} />
-                <InfoRow icon={Briefcase} label="Designation" value={dash(p.designation)} />
-                <InfoRow icon={Wrench} label="Trade category" value={dash(p.tradeCategory)} />
-                <InfoRow icon={CalendarDays} label="Joining date" value={formatDate(p.joiningDate)} />
-              </div>
-            </Card>
+                  {status && (
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                        STATUS_STYLES[status] || STATUS_STYLES.INACTIVE
+                      }`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {humanize(status)}
+                    </span>
+                  )}
+                </div>
 
-            <Card title="Security" subtitle="Keep your account protected" icon={ShieldCheck}>
-              <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-primary-500 shadow-sm dark:bg-slate-900">
-                  <KeyRound size={17} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">Password</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                    Update your password regularly to keep your account secure.
-                  </p>
+                <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-slate-500 dark:text-slate-400">
+                  <Mail size={14} className="shrink-0" />
+                  <span className="truncate">{principal.loginId}</span>
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {primaryRole && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">
+                      <BadgeCheck size={13} />
+                      {humanize(primaryRole)}
+                    </span>
+                  )}
+                  {company.name && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      <Building2 size={13} />
+                      {company.name}
+                    </span>
+                  )}
                 </div>
               </div>
+
               <button
                 type="button"
                 onClick={() => setPasswordOpen(true)}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-4 py-2.5 text-sm font-medium text-primary-700 transition hover:bg-primary-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/20 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-300"
+                className="btn btn-primary sm:mt-4 sm:shrink-0 sm:self-start"
               >
                 <KeyRound size={16} />
-                Change Password
+                Change password
               </button>
-            </Card>
+            </div>
           </div>
+        </section>
 
-          {/* Right column */}
-          <div className="space-y-6 lg:col-span-2">
-            <Card
-              title="Role assignments"
-              subtitle="Where your roles apply"
-              icon={Layers}
-              action={
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  {assignments.length}
-                </span>
-              }
-            >
-              {assignments.length ? (
-                <ul className="grid gap-3 sm:grid-cols-2">
-                  {assignments.map((a) => (
-                    <li
-                      key={a.id}
-                      className="rounded-xl border border-slate-200 p-4 transition hover:border-primary-300 hover:shadow-sm dark:border-slate-800 dark:hover:border-primary-500/40"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                          {dash(a.roleName)}
-                        </p>
-                        <span className="shrink-0 rounded-md bg-secondary-50 px-2 py-0.5 text-[11px] font-medium text-secondary-700 dark:bg-secondary-500/10 dark:text-secondary-300">
-                          {scopeType(a)}
-                        </span>
+        {/* ------------------------------------------------------------------ */}
+        {/* Settings layout                                                     */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+          <SettingsNav
+            active={activeTab}
+            onChange={setActiveTab}
+            counts={counts}
+          />
+
+          <div className="min-w-0 space-y-8">
+            {/* ---------------------------- Personal ----------------------------- */}
+            {activeTab === "personal" && (
+              <>
+                <Section
+                  title="Personal details"
+                  description="Your information as it appears across the platform."
+                >
+                  <RowList>
+                    <Row
+                      icon={User}
+                      label="Display name"
+                      value={employee.displayName}
+                    />
+                    <Row
+                      icon={IdCard}
+                      label="Employee code"
+                      value={employee.employeeCode}
+                    />
+                    <Row
+                      icon={Briefcase}
+                      label="Designation"
+                      value={employee.designation}
+                    />
+                    <Row
+                      icon={Wrench}
+                      label="Trade category"
+                      value={employee.tradeCategory}
+                    />
+                    <Row
+                      icon={Users}
+                      label="Engagement type"
+                      value={
+                        employee.engagementType
+                          ? humanize(employee.engagementType)
+                          : null
+                      }
+                    />
+                    <Row
+                      icon={CalendarDays}
+                      label="Joining date"
+                      value={formatDate(employee.joiningDate)}
+                    />
+                  </RowList>
+                </Section>
+
+                <Section
+                  title="Contact"
+                  description="How we reach you and your emergency contact."
+                >
+                  <RowList>
+                    <Row
+                      icon={Fingerprint}
+                      label="Login ID"
+                      value={principal.loginId}
+                    />
+                    <Row
+                      icon={Mail}
+                      label="Contact email"
+                      value={employee.contactEmail}
+                    />
+                    <Row
+                      icon={Phone}
+                      label="Contact phone"
+                      value={employee.contactPhone}
+                    />
+                    <Row
+                      icon={HeartPulse}
+                      label="Emergency contact"
+                      value={employee.emergencyContactName}
+                    />
+                    <Row
+                      icon={Phone}
+                      label="Emergency phone"
+                      value={employee.emergencyContactPhone}
+                    />
+                  </RowList>
+                </Section>
+
+                <Section title="Organization">
+                  <RowList>
+                    <Row
+                      icon={Building2}
+                      label="Company"
+                      value={company.name}
+                      badge={
+                        company.isPlatform ? (
+                          <Pill tone="primary">Platform</Pill>
+                        ) : null
+                      }
+                    />
+                    <Row
+                      icon={Globe}
+                      label="Company code"
+                      value={company.code}
+                    />
+                  </RowList>
+                </Section>
+              </>
+            )}
+
+            {/* ----------------------------- Security ---------------------------- */}
+            {activeTab === "security" && (
+              <>
+                <Section
+                  title="Login"
+                  description="Keep your account protected."
+                >
+                  <RowList>
+                    <Row
+                      icon={LockKeyhole}
+                      tone="primary"
+                      label="Password"
+                      value="Update your password regularly"
+                      onClick={() => setPasswordOpen(true)}
+                    />
+
+                    {isGettingMfaStatus ? (
+                      <div className="flex items-center gap-3 px-4 py-4 text-sm text-slate-400 sm:px-5">
+                        <Loader2 size={16} className="animate-spin" />
+                        Checking security status…
                       </div>
-                      <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        <MapPin size={13} />
-                        <span className="truncate">{scopeLabel(a)}</span>
-                      </p>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        <CalendarDays size={13} />
-                        {a.effectiveFrom || a.effectiveTo
-                          ? `${formatDate(a.effectiveFrom)} – ${a.effectiveTo ? formatDate(a.effectiveTo) : 'Present'}`
-                          : 'No expiry'}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-slate-500">No role assignments yet.</p>
-              )}
-            </Card>
+                    ) : mfaEnabled ? (
+                      <Row
+                        icon={Smartphone}
+                        tone="primary"
+                        label="Two-factor authentication"
+                        value={`Method: ${humanize(mfaType)}`}
+                        badge={<Pill tone="green">On</Pill>}
+                        onClick={() => setMfaConfirmationOpen(true)}
+                        disabled={isDisablingMfa}
+                      />
+                    ) : (
+                      <Row
+                        icon={Smartphone}
+                        tone="primary"
+                        label="Two-factor authentication"
+                        value="Add a verification code sent to your email at sign-in"
+                        badge={<Pill>Off</Pill>}
+                        onClick={handleSetupMfa}
+                        disabled={isSettingUpMfa}
+                        trailing={
+                          isSettingUpMfa ? (
+                            <Loader2
+                              size={18}
+                              className="animate-spin text-slate-400"
+                            />
+                          ) : undefined
+                        }
+                      />
+                    )}
+                  </RowList>
+                </Section>
 
-            <Card
-              title="Permissions"
-              subtitle="What you can access across the platform"
-              icon={ShieldCheck}
-              action={
-                <span className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">
-                  {(p.permissions || []).length} granted
-                </span>
-              }
-            >
-              {groups.length > 0 && (
-                <div className="relative mb-5">
-                  <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={permQuery}
-                    onChange={(e) => setPermQuery(e.target.value)}
-                    placeholder="Search permissions"
-                    className="block w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                {!isGettingMfaStatus && !mfaEnabled && (
+                  <Alert
+                    icon={ShieldAlert}
+                    description={`Two-factor authentication is off. Turn it on so a stolen
+                      password alone can't open your account.`}
+                    type="warning"
                   />
-                </div>
-              )}
+                )}
+              </>
+            )}
 
-              {filteredGroups.length ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {filteredGroups.map((g) => (
-                    <div
-                      key={g.prefix}
-                      className="rounded-xl border border-slate-200 p-4 dark:border-slate-800"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{g.label}</h3>
-                        <span className="text-xs text-slate-400">{g.items.length}</span>
+            {/* ------------------------------ Access ----------------------------- */}
+            {activeTab === "access" && (
+              <>
+                <Section
+                  title="Role assignments"
+                  description="Where your roles apply."
+                  action={<Pill>{assignments.length}</Pill>}
+                >
+                  {assignments.length ? (
+                    <RowList>
+                      {assignments.map((a) => (
+                        <Row
+                          key={a.id}
+                          icon={Layers}
+                          tone="primary"
+                          label={humanize(a.scopeType) || "Scope"}
+                          value={a.roleName || humanize(a.roleKey)}
+                          trailing={
+                            <div className="hidden shrink-0 text-right text-xs text-slate-500 dark:text-slate-400 sm:block">
+                              <p className="flex items-center justify-end gap-1.5">
+                                <MapPin size={12} />
+                                {scopeLabel(a)}
+                              </p>
+                              <p className="mt-1 flex items-center justify-end gap-1.5">
+                                <CalendarDays size={12} />
+                                {a.effectiveFrom || a.effectiveTo
+                                  ? `${formatDate(a.effectiveFrom) || "—"} – ${
+                                      formatDate(a.effectiveTo) || "Present"
+                                    }`
+                                  : "No expiry"}
+                              </p>
+                            </div>
+                          }
+                        />
+                      ))}
+                    </RowList>
+                  ) : (
+                    <EmptyState
+                      icon={Layers}
+                      title="No role assignments yet"
+                      text="Assigned roles and the places they apply will show up here."
+                    />
+                  )}
+                </Section>
+
+                <Section
+                  title="Permissions"
+                  description="What you can do across the platform."
+                  action={<Pill tone="primary">{counts.access} granted</Pill>}
+                >
+                  <div className="p-4 sm:p-5">
+                    {groups.length > 0 && (
+                      <div className="relative mb-4">
+                        <Search
+                          size={16}
+                          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
+                        <input
+                          type="text"
+                          value={permQuery}
+                          onChange={(e) => setPermQuery(e.target.value)}
+                          placeholder="Search permissions"
+                          className="block w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                        />
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {g.items.map((i) => (
-                          <span
-                            key={i.key}
-                            title={i.key}
-                            className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                          >
-                            <Check size={11} className="text-primary-500" strokeWidth={3} />
-                            {i.label}
-                          </span>
+                    )}
+
+                    {filteredGroups.length ? (
+                      <div className="space-y-5">
+                        {filteredGroups.map((g) => (
+                          <div key={g.prefix}>
+                            <div className="mb-2 flex items-center justify-between">
+                              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {g.label}
+                              </h3>
+                              <span className="text-xs text-slate-400">
+                                {g.items.length}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {g.items.map((i) => (
+                                <span
+                                  key={i.key}
+                                  title={i.key}
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                >
+                                  <Check
+                                    size={12}
+                                    className="text-primary-500"
+                                    strokeWidth={3}
+                                  />
+                                  {i.label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-500">
-                  {groups.length ? 'No permissions match your search.' : 'No permissions granted.'}
-                </p>
-              )}
-            </Card>
+                    ) : (
+                      <EmptyState
+                        icon={ShieldCheck}
+                        title={
+                          groups.length
+                            ? "No permissions match your search"
+                            : "No permissions granted"
+                        }
+                        text={
+                          groups.length
+                            ? "Try a different keyword."
+                            : "Permissions come from your roles."
+                        }
+                      />
+                    )}
+                  </div>
+                </Section>
+              </>
+            )}
 
-            <Card title="Departments" subtitle="Teams you belong to" icon={Users}>
-              {departments.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {departments.map((d, idx) => (
-                    <span
-                      key={d.id || idx}
-                      className="rounded-lg bg-primary-50 px-3 py-1.5 text-sm font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
-                    >
-                      {typeof d === 'string' ? d : d.name || d.departmentName || '—'}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center dark:border-slate-700">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
-                    <Users size={18} />
-                  </span>
-                  <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
-                    Not part of any department
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">Department memberships will appear here.</p>
-                </div>
-              )}
-            </Card>
+            {/* ------------------------------- Work ------------------------------ */}
+            {activeTab === "work" && (
+              <>
+                <Section title="Departments" description="Teams you belong to.">
+                  {departments.length ? (
+                    <div className="flex flex-wrap gap-2 p-4 sm:p-5">
+                      {departments.map((d, idx) => (
+                        <span
+                          key={d.id || idx}
+                          className="rounded-full bg-primary-50 px-3.5 py-1.5 text-sm font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
+                        >
+                          {typeof d === "string"
+                            ? d
+                            : d.name || d.departmentName || "—"}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Users}
+                      title="Not part of any department"
+                      text="Department memberships will appear here."
+                    />
+                  )}
+                </Section>
+
+                <Section title="Attendance">
+                  <Row
+                    icon={Clock}
+                    tone={attendance.hasActiveSession ? "primary" : "default"}
+                    label="Current session"
+                    value={
+                      attendance.hasActiveSession
+                        ? "You're checked in"
+                        : "No active session"
+                    }
+                    badge={
+                      attendance.hasActiveSession ? (
+                        <Pill tone="green">Active</Pill>
+                      ) : null
+                    }
+                  />
+                </Section>
+
+                <Section
+                  title="Leave balances"
+                  action={<Pill>{leaveBalances.length}</Pill>}
+                >
+                  {leaveBalances.length ? (
+                    <RowList>
+                      {leaveBalances.map((b, idx) => (
+                        <Row
+                          key={b.id || idx}
+                          icon={CalendarDays}
+                          label={
+                            b.leaveTypeName ||
+                            humanize(b.leaveType || b.leaveTypeKey) ||
+                            "Leave"
+                          }
+                          value={
+                            b.balance ?? b.available ?? b.remaining ?? null
+                          }
+                          hint="—"
+                        />
+                      ))}
+                    </RowList>
+                  ) : (
+                    <EmptyState
+                      icon={CalendarDays}
+                      title="No leave balances"
+                      text="Your leave balances will show here once they're set up."
+                    />
+                  )}
+                </Section>
+              </>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Change password */}
       <ChangePasswordModal
-        open={passwordOpen}
+        isOpen={passwordOpen}
         onClose={() => setPasswordOpen(false)}
         onSubmit={handleChangePassword}
+        loading={isChangingPassword}
       />
-    </div>
-  )
-}
 
-export default MyProfilePage
+      {/* Enable 2FA - OTP verification */}
+      <MfaOtpModal
+        open={mfaModalOpen}
+        onClose={handleCloseMfaModal}
+        onSubmit={handleEnableMfa}
+        onResend={handleResendMfaOtp}
+        maskedEmail={maskedEmail}
+        loading={isEnablingMfa}
+        resending={isResendingMfaOtp}
+        expiresInSeconds={mfaSetupData?.expiresInSeconds || 300}
+      />
+
+      {/* Disable 2FA confirmation */}
+      {mfaConfirmationOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="w-full max-w-sm rounded-t-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:rounded-2xl">
+            <IconBox icon={ShieldAlert} tone="danger" />
+
+            <h3 className="mt-4 text-base font-semibold text-slate-900 dark:text-white">
+              Turn off two-factor authentication?
+            </h3>
+
+            <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              You won't be asked for an email verification code when you sign
+              in.
+            </p>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setMfaConfirmationOpen(false)}
+                disabled={isDisablingMfa}
+                className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDisableMfa}
+                disabled={isDisablingMfa}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDisablingMfa && (
+                  <Loader2 size={15} className="animate-spin" />
+                )}
+                Turn off 2FA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default MyProfilePage;

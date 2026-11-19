@@ -11,6 +11,9 @@ import siteSlice from './store/slices/site.slice';
 import employeeMembershipSlice from './store/slices/employeeMembership.slice';
 import employeeRoleSlice from './store/slices/employeeRole.slice';
 import profileSlice from './store/slices/profile.slice';
+import notificationSlice from './store/slices/notification.slice';
+import securitySlice from './store/slices/security.slice';
+import attendanceSlice from './store/slices/attendance.slice';
 
 const reducer = {
   auth: authSlice,
@@ -25,6 +28,9 @@ const reducer = {
   employeeMembership: employeeMembershipSlice,
   employeeRole: employeeRoleSlice,
   profile: profileSlice,
+  notification: notificationSlice,
+  security: securitySlice,
+  attendance: attendanceSlice,
 };
 
 const store = configureStore({

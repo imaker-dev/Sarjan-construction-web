@@ -15,11 +15,11 @@
   .rdrCalendarWrapper {
     width: 100% !important;
   }
-  
+
   .rdrMonth {
     width: 100% !important;
   }
-  
+
   .rdrMonthAndYearWrapper {
     padding-top: 0 !important;
   }
@@ -44,7 +44,6 @@
   padding: 0 0.833em;
 }
 
-
 .rdrMonthAndYearWrapper {
   height: auto;
   padding-top: 10px;
@@ -60,4 +59,76 @@
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+/* =========================================================
+   DARK MODE
+   Matches Tailwind's `dark:` classes in DateRangePicker.jsx.
+   Uses the `.dark` ancestor class. If your app toggles dark mode
+   differently, replace `.dark` below (see notes in the reply).
+   ========================================================= */
+
+.dark .rdrCalendarWrapper {
+  background-color: #1f2937; /* gray-800, same as the popover */
+  color: #9ca3af;
+  color-scheme: dark; /* dark native month/year dropdowns */
+}
+
+/* Month / year header */
+.dark .rdrMonthAndYearPickers select {
+  color: #e5e7eb;
+}
+
+.dark .rdrMonthAndYearPickers select:hover {
+  background-color: #374151;
+}
+
+.dark .rdrMonthAndYearPickers select option {
+  background-color: #1f2937;
+  color: #e5e7eb;
+}
+
+/* Prev / next buttons */
+.dark .rdrNextPrevButton {
+  background-color: #374151;
+}
+
+.dark .rdrNextPrevButton:hover {
+  background-color: #4b5563;
+}
+
+.dark .rdrPprevButton i {
+  border-color: transparent #d1d5db transparent transparent;
+}
+
+.dark .rdrNextButton i {
+  border-color: transparent transparent transparent #d1d5db;
+}
+
+/* Weekday + month labels */
+.dark .rdrWeekDay,
+.dark .rdrMonthName {
+  color: #9ca3af;
+}
+
+/* Day numbers */
+.dark .rdrDayNumber span {
+  color: #e5e7eb;
+}
+
+.dark .rdrDayPassive .rdrDayNumber span {
+  color: #4b5563;
+}
+
+.dark .rdrDayDisabled {
+  background-color: #111827;
+}
+
+.dark .rdrDayDisabled .rdrDayNumber span {
+  color: #4b5563;
+}
+
+/* Hover / preview outlines on days */
+.dark .rdrDayHovered .rdrDayNumber span {
+  color: #f9fafb;
 }

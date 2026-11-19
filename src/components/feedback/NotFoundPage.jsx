@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 export default function NotFoundPage() {
   return (
-    <main className="flex min-h-[80dvh] items-center justify-center px-4">
+    <main className="flex min-h-[calc(100vh-8rem)] w-full items-center justify-center">
       <div className="flex w-full max-w-2xl flex-col items-center text-center">
         {/* Illustration */}
         <img

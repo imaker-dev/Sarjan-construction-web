@@ -11,6 +11,14 @@ export const login = createAsyncThunk("/auth/login", async (values) => {
   return res.data;
 });
 
+export const verifyMfa = createAsyncThunk(
+  "/auth/mfa/verify",
+  async (values) => {
+    const res = await authApi.verifyMfaApi(values);
+    return res.data;
+  },
+);
+
 export const fetchMe = createAsyncThunk("/auth/me", async () => {
   const res = await authApi.meApi();
   return res.data;
@@ -38,6 +46,8 @@ const authSlice = createSlice({
     logIn,
     isLoggingIn: false,
     ifFetchingMeData: false,
+    mfaChallenge: null,
+    isVerifyingMfa: false,
     meData: null,
     isVerifyingCompanyClaimToken: false,
     isCompletingOnboarding: false,
@@ -46,6 +56,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.logIn = false;
       state.meData = null;
+      state.mfaChallenge = null;
       clearAuthStorage();
     },
   },
@@ -58,6 +69,19 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoggingIn = false;
         state.logIn = true;
+        const response = action.payload;
+
+        if (response.mfaRequired) {
+          state.logIn = false;
+          state.mfaChallenge = {
+            mfaToken: response.mfaToken,
+            mfaType: response.mfaType,
+            maskedEmail: response.maskedEmail,
+            expiresInSeconds: response.expiresInSeconds,
+          };
+          return;
+        }
+
         const { accessToken, refreshToken, user, message } = action.payload;
         const { remember } = action.meta.arg;
         const storage = remember ? localStorage : sessionStorage;
@@ -76,6 +100,36 @@ const authSlice = createSlice({
         state.logIn = false;
         toast.error(action.error.message);
       })
+
+      .addCase(verifyMfa.pending, (state) => {
+        state.isVerifyingMfa = true;
+      })
+      .addCase(verifyMfa.fulfilled, (state, action) => {
+        state.isVerifyingMfa = false;
+
+        const { accessToken, refreshToken, user, message } = action.payload;
+        const { remember } = action.meta.arg;
+        const storage = remember ? localStorage : sessionStorage;
+
+        storage.setItem(AUTH_CONFIG.ACCESS_TOKEN, accessToken);
+        storage.setItem(AUTH_CONFIG.REFRESH_TOKEN, refreshToken);
+
+        if (user?.companyId) {
+          storage.setItem(AUTH_CONFIG.COMPANY_ID, user.companyId);
+        }
+
+        state.logIn = true;
+        state.mfaChallenge = null;
+
+        toast.success(message || "Login successful!");
+      })
+      .addCase(verifyMfa.rejected, (state, action) => {
+        state.isVerifyingMfa = false;
+        toast.error(
+          action.error.message || "Invalid or expired verification code",
+        );
+      })
+
       .addCase(fetchMe.pending, (state) => {
         state.ifFetchingMeData = true;
       })

@@ -7,6 +7,6 @@ export default false
     }
   : {
       getProfileApi: () => {
-        return Api.get("/auth/me");
+        return Api.get("/profile");
       },
     };

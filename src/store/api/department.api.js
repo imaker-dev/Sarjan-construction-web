@@ -8,6 +8,9 @@ export default false
       listDepartmentsApi: (values) => {
         return Api.get("/departments", values);
       },
+      getDepartmentByIdApi: (id) => {
+        return Api.get(`/departments/${id}`);
+      },
       createDepartmentApi: (values) => {
         return Api.post("/departments", values);
       },

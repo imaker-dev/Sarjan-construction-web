@@ -15,6 +15,13 @@ import {
 } from "lucide-react";
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import ModalAction from "@components/ui/ModalAction"; // <- adjust to where your modal lives
+import { useDispatch, useSelector } from "react-redux";
+import {
+  getActiveSession,
+  getAttendanceSessions,
+  punchIn,
+} from "@store/slices/attendance.slice";
+import { handleResponse } from "@utils/async.utils";
 
 /* ========================================================================== */
 /*  HOW TO WIRE THE API (sections 3.1 - 3.4)                                  */
@@ -54,7 +61,8 @@ const BREAK_TYPES = [
   { key: "EMERGENCY", label: "Emergency" },
   { key: "OTHER", label: "Other" },
 ];
-const breakLabel = (key) => BREAK_TYPES.find((b) => b.key === key)?.label || "Break";
+const breakLabel = (key) =>
+  BREAK_TYPES.find((b) => b.key === key)?.label || "Break";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -73,14 +81,26 @@ const durFmt = (ms) => {
 };
 
 const timeFmt = (d) =>
-  d ? d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase() : "—";
+  d
+    ? d
+        .toLocaleTimeString("en-IN", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })
+        .toUpperCase()
+    : "—";
 
 const dayLabel = (d, now) => {
   if (d.toDateString() === now.toDateString()) return "Today";
   const y = new Date(now);
   y.setDate(y.getDate() - 1);
   if (d.toDateString() === y.toDateString()) return "Yesterday";
-  return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  return d.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 };
 
 const round6 = (n) => Number(n.toFixed(6));
@@ -106,7 +126,10 @@ function useGeolocation(active) {
 
   const locate = useCallback(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setState({ status: "error", message: "This device doesn't support location." });
+      setState({
+        status: "error",
+        message: "This device doesn't support location.",
+      });
       return;
     }
     setState({ status: "locating" });
@@ -162,7 +185,10 @@ const getStatus = (shift) => {
 function getTotals(shift, now) {
   if (!shift.clockInAt) return { worked: 0, breaks: 0, openBreak: 0 };
   const end = shift.clockOutAt || now;
-  const breaks = shift.breaks.reduce((sum, b) => sum + Math.max(0, (b.end || end) - b.start), 0);
+  const breaks = shift.breaks.reduce(
+    (sum, b) => sum + Math.max(0, (b.end || end) - b.start),
+    0,
+  );
   const open = shift.breaks.find((b) => !b.end);
   return {
     worked: Math.max(0, end - shift.clockInAt - breaks),
@@ -181,7 +207,8 @@ function getSegments(shift, now) {
     .forEach((b) => {
       const from = b.start.getTime();
       const to = (b.end || new Date(end)).getTime();
-      if (from > cursor) segments.push({ type: "work", from: cursor, to: from });
+      if (from > cursor)
+        segments.push({ type: "work", from: cursor, to: from });
       segments.push({ type: "break", from, to });
       cursor = to;
     });
@@ -191,30 +218,60 @@ function getSegments(shift, now) {
 
 const estimateUnits = (workedMs, policy) => {
   const h = workedMs / HOUR;
-  if (h >= policy.fullDayThresholdHours) return { units: "1.0", label: "Full day" };
-  if (h >= policy.halfDayThresholdHours) return { units: "0.5", label: "Half day" };
+  if (h >= policy.fullDayThresholdHours)
+    return { units: "1.0", label: "Full day" };
+  if (h >= policy.halfDayThresholdHours)
+    return { units: "0.5", label: "Half day" };
   return { units: "0.0", label: "Absent" };
 };
 
 /* ---- API errors ---------------------------------------------------------- */
 
 const ERROR_COPY = {
-  ACTIVE_SESSION_EXISTS: { message: "You're already clocked in. Your status has been refreshed.", resync: true },
-  NO_ACTIVE_SESSION: { message: "There's no active shift. Your status has been refreshed.", resync: true },
-  ACTIVE_BREAK_EXISTS: { message: "You're already on a break. Your status has been refreshed.", resync: true },
-  NO_ACTIVE_BREAK: { message: "There's no break to end. Your status has been refreshed.", resync: true },
-  GEOFENCE_BREACH: { message: "You're outside the site boundary. Move closer to the site gate and try again." },
+  ACTIVE_SESSION_EXISTS: {
+    message: "You're already clocked in. Your status has been refreshed.",
+    resync: true,
+  },
+  NO_ACTIVE_SESSION: {
+    message: "There's no active shift. Your status has been refreshed.",
+    resync: true,
+  },
+  ACTIVE_BREAK_EXISTS: {
+    message: "You're already on a break. Your status has been refreshed.",
+    resync: true,
+  },
+  NO_ACTIVE_BREAK: {
+    message: "There's no break to end. Your status has been refreshed.",
+    resync: true,
+  },
+  GEOFENCE_BREACH: {
+    message:
+      "You're outside the site boundary. Move closer to the site gate and try again.",
+  },
   TVT_NOT_ATTENDED: {
     message:
       "You haven't attended today's safety briefing yet. Ask your safety supervisor to log your attendance, then clock in.",
   },
-  PERMISSION_DENIED: { message: "You don't have permission to record attendance. Contact your administrator." },
-  TOKEN_MISSING: { message: "Your session expired. Sign in again to continue." },
+  PERMISSION_DENIED: {
+    message:
+      "You don't have permission to record attendance. Contact your administrator.",
+  },
+  TOKEN_MISSING: {
+    message: "Your session expired. Sign in again to continue.",
+  },
 };
 
-const errorCode = (e) => e?.code ?? e?.response?.data?.code ?? e?.data?.code ?? e?.payload?.code ?? e?.error?.code;
+const errorCode = (e) =>
+  e?.code ??
+  e?.response?.data?.code ??
+  e?.data?.code ??
+  e?.payload?.code ??
+  e?.error?.code;
 const errorText = (e) =>
-  e?.message ?? e?.response?.data?.message ?? e?.data?.message ?? (typeof e === "string" ? e : null);
+  e?.message ??
+  e?.response?.data?.message ??
+  e?.data?.message ??
+  (typeof e === "string" ? e : null);
 
 const FLAG_COPY = {
   GEOFENCE_BREACH: "Outside site range",
@@ -225,22 +282,49 @@ const FLAG_COPY = {
 /*  Styling maps                                                              */
 /* -------------------------------------------------------------------------- */
 
-const CARD = "rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1C2536]";
+const CARD =
+  "rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1C2536]";
 
 const TONES = {
-  emerald: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
+  emerald:
+    "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
   amber: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
   sky: "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400",
   rose: "bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400",
-  indigo: "bg-indigo-50 text-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-400",
+  indigo:
+    "bg-indigo-50 text-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-400",
   slate: "bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400",
 };
 
 const STATUS = {
-  off: { label: "Off the clock", pill: TONES.slate, dot: "bg-slate-400", ring: "stroke-slate-300", live: false },
-  working: { label: "Working", pill: TONES.emerald, dot: "bg-emerald-500", ring: "stroke-emerald-500", live: true },
-  break: { label: "On break", pill: TONES.amber, dot: "bg-amber-500", ring: "stroke-amber-400", live: true },
-  done: { label: "Shift ended", pill: TONES.indigo, dot: "bg-indigo-500", ring: "stroke-indigo-400", live: false },
+  off: {
+    label: "Off the clock",
+    pill: TONES.slate,
+    dot: "bg-slate-400",
+    ring: "stroke-slate-300",
+    live: false,
+  },
+  working: {
+    label: "Working",
+    pill: TONES.emerald,
+    dot: "bg-emerald-500",
+    ring: "stroke-emerald-500",
+    live: true,
+  },
+  break: {
+    label: "On break",
+    pill: TONES.amber,
+    dot: "bg-amber-500",
+    ring: "stroke-amber-400",
+    live: true,
+  },
+  done: {
+    label: "Shift ended",
+    pill: TONES.indigo,
+    dot: "bg-indigo-500",
+    ring: "stroke-indigo-400",
+    live: false,
+  },
 };
 
 const LOG_META = {
@@ -259,7 +343,8 @@ const FILTERS = [
 const BUTTON_TONES = {
   emerald:
     "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25 hover:bg-emerald-600 focus-visible:ring-emerald-500/40",
-  amber: "bg-amber-500 text-white shadow-sm shadow-amber-500/25 hover:bg-amber-600 focus-visible:ring-amber-500/40",
+  amber:
+    "bg-amber-500 text-white shadow-sm shadow-amber-500/25 hover:bg-amber-600 focus-visible:ring-amber-500/40",
   amberSoft:
     "bg-amber-50 text-amber-700 hover:bg-amber-100 focus-visible:ring-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25",
   roseSoft:
@@ -275,12 +360,29 @@ const BUTTON_TONES = {
 function buildLogs(sessions) {
   const out = [];
   sessions.forEach((s) => {
-    out.push({ id: `${s.id}-in`, type: "clock_in", at: s.punchInAt, session: s });
-    (s.breaks || []).forEach((b) => {
-      out.push({ id: `${b.id}-s`, type: "break_start", at: b.startedAt, brk: b });
-      if (b.endedAt) out.push({ id: `${b.id}-e`, type: "break_end", at: b.endedAt, brk: b });
+    out.push({
+      id: `${s.id}-in`,
+      type: "clock_in",
+      at: s.punchInAt,
+      session: s,
     });
-    if (s.punchOutAt) out.push({ id: `${s.id}-out`, type: "clock_out", at: s.punchOutAt, session: s });
+    (s.breaks || []).forEach((b) => {
+      out.push({
+        id: `${b.id}-s`,
+        type: "break_start",
+        at: b.startedAt,
+        brk: b,
+      });
+      if (b.endedAt)
+        out.push({ id: `${b.id}-e`, type: "break_end", at: b.endedAt, brk: b });
+    });
+    if (s.punchOutAt)
+      out.push({
+        id: `${s.id}-out`,
+        type: "clock_out",
+        at: s.punchOutAt,
+        session: s,
+      });
   });
   return out;
 }
@@ -290,7 +392,10 @@ function logDetails(log) {
   const lines = [];
   if (log.type === "clock_in") {
     if (s.site?.name) {
-      const dist = s.punchInDistanceM != null ? ` · ${s.punchInDistanceM} m from site` : "";
+      const dist =
+        s.punchInDistanceM != null
+          ? ` · ${s.punchInDistanceM} m from site`
+          : "";
       lines.push({ text: `${s.site.name}${dist}` });
     }
     if (s.isFlagged)
@@ -299,15 +404,22 @@ function logDetails(log) {
         tone: "text-amber-600 dark:text-amber-400",
       });
   }
-  if (log.type === "break_start") lines.push({ text: `${breakLabel(log.brk.breakType)} break` });
+  if (log.type === "break_start")
+    lines.push({ text: `${breakLabel(log.brk.breakType)} break` });
   if (log.type === "break_end") {
     const mins =
-      log.brk.durationMins || Math.round((new Date(log.brk.endedAt) - new Date(log.brk.startedAt)) / MIN);
-    lines.push({ text: `${breakLabel(log.brk.breakType)} break lasted ${durFmt(mins * MIN)}` });
+      log.brk.durationMins ||
+      Math.round(
+        (new Date(log.brk.endedAt) - new Date(log.brk.startedAt)) / MIN,
+      );
+    lines.push({
+      text: `${breakLabel(log.brk.breakType)} break lasted ${durFmt(mins * MIN)}`,
+    });
   }
   if (log.type === "clock_out") {
     const bits = [];
-    if (s.netDurationMins != null) bits.push(`Worked ${durFmt(s.netDurationMins * MIN)}`);
+    if (s.netDurationMins != null)
+      bits.push(`Worked ${durFmt(s.netDurationMins * MIN)}`);
     if (s.totalPUnits != null) bits.push(`${s.totalPUnits} hazri`);
     if (bits.length) lines.push({ text: bits.join(" · ") });
   }
@@ -338,8 +450,19 @@ function ProgressRing({ pct, ringClass, children }) {
   const C = 2 * Math.PI * R;
   return (
     <div className="relative h-52 w-52 shrink-0 sm:h-60 sm:w-60">
-      <svg viewBox="0 0 200 200" className="h-full w-full -rotate-90" aria-hidden="true">
-        <circle cx="100" cy="100" r={R} fill="none" strokeWidth="10" className="stroke-slate-100 dark:stroke-slate-700/60" />
+      <svg
+        viewBox="0 0 200 200"
+        className="h-full w-full -rotate-90"
+        aria-hidden="true"
+      >
+        <circle
+          cx="100"
+          cy="100"
+          r={R}
+          fill="none"
+          strokeWidth="10"
+          className="stroke-slate-100 dark:stroke-slate-700/60"
+        />
         <circle
           cx="100"
           cy="100"
@@ -353,7 +476,9 @@ function ProgressRing({ pct, ringClass, children }) {
           style={{ opacity: pct > 0 ? 1 : 0 }}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        {children}
+      </div>
     </div>
   );
 }
@@ -361,13 +486,23 @@ function ProgressRing({ pct, ringClass, children }) {
 function StatCard({ icon: Icon, tone, label, value, sub }) {
   return (
     <div className={`${CARD} flex items-center gap-3 p-4`}>
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TONES[tone]}`}>
+      <span
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TONES[tone]}`}
+      >
         <Icon size={18} strokeWidth={2} />
       </span>
       <div className="min-w-0">
-        <p className="text-[12px] text-slate-400 dark:text-slate-500">{label}</p>
-        <p className="truncate text-[17px] font-semibold tabular-nums leading-tight text-slate-800 dark:text-white">{value}</p>
-        {sub && <p className="text-[11.5px] text-slate-400 dark:text-slate-500">{sub}</p>}
+        <p className="text-[12px] text-slate-400 dark:text-slate-500">
+          {label}
+        </p>
+        <p className="truncate text-[17px] font-semibold tabular-nums leading-tight text-slate-800 dark:text-white">
+          {value}
+        </p>
+        {sub && (
+          <p className="text-[11.5px] text-slate-400 dark:text-slate-500">
+            {sub}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -379,7 +514,10 @@ function Notice({ tone = "rose", children }) {
       ? "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
       : "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300";
   return (
-    <div role="alert" className={`flex items-start gap-2 rounded-lg px-3 py-2.5 text-[12.5px] leading-relaxed ${styles}`}>
+    <div
+      role="alert"
+      className={`flex items-start gap-2 rounded-lg px-3 py-2.5 text-[12.5px] leading-relaxed ${styles}`}
+    >
       <AlertCircle size={15} className="mt-0.5 shrink-0" />
       <span>{children}</span>
     </div>
@@ -391,7 +529,9 @@ function Timeline({ segments, shift }) {
   return (
     <section className={`${CARD} p-5 sm:p-6`}>
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-semibold text-slate-800 dark:text-white">Today&rsquo;s timeline</h3>
+        <h3 className="text-[15px] font-semibold text-slate-800 dark:text-white">
+          Today&rsquo;s timeline
+        </h3>
         <div className="flex items-center gap-4 text-[12px] text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500" /> Work
@@ -409,7 +549,9 @@ function Timeline({ segments, shift }) {
                 key={i}
                 title={`${s.type === "work" ? "Working" : "Break"} · ${durFmt(s.to - s.from)}`}
                 style={{ flexGrow: s.to - s.from, flexBasis: 0, minWidth: 3 }}
-                className={s.type === "work" ? "bg-emerald-500" : "bg-amber-400"}
+                className={
+                  s.type === "work" ? "bg-emerald-500" : "bg-amber-400"
+                }
               />
             ))}
           </div>
@@ -433,20 +575,33 @@ function LogItem({ log, isLast }) {
   return (
     <li className="relative flex gap-3.5 pb-5 last:pb-0">
       {!isLast && (
-        <span aria-hidden="true" className="absolute -bottom-1 left-4 top-9 w-px -translate-x-1/2 bg-slate-100 dark:bg-slate-700/70" />
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-1 left-4 top-9 w-px -translate-x-1/2 bg-slate-100 dark:bg-slate-700/70"
+        />
       )}
-      <span className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${TONES[tone]}`}>
+      <span
+        className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${TONES[tone]}`}
+      >
         <Icon size={15} strokeWidth={2.25} />
       </span>
       <div className="min-w-0 flex-1 pt-0.5">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[13.5px] font-medium text-slate-800 dark:text-slate-100">{title}</p>
-          <time dateTime={log.at} className="shrink-0 text-[12.5px] tabular-nums text-slate-400 dark:text-slate-500">
+          <p className="text-[13.5px] font-medium text-slate-800 dark:text-slate-100">
+            {title}
+          </p>
+          <time
+            dateTime={log.at}
+            className="shrink-0 text-[12.5px] tabular-nums text-slate-400 dark:text-slate-500"
+          >
             {timeFmt(new Date(log.at))}
           </time>
         </div>
         {lines.map((l, i) => (
-          <p key={i} className={`mt-0.5 text-[12.5px] ${l.tone || "text-slate-400 dark:text-slate-500"}`}>
+          <p
+            key={i}
+            className={`mt-0.5 text-[12.5px] ${l.tone || "text-slate-400 dark:text-slate-500"}`}
+          >
             {l.text}
           </p>
         ))}
@@ -476,10 +631,18 @@ function ActivityLog({ logs, now }) {
     <section className={`${CARD} flex flex-col`}>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-700 sm:px-6">
         <div>
-          <h3 className="text-[15px] font-semibold text-slate-800 dark:text-white">Activity log</h3>
-          <p className="mt-0.5 text-[12.5px] text-slate-400 dark:text-slate-500">Every clock-in, break and clock-out</p>
+          <h3 className="text-[15px] font-semibold text-slate-800 dark:text-white">
+            Activity log
+          </h3>
+          <p className="mt-0.5 text-[12.5px] text-slate-400 dark:text-slate-500">
+            Every clock-in, break and clock-out
+          </p>
         </div>
-        <div className="inline-flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800/60" role="group" aria-label="Filter activity">
+        <div
+          className="inline-flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800/60"
+          role="group"
+          aria-label="Filter activity"
+        >
           {FILTERS.map((f) => (
             <button
               key={f.key}
@@ -500,10 +663,14 @@ function ActivityLog({ logs, now }) {
 
       {groups.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
-          <span className={`flex h-12 w-12 items-center justify-center rounded-full ${TONES.slate}`}>
+          <span
+            className={`flex h-12 w-12 items-center justify-center rounded-full ${TONES.slate}`}
+          >
             <Inbox size={22} />
           </span>
-          <p className="text-[14px] font-medium text-slate-700 dark:text-slate-200">No activity yet</p>
+          <p className="text-[14px] font-medium text-slate-700 dark:text-slate-200">
+            No activity yet
+          </p>
           <p className="max-w-xs text-[12.5px] text-slate-400 dark:text-slate-500">
             Clock in to start your shift. Everything you do shows up here.
           </p>
@@ -517,7 +684,11 @@ function ActivityLog({ logs, now }) {
               </p>
               <ol>
                 {items.map((log, i) => (
-                  <LogItem key={log.id} log={log} isLast={i === items.length - 1} />
+                  <LogItem
+                    key={log.id}
+                    log={log}
+                    isLast={i === items.length - 1}
+                  />
                 ))}
               </ol>
             </div>
@@ -530,7 +701,10 @@ function ActivityLog({ logs, now }) {
 
 function ClockCardSkeleton() {
   return (
-    <div className="grid gap-6 px-5 py-8 sm:px-6 md:grid-cols-[auto_minmax(0,1fr)] md:items-center md:gap-10" aria-hidden="true">
+    <div
+      className="grid gap-6 px-5 py-8 sm:px-6 md:grid-cols-[auto_minmax(0,1fr)] md:items-center md:gap-10"
+      aria-hidden="true"
+    >
       <div className="mx-auto h-52 w-52 animate-pulse rounded-full bg-slate-100 dark:bg-slate-700/40 sm:h-60 sm:w-60" />
       <div className="space-y-4">
         <div className="h-4 w-40 animate-pulse rounded bg-slate-100 dark:bg-slate-700/40" />
@@ -548,7 +722,9 @@ const FIELD_INPUT =
 function Field({ label, children }) {
   return (
     <div>
-      <p className="mb-1.5 text-[12.5px] font-medium text-muted-foreground">{label}</p>
+      <p className="mb-1.5 text-[12.5px] font-medium text-muted-foreground">
+        {label}
+      </p>
       {children}
     </div>
   );
@@ -602,7 +778,9 @@ function SummaryTile({ label, value }) {
   return (
     <div className="rounded-lg bg-muted/50 px-3 py-2.5">
       <p className="text-[11.5px] text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-[14.5px] font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="mt-0.5 text-[14.5px] font-semibold tabular-nums text-foreground">
+        {value}
+      </p>
     </div>
   );
 }
@@ -640,11 +818,24 @@ export default function AttendancePage({
   onEndBreak,
   onPunchOut,
 }) {
+  const dispatch = useDispatch();
+  const { isPunchingIn, isPunchingOut, isStartingBreak, isEndingBreak } =
+    useSelector((state) => state.attendance);
+  useEffect(() => {
+    dispatch(getActiveSession());
+  }, [dispatch]);
+
+  const isSubmitting =
+    isPunchingIn || isPunchingOut || isStartingBreak || isEndingBreak;
+
   const now = useNow();
   const [completed, setCompleted] = useState(null); // settled record shown after clock out
   const [dialog, setDialog] = useState({ open: false, type: null });
-  const [form, setForm] = useState({ siteId: "", breakType: "LUNCH", remarks: "" });
-  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    siteId: "",
+    breakType: "LUNCH",
+    remarks: "",
+  });
   const [modalError, setModalError] = useState("");
   const [notice, setNotice] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -668,14 +859,16 @@ export default function AttendancePage({
   const count = shift.breaks.length;
 
   const hour = now.getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const logs = useMemo(
     () => buildLogs([...(history || []), ...(record ? [record] : [])]),
     [history, record],
   );
 
-  const needsGeo = dialog.open && (dialog.type === "in" || dialog.type === "out");
+  const needsGeo =
+    dialog.open && (dialog.type === "in" || dialog.type === "out");
   const geo = useGeolocation(needsGeo);
 
   /* ---- dialog controls ---------------------------------------------------- */
@@ -683,7 +876,11 @@ export default function AttendancePage({
   const openDialog = (type) => {
     setModalError("");
     setNotice("");
-    setForm({ siteId: defaultSiteId || sites[0]?.id || "", breakType: "LUNCH", remarks: "" });
+    setForm({
+      siteId: defaultSiteId || sites[0]?.id || "",
+      breakType: "LUNCH",
+      remarks: "",
+    });
     setDialog({ open: true, type });
   };
   const closeDialog = () => setDialog((d) => ({ ...d, open: false }));
@@ -705,21 +902,37 @@ export default function AttendancePage({
     const remarks = form.remarks.trim();
     const withRemarks = (p) => (remarks ? { ...p, remarks } : p);
     const ready = geo.status === "ready";
-    setSubmitting(true);
     setModalError("");
     try {
       if (dialog.type === "in") {
         // 3.2 POST /attendance/punch-in
-        await onPunchIn?.(
-          withRemarks({
-            siteId: form.siteId,
-            ...(ready && { punchInLat: round6(geo.lat), punchInLng: round6(geo.lng) }),
-            source: "MOBILE_SELF",
-          }),
+        await handleResponse(
+          dispatch(
+            punchIn({
+              // siteId: form.siteId,
+              ...(ready && {
+                punchInLat: round6(geo.lat),
+                punchInLng: round6(geo.lng),
+              }),
+              source: "MOBILE_SELF",
+            }),
+          ),
         );
+        // await onPunchIn?.(
+        //   withRemarks({
+        //     // siteId: form.siteId,
+        //     ...(ready && {
+        //       punchInLat: round6(geo.lat),
+        //       punchInLng: round6(geo.lng),
+        //     }),
+        //     source: "MOBILE_SELF",
+        //   }),
+        // );
       } else if (dialog.type === "break") {
         // 3.3 POST /attendance/breaks/start
-        await onStartBreak?.(withRemarks({ sessionId: session.id, breakType: form.breakType }));
+        await onStartBreak?.(
+          withRemarks({ sessionId: session.id, breakType: form.breakType }),
+        );
       } else if (dialog.type === "endBreak") {
         // 3.3 POST /attendance/breaks/end
         await onEndBreak?.({ sessionId: session.id });
@@ -728,7 +941,10 @@ export default function AttendancePage({
         const res = await onPunchOut?.(
           withRemarks({
             sessionId: session.id,
-            ...(ready && { punchOutLat: round6(geo.lat), punchOutLng: round6(geo.lng) }),
+            ...(ready && {
+              punchOutLat: round6(geo.lat),
+              punchOutLng: round6(geo.lng),
+            }),
           }),
         );
         const settled = res?.data ?? res ?? {};
@@ -737,8 +953,10 @@ export default function AttendancePage({
           ...settled,
           status: "COMPLETED",
           punchOutAt: settled.punchOutAt ?? new Date().toISOString(),
-          netDurationMins: settled.netDurationMins ?? Math.round(totals.worked / MIN),
-          breakDurationMins: settled.breakDurationMins ?? Math.round(totals.breaks / MIN),
+          netDurationMins:
+            settled.netDurationMins ?? Math.round(totals.worked / MIN),
+          breakDurationMins:
+            settled.breakDurationMins ?? Math.round(totals.breaks / MIN),
         });
       }
       closeDialog();
@@ -750,10 +968,12 @@ export default function AttendancePage({
         setNotice(known.message);
         refresh();
       } else {
-        setModalError(known?.message || errorText(e) || "That didn't go through. Check your connection and try again.");
+        setModalError(
+          known?.message ||
+            errorText(e) ||
+            "That didn't go through. Check your connection and try again.",
+        );
       }
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -771,7 +991,8 @@ export default function AttendancePage({
       theme: "success",
       submitText: "Clock in",
       loadingText: "Clocking in...",
-      disabled: noSite || geoBlocked,
+      // disabled: noSite || geoBlocked,
+      disabled: geoBlocked,
     },
     break: {
       title: "Start a break?",
@@ -813,7 +1034,9 @@ export default function AttendancePage({
             <Field label="Site">
               <select
                 value={form.siteId}
-                onChange={(e) => setForm((f) => ({ ...f, siteId: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, siteId: e.target.value }))
+                }
                 className={FIELD_INPUT}
               >
                 {sites.map((s) => (
@@ -829,17 +1052,27 @@ export default function AttendancePage({
               {sites[0].name} ({sites[0].code})
             </div>
           ) : (
-            <Notice>No site is assigned to you yet. Ask your supervisor to assign one before you clock in.</Notice>
+            <Notice>
+              No site is assigned to you yet. Ask your supervisor to assign one
+              before you clock in.
+            </Notice>
           )}
           {requireLocation && <LocationRow geo={geo} />}
-          <RemarksField value={form.remarks} onChange={(v) => setForm((f) => ({ ...f, remarks: v }))} />
+          <RemarksField
+            value={form.remarks}
+            onChange={(v) => setForm((f) => ({ ...f, remarks: v }))}
+          />
         </>
       )}
 
       {dialog.type === "break" && (
         <>
           <Field label="Break type">
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Break type">
+            <div
+              className="flex flex-wrap gap-2"
+              role="radiogroup"
+              aria-label="Break type"
+            >
               {BREAK_TYPES.map((b) => (
                 <button
                   key={b.key}
@@ -858,7 +1091,10 @@ export default function AttendancePage({
               ))}
             </div>
           </Field>
-          <RemarksField value={form.remarks} onChange={(v) => setForm((f) => ({ ...f, remarks: v }))} />
+          <RemarksField
+            value={form.remarks}
+            onChange={(v) => setForm((f) => ({ ...f, remarks: v }))}
+          />
         </>
       )}
 
@@ -871,16 +1107,21 @@ export default function AttendancePage({
           </div>
           {units.units === "0.0" ? (
             <Notice>
-              You&rsquo;ve worked less than a half day ({policy.halfDayThresholdHours}h). If you clock out now it counts as
-              absent.
+              You&rsquo;ve worked less than a half day (
+              {policy.halfDayThresholdHours}h). If you clock out now it counts
+              as absent.
             </Notice>
           ) : (
             <p className="text-[12.5px] text-muted-foreground">
-              {units.label} so far. Final hazri units are calculated by the server when you clock out.
+              {units.label} so far. Final hazri units are calculated by the
+              server when you clock out.
             </p>
           )}
           {requireLocation && <LocationRow geo={geo} />}
-          <RemarksField value={form.remarks} onChange={(v) => setForm((f) => ({ ...f, remarks: v }))} />
+          <RemarksField
+            value={form.remarks}
+            onChange={(v) => setForm((f) => ({ ...f, remarks: v }))}
+          />
         </>
       )}
     </div>
@@ -904,7 +1145,11 @@ export default function AttendancePage({
                   {timeFmt(now)}
                 </p>
                 <p className="text-[13px] text-slate-500 dark:text-slate-400">
-                  {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+                  {now.toLocaleDateString("en-IN", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}
                 </p>
               </div>
 
@@ -915,9 +1160,13 @@ export default function AttendancePage({
                 >
                   <span className="relative flex h-2 w-2">
                     {st.live && (
-                      <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:animate-none ${st.dot}`} />
+                      <span
+                        className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:animate-none ${st.dot}`}
+                      />
                     )}
-                    <span className={`relative inline-flex h-2 w-2 rounded-full ${st.dot}`} />
+                    <span
+                      className={`relative inline-flex h-2 w-2 rounded-full ${st.dot}`}
+                    />
                   </span>
                   {st.label}
                 </span>
@@ -930,7 +1179,10 @@ export default function AttendancePage({
                     title="Refresh status"
                     className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:opacity-60 dark:hover:bg-slate-700/50 dark:hover:text-slate-200"
                   >
-                    <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+                    <RefreshCw
+                      size={16}
+                      className={refreshing ? "animate-spin" : ""}
+                    />
                   </button>
                 )}
               </div>
@@ -942,7 +1194,9 @@ export default function AttendancePage({
               <div className="grid gap-6 px-5 py-6 sm:px-6 sm:py-8 md:grid-cols-[auto_minmax(0,1fr)] md:items-center md:gap-10">
                 <div className="flex justify-center">
                   <ProgressRing pct={pct} ringClass={st.ring}>
-                    <span className="text-[12.5px] text-slate-400 dark:text-slate-500">Worked today</span>
+                    <span className="text-[12.5px] text-slate-400 dark:text-slate-500">
+                      Worked today
+                    </span>
                     <span
                       role="timer"
                       aria-label="Time worked today"
@@ -951,7 +1205,8 @@ export default function AttendancePage({
                       {clockFmt(totals.worked)}
                     </span>
                     <span className="mt-1 text-[12.5px] text-slate-400 dark:text-slate-500">
-                      of {policy.fullDayThresholdHours}h &middot; {Math.round(pct * 100)}%
+                      of {policy.fullDayThresholdHours}h &middot;{" "}
+                      {Math.round(pct * 100)}%
                     </span>
                   </ProgressRing>
                 </div>
@@ -959,18 +1214,23 @@ export default function AttendancePage({
                 <div className="space-y-4">
                   {record?.site && (
                     <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-medium ${TONES.slate}`}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-medium ${TONES.slate}`}
+                      >
                         <MapPin size={13} /> {record.site.name}
                       </span>
                       {record.punchInWithinGeofence != null && (
                         <span
                           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-medium ${
-                            record.punchInWithinGeofence && !record.isFlagged ? TONES.emerald : TONES.amber
+                            record.punchInWithinGeofence && !record.isFlagged
+                              ? TONES.emerald
+                              : TONES.amber
                           }`}
                         >
                           {record.punchInWithinGeofence && !record.isFlagged
                             ? "Within site range"
-                            : FLAG_COPY[record.flagReason] || "Flagged for review"}
+                            : FLAG_COPY[record.flagReason] ||
+                              "Flagged for review"}
                         </span>
                       )}
                     </div>
@@ -979,39 +1239,78 @@ export default function AttendancePage({
                   {status === "break" && openBreak && (
                     <p className="flex items-center justify-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-[13.5px] font-medium tabular-nums text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 md:justify-start">
                       <Coffee size={16} />
-                      {breakLabel(openBreak.breakType)} break &middot; {clockFmt(totals.openBreak)}
+                      {breakLabel(openBreak.breakType)} break &middot;{" "}
+                      {clockFmt(totals.openBreak)}
                     </p>
                   )}
 
                   {status === "off" && (
-                    <ShiftButton tone="emerald" icon={LogIn} label="Clock in" onClick={() => openDialog("in")} />
+                    <ShiftButton
+                      tone="emerald"
+                      icon={LogIn}
+                      label="Clock in"
+                      onClick={() => openDialog("in")}
+                    />
                   )}
 
                   {status === "working" && (
                     <div className="grid grid-cols-2 gap-3">
-                      <ShiftButton tone="amberSoft" icon={Coffee} label="Start break" onClick={() => openDialog("break")} />
-                      <ShiftButton tone="roseSoft" icon={LogOut} label="Clock out" onClick={() => openDialog("out")} />
+                      <ShiftButton
+                        tone="amberSoft"
+                        icon={Coffee}
+                        label="Start break"
+                        onClick={() => openDialog("break")}
+                      />
+                      <ShiftButton
+                        tone="roseSoft"
+                        icon={LogOut}
+                        label="Clock out"
+                        onClick={() => openDialog("out")}
+                      />
                     </div>
                   )}
 
                   {status === "break" && (
                     <div className="grid grid-cols-2 gap-3">
-                      <ShiftButton tone="amber" icon={Play} label="End break" onClick={() => openDialog("endBreak")} />
-                      <ShiftButton tone="neutral" icon={LogOut} label="Clock out" disabled title="End your break before clocking out" />
+                      <ShiftButton
+                        tone="amber"
+                        icon={Play}
+                        label="End break"
+                        onClick={() => openDialog("endBreak")}
+                      />
+                      <ShiftButton
+                        tone="neutral"
+                        icon={LogOut}
+                        label="Clock out"
+                        disabled
+                        title="End your break before clocking out"
+                      />
                     </div>
                   )}
 
                   {status === "done" && (
                     <>
                       <div className={`rounded-xl px-4 py-3 ${TONES.indigo}`}>
-                        <p className="text-[14px] font-medium">Shift complete</p>
+                        <p className="text-[14px] font-medium">
+                          Shift complete
+                        </p>
                         <p className="mt-0.5 text-[12.5px] opacity-80">
-                          {durFmt(totals.worked)} worked, {durFmt(totals.breaks)} on breaks
-                          {completed?.totalPUnits != null && <> &middot; {completed.totalPUnits} hazri</>}
-                          {Number(completed?.overtimeHours) > 0 && <> &middot; {completed.overtimeHours}h overtime</>}
+                          {durFmt(totals.worked)} worked,{" "}
+                          {durFmt(totals.breaks)} on breaks
+                          {completed?.totalPUnits != null && (
+                            <> &middot; {completed.totalPUnits} hazri</>
+                          )}
+                          {Number(completed?.overtimeHours) > 0 && (
+                            <> &middot; {completed.overtimeHours}h overtime</>
+                          )}
                         </p>
                       </div>
-                      <ShiftButton tone="neutral" icon={Play} label="Start new shift" onClick={() => openDialog("in")} />
+                      <ShiftButton
+                        tone="neutral"
+                        icon={Play}
+                        label="Start new shift"
+                        onClick={() => openDialog("in")}
+                      />
                     </>
                   )}
 
@@ -1022,8 +1321,18 @@ export default function AttendancePage({
           </section>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
-            <StatCard icon={LogIn} tone="emerald" label="Clocked in" value={timeFmt(shift.clockInAt)} />
-            <StatCard icon={Timer} tone="indigo" label="Worked" value={durFmt(totals.worked)} />
+            <StatCard
+              icon={LogIn}
+              tone="emerald"
+              label="Clocked in"
+              value={timeFmt(shift.clockInAt)}
+            />
+            <StatCard
+              icon={Timer}
+              tone="indigo"
+              label="Worked"
+              value={durFmt(totals.worked)}
+            />
             <StatCard
               icon={Coffee}
               tone="amber"
@@ -1056,9 +1365,9 @@ export default function AttendancePage({
         theme={m.theme}
         submitText={m.submitText}
         loadingText={m.loadingText}
-        loading={submitting}
+        loading={isSubmitting}
         submitDisabled={m.disabled}
-        closeOnBackdrop={!submitting}
+        closeOnBackdrop={!isSubmitting}
         size="md"
       >
         {modalBody}
@@ -1074,7 +1383,9 @@ export default function AttendancePage({
 /*    return <TeamShiftPage {...mock} userName="Sahil" />;                    */
 /* -------------------------------------------------------------------------- */
 
-export function useMockAttendance(site = { id: "s001", code: "S-04", name: "Metro Station 4" }) {
+export function useMockAttendance(
+  site = { id: "s001", code: "S-04", name: "Metro Station 4" },
+) {
   const [session, setSession] = useState(null);
   const wait = (ms = 600) => new Promise((r) => setTimeout(r, ms));
 
@@ -1101,7 +1412,13 @@ export function useMockAttendance(site = { id: "s001", code: "S-04", name: "Metr
     },
     onStartBreak: async (p) => {
       await wait();
-      const b = { id: `brk-${Date.now()}`, breakType: p.breakType, startedAt: new Date().toISOString(), endedAt: null, durationMins: 0 };
+      const b = {
+        id: `brk-${Date.now()}`,
+        breakType: p.breakType,
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        durationMins: 0,
+      };
       setSession((s) => ({ ...s, breaks: [...s.breaks, b] }));
       return b;
     },
@@ -1111,14 +1428,23 @@ export function useMockAttendance(site = { id: "s001", code: "S-04", name: "Metr
       setSession((s) => ({
         ...s,
         breaks: s.breaks.map((b) =>
-          b.endedAt ? b : { ...b, endedAt: end.toISOString(), durationMins: Math.round((end - new Date(b.startedAt)) / MIN) },
+          b.endedAt
+            ? b
+            : {
+                ...b,
+                endedAt: end.toISOString(),
+                durationMins: Math.round((end - new Date(b.startedAt)) / MIN),
+              },
         ),
       }));
     },
     onPunchOut: async () => {
       await wait();
       const out = new Date();
-      const brk = session.breaks.reduce((s, b) => s + (new Date(b.endedAt || out) - new Date(b.startedAt)), 0);
+      const brk = session.breaks.reduce(
+        (s, b) => s + (new Date(b.endedAt || out) - new Date(b.startedAt)),
+        0,
+      );
       const gross = out - new Date(session.punchInAt);
       const net = Math.max(0, gross - brk);
       const u = estimateUnits(net, DEFAULT_POLICY).units;

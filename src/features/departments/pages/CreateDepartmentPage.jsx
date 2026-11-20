@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
@@ -21,11 +20,18 @@ import ModalAction from "@components/ui/ModalAction";
 import { InputField } from "@components/fields/InputField";
 import { SelectField } from "@components/fields/SelectField";
 
-import { createDepartment } from "@store/slices/department.slice";
+import {
+  createDepartment,
+  getDepartmentById,
+  updateDepartment,
+} from "@store/slices/department.slice";
 import { listProjects } from "@store/slices/project.slice";
 import { listSites } from "@store/slices/site.slice";
 
 import { ROUTES } from "@constants/routes";
+import { getAllHeadOffices } from "@store/slices/head-office.slice";
+import { handleResponse } from "@utils/async.utils";
+import { useQueryParams } from "@hooks/useQueryParams";
 
 const CATEGORY_OPTIONS = [
   { value: "FINANCE", label: "Finance" },
@@ -75,6 +81,10 @@ const validationSchema = Yup.object({
     otherwise: (schema) => schema.notRequired(),
   }),
 
+  baseHeadOfficeId: Yup.string()
+    .uuid("Enter a valid Head Office")
+    .required("Please select a Head Office"),
+
   code: Yup.string()
     .trim()
     .uppercase()
@@ -110,31 +120,67 @@ const validationSchema = Yup.object({
 const initialValues = {
   scopeType: "COMPANY",
   scopeId: "",
+  baseHeadOfficeId: "",
   code: "",
   name: "",
   category: "",
   categoryLabel: "",
 };
 
+const getInitialValues = (department = null) => ({
+  scopeType: department?.scopeType || "COMPANY",
+  scopeId: department?.projectId || department?.siteId || "",
+  baseHeadOfficeId: department?.baseHeadOfficeId || "",
+  code: department?.code || "",
+  name: department?.name || "",
+  category: department?.category || "",
+  categoryLabel: department?.categoryLabel || "",
+});
+
 const CreateDepartmentPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { get } = useQueryParams();
+  const departmentId = get("departmentId");
+  const isEditMode = Boolean(departmentId);
 
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 
-  const { isCreatingDepartment } = useSelector((state) => state.department);
+  const {
+    isCreatingDepartment,
+    isGettingDepartmentDetails,
+    departmentDetailsData,
+    isUpdatingDepartment,
+  } = useSelector((state) => state.department);
+
+  const isSaving = isCreatingDepartment || isUpdatingDepartment;
 
   const { isListingProjects, projectsData } = useSelector(
     (state) => state.project,
   );
 
-  const { isListingSites, sitesData } = useSelector(
-    (state) => state.site,
+  const { isListingSites, sitesData } = useSelector((state) => state.site);
+  const { isListingHeadOffices, headOfficesData } = useSelector(
+    (state) => state.headOffice,
   );
 
+  useEffect(() => {
+    if (!departmentId) return;
+    dispatch(getDepartmentById(departmentId));
+  }, [dispatch, departmentId]);
+
+  useEffect(() => {
+    if (!headOfficesData && !isListingHeadOffices) {
+      dispatch(getAllHeadOffices());
+    }
+  }, [dispatch, headOfficesData, isListingHeadOffices]);
+
   const formik = useFormik({
-    initialValues,
+    // initialValues,
+    initialValues: getInitialValues(departmentDetailsData),
     validationSchema,
+    enableReinitialize: true,
+
     onSubmit: () => {
       setIsConfirmationOpen(true);
     },
@@ -169,6 +215,7 @@ const CreateDepartmentPage = () => {
 
   const projects = getListData(projectsData);
   const sites = getListData(sitesData);
+  const headOffices = getListData(headOfficesData);
 
   const scopeOptions =
     values.scopeType === "PROJECT"
@@ -184,6 +231,13 @@ const CreateDepartmentPage = () => {
             site.code ? ` (${site.code})` : ""
           }`,
         }));
+
+  const headOfficeOptions = headOffices.map((office) => ({
+    value: office.id,
+    label: `${office.name || "Untitled Head Office"}${
+      office.code ? ` (${office.code})` : ""
+    }`,
+  }));
 
   const isLoadingScope =
     values.scopeType === "PROJECT" ? isListingProjects : isListingSites;
@@ -203,7 +257,7 @@ const CreateDepartmentPage = () => {
   };
 
   const handleCloseConfirmation = () => {
-    if (isCreatingDepartment) return;
+    if (isSaving) return;
     setIsConfirmationOpen(false);
   };
 
@@ -211,6 +265,7 @@ const CreateDepartmentPage = () => {
     const currentValues = formik.values;
 
     const payload = {
+      baseHeadOfficeId: currentValues.baseHeadOfficeId,
       scopeType: currentValues.scopeType,
       code: currentValues.code.trim().toUpperCase(),
       name: currentValues.name.trim(),
@@ -225,19 +280,21 @@ const CreateDepartmentPage = () => {
       payload.categoryLabel = currentValues.categoryLabel.trim();
     }
 
-    try {
-      await dispatch(createDepartment(payload)).unwrap();
+    const action = isEditMode
+      ? updateDepartment({ id: departmentId, values: payload })
+      : createDepartment(payload);
 
+    await handleResponse(dispatch(action), () => {
       setIsConfirmationOpen(false);
       navigate(ROUTES.DEPARTMENTS.ROOT);
-    } catch (error) {
-      // Error notification is handled by the Redux slice.
-    }
+    });
   };
 
   return (
     <main className="min-h-screen space-y-6">
-      <PageHeaderBanner title="Create Department" />
+      <PageHeaderBanner
+        title={isEditMode ? "Update Department" : "Create Department"}
+      />
 
       <form onSubmit={formik.handleSubmit} noValidate>
         <div className="space-y-5">
@@ -294,6 +351,28 @@ const CreateDepartmentPage = () => {
                   </button>
                 );
               })}
+            </div>
+
+            <div className="mt-5 w-full">
+              <SelectField
+                label="Base Head Office"
+                name="baseHeadOfficeId"
+                required
+                placeholder={
+                  isListingHeadOffices
+                    ? "Loading head offices..."
+                    : "Select base head office"
+                }
+                options={headOfficeOptions}
+                value={values.baseHeadOfficeId}
+                onChange={(event) =>
+                  setFieldValue("baseHeadOfficeId", event.target.value)
+                }
+                onBlur={() => setFieldTouched("baseHeadOfficeId", true)}
+                error={touched.baseHeadOfficeId && errors.baseHeadOfficeId}
+                loading={isListingHeadOffices}
+                emptyText="No head offices available"
+              />
             </div>
 
             {isScoped && (
@@ -389,7 +468,7 @@ const CreateDepartmentPage = () => {
               type="button"
               onClick={() => navigate(ROUTES.DEPARTMENTS.ROOT)}
               className="btn btn-outline"
-              disabled={isCreatingDepartment}
+              disabled={isSaving}
             >
               <IconArrowLeft size={17} stroke={1.8} />
               Cancel
@@ -398,10 +477,10 @@ const CreateDepartmentPage = () => {
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={isCreatingDepartment}
+              disabled={isSaving}
             >
               <IconDeviceFloppy size={17} stroke={1.8} />
-              Create Department
+              {isEditMode ? "Update Department" : "Create Department"}
             </button>
           </div>
         </div>
@@ -420,9 +499,9 @@ const CreateDepartmentPage = () => {
         submitText="Confirm & Create"
         loadingText="Creating..."
         cancelText="Go Back"
-        loading={isCreatingDepartment}
-        closeOnBackdrop={!isCreatingDepartment}
-        closeOnEscape={!isCreatingDepartment}
+        loading={isSaving}
+        closeOnBackdrop={!isSaving}
+        closeOnEscape={!isSaving}
         showCancel
       />
     </main>

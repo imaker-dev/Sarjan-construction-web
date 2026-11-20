@@ -1,4 +1,3 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import departmentApi from "@store/api/department.api";
 import { toast } from "sonner";
@@ -12,6 +11,15 @@ export const listDepartments = createAsyncThunk(
   "department/listDepartments",
   async (values = {}) => {
     const res = await departmentApi.listDepartmentsApi(values);
+    return res.data;
+  },
+);
+
+// Get department details by ID
+export const getDepartmentById = createAsyncThunk(
+  "department/getDepartmentById",
+  async (id) => {
+    const res = await departmentApi.getDepartmentByIdApi(id);
     return res.data;
   },
 );
@@ -109,6 +117,9 @@ const initialState = {
   departmentsData: null,
   departmentData: null,
 
+  departmentDetailsData: null,
+  isGettingDepartmentDetails: false,
+
   departmentOperationsData: [],
   isListingDepartmentOperations: false,
   isEnablingDepartmentOperation: false,
@@ -147,6 +158,25 @@ const departmentSlice = createSlice({
       .addCase(listDepartments.rejected, (state, action) => {
         state.isListingDepartments = false;
         toast.error(action.error.message || "Failed to fetch departments");
+      })
+
+      // ----------------------------------------------
+      // Get department details by ID
+      // ----------------------------------------------
+
+      .addCase(getDepartmentById.pending, (state) => {
+        state.isGettingDepartmentDetails = true;
+        state.departmentDetailsData = null;
+      })
+      .addCase(getDepartmentById.fulfilled, (state, action) => {
+        state.isGettingDepartmentDetails = false;
+        state.departmentDetailsData = action.payload;
+      })
+      .addCase(getDepartmentById.rejected, (state, action) => {
+        state.isGettingDepartmentDetails = false;
+        toast.error(
+          action.error.message || "Failed to fetch department details",
+        );
       })
 
       // ----------------------------------------------
@@ -259,7 +289,8 @@ const departmentSlice = createSlice({
         state.isEnablingDepartmentOperation = false;
 
         toast.success(
-          action.payload?.message || "Department operation enabled successfully",
+          action.payload?.message ||
+            "Department operation enabled successfully",
         );
       })
       .addCase(enableDepartmentOperation.rejected, (state, action) => {
@@ -280,7 +311,8 @@ const departmentSlice = createSlice({
         state.isUpdatingDepartmentOperation = false;
 
         toast.success(
-          action.payload?.message || "Department operation updated successfully",
+          action.payload?.message ||
+            "Department operation updated successfully",
         );
       })
       .addCase(updateDepartmentOperation.rejected, (state, action) => {

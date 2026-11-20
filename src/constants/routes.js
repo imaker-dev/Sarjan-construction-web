@@ -66,7 +66,7 @@ export const ROUTES = {
     ROOT: "/departments",
     CREATE: "/departments/create",
     DETAILS: "/departments/:id",
-    EDIT: "/departments/:id/edit",
+    EDIT: "/departments/create",
     OPERATIONS: "/departments/operations",
   },
 
@@ -145,14 +145,17 @@ export const ROUTES = {
   // =========================
   // ATTENDANCE
   // =========================
-
   ATTENDANCE: {
     ROOT: "/attendance",
+    POLICIES: "/attendance/policies",
+    POLICY_DETAILS: "/attendance/policies/policy",
+    CREATE_POLICY: "/attendance/policies/create",
+    UPDATE_POLICY: "/attendance/policies/create",
   },
+
   // =========================
   // NOTIFICATION
   // =========================
-
   NOTIFICATIONS: {
     ROOT: "/notifications",
   },

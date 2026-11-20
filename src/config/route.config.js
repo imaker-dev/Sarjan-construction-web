@@ -1,3 +1,4 @@
+import { PERMISSIONS } from "@constants/permissions";
 import { ROLES } from "@constants/roles";
 import { ROUTES } from "@constants/routes";
 import { lazyLoad } from "@utils/lazy.utils";
@@ -27,6 +28,9 @@ const EmployeeOperationsPage = lazyLoad(() => import("@features/employees/pages/
 const MyProfilePage = lazyLoad(() => import("@features/profile/pages/MyProfilePage"));
 const NotificationPage = lazyLoad(() => import("@features/notification/pages/NotificationPage"));
 const AttendancePage = lazyLoad(() => import("@features/attendance/pages/AttendancePage"));
+const AllAttendancePoliciesPage = lazyLoad(() => import("@features/attendance/pages/AllAttendancePoliciesPage"));
+const AttendancePolicyDetailsPage = lazyLoad(() => import("@features/attendance/pages/AttendancePolicyDetailsPage"));
+const CreateAttendancePolicyPage = lazyLoad(() => import("@features/attendance/pages/CreateAttendancePolicyPage"));
 
 export const routeConfig = [
   {
@@ -41,7 +45,6 @@ export const routeConfig = [
   //Profile Routes
   { path: ROUTES.PROFILE.ROOT, element: MyProfilePage },
 
-
   // platform admin Routes
   { path: ROUTES.PLATFORM.COMPANIES, element: CompaniesListPage },
   // { path: ROUTES.PLATFORM.COMPANY_CREATE, element: CreateCompanyPage },
@@ -49,38 +52,41 @@ export const routeConfig = [
   { path: ROUTES.PLATFORM.OPERATIONS, element: MasterOperationsPage },
 
   // Company Routes
-  { path: ROUTES.COMPANIES.ROOT, element: AllCompaniesPage, roles: [ROLES.PLATFORM_ADMIN], },
-  { path: ROUTES.COMPANIES.CREATE, element: CreateCompanyPage, roles: [ROLES.PLATFORM_ADMIN], },
+  { path: ROUTES.COMPANIES.ROOT, element: AllCompaniesPage, permissions: [PERMISSIONS.COMPANY.READ], },
+  { path: ROUTES.COMPANIES.CREATE, element: CreateCompanyPage, permissions: [PERMISSIONS.COMPANY.CREATE], },
 
   // Operations Routes
-  { path: ROUTES.OPERATIONS.ROOT, element: AllOperationsPage, roles: [ROLES.PLATFORM_ADMIN] },
+  { path: ROUTES.OPERATIONS.ROOT, element: AllOperationsPage, permissions: [PERMISSIONS.OPERATION.READ] },
 
   // Head Offices Routes
-  { path: ROUTES.HEAD_OFFICES.ROOT, element: AllHeadOfficesPage, roles: [ROLES.COMPANY_OWNER], },
-  { path: ROUTES.HEAD_OFFICES.CREATE, element: CreateHeadOfficePage,roles: [ROLES.COMPANY_OWNER] },
+  { path: ROUTES.HEAD_OFFICES.ROOT, element: AllHeadOfficesPage, permissions: [PERMISSIONS.HEAD_OFFICE.READ], },
+  { path: ROUTES.HEAD_OFFICES.CREATE, element: CreateHeadOfficePage, permissions: [PERMISSIONS.HEAD_OFFICE.CREATE] },
 
   //Projects Routes
-  { path: ROUTES.PROJECTS.ROOT, element: AllProjectsPage, roles: [ROLES.COMPANY_OWNER] },
-  { path: ROUTES.PROJECTS.CREATE, element: CreateProjectPage, roles: [ROLES.COMPANY_OWNER] },
+  { path: ROUTES.PROJECTS.ROOT, element: AllProjectsPage, permissions: [PERMISSIONS.PROJECT.READ] },
+  { path: ROUTES.PROJECTS.CREATE, element: CreateProjectPage, permissions: [PERMISSIONS.PROJECT.CREATE] },
 
   //Sites Routes
-  { path: ROUTES.SITES.ROOT, element: AllSitesPage, roles: [ROLES.COMPANY_OWNER] },
-  { path: ROUTES.SITES.CREATE, element: CreateSitePage, roles: [ROLES.COMPANY_OWNER] },
+  { path: ROUTES.SITES.ROOT, element: AllSitesPage, permissions: [PERMISSIONS.SITE.READ] },
+  { path: ROUTES.SITES.CREATE, element: CreateSitePage, permissions: [PERMISSIONS.SITE.CREATE] },
 
   // Departments Routes
-  { path: ROUTES.DEPARTMENTS.ROOT, element: AllDepartmentsPage, roles: [ROLES.COMPANY_OWNER] },
-  { path: ROUTES.DEPARTMENTS.CREATE, element: CreateDepartmentPage, roles: [ROLES.COMPANY_OWNER] },
-  { path: ROUTES.DEPARTMENTS.OPERATIONS, element: DepartmentOperationsPage },
+  { path: ROUTES.DEPARTMENTS.ROOT, element: AllDepartmentsPage,  permissions: [PERMISSIONS.DEPARTMENT.READ]},
+  { path: ROUTES.DEPARTMENTS.CREATE, element: CreateDepartmentPage, permissions: [PERMISSIONS.DEPARTMENT.CONFIGURE] },
+  { path: ROUTES.DEPARTMENTS.OPERATIONS, element: DepartmentOperationsPage, permissions: [PERMISSIONS.DEPARTMENT.CONFIGURE] },
 
   // Employees Routes
-  { path: ROUTES.EMPLOYEES.ROOT, element: AllEmployeesPage, roles: [ROLES.COMPANY_OWNER] },
-  { path: ROUTES.EMPLOYEES.CREATE, element: CreateEmployeePage, roles: [ROLES.COMPANY_OWNER] },
-  { path: ROUTES.EMPLOYEES.MEMBERSHIPS, element: EmployeeMembershipPage, roles: [ROLES.COMPANY_OWNER] },
-  { path: ROUTES.EMPLOYEES.ROLES, element: EmployeeRoleAssignmentPage, roles: [ROLES.COMPANY_OWNER] },
-  { path: ROUTES.EMPLOYEES.OPERATIONS, element: EmployeeOperationsPage, roles: [ROLES.COMPANY_OWNER] },
+  { path: ROUTES.EMPLOYEES.ROOT, element: AllEmployeesPage, permissions: [PERMISSIONS.EMPLOYEE.READ] },
+  { path: ROUTES.EMPLOYEES.CREATE, element: CreateEmployeePage, permissions: [PERMISSIONS.EMPLOYEE.INVITE] },
+  { path: ROUTES.EMPLOYEES.MEMBERSHIPS, element: EmployeeMembershipPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
+  { path: ROUTES.EMPLOYEES.ROLES, element: EmployeeRoleAssignmentPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
+  { path: ROUTES.EMPLOYEES.OPERATIONS, element: EmployeeOperationsPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
 
   // Attendance Routes
   { path: ROUTES.ATTENDANCE.ROOT, element: AttendancePage },
+  { path: ROUTES.ATTENDANCE.POLICIES, element: AllAttendancePoliciesPage },
+  { path: ROUTES.ATTENDANCE.POLICY_DETAILS, element: AttendancePolicyDetailsPage },
+  { path: ROUTES.ATTENDANCE.CREATE_POLICY, element: CreateAttendancePolicyPage },
 
   // Notifications Routes
   { path: ROUTES.NOTIFICATIONS.ROOT, element: NotificationPage, roles: [ROLES.COMPANY_OWNER] },

@@ -1,3 +1,4 @@
+import { PERMISSIONS } from "@constants/permissions";
 import { ROLES } from "@constants/roles";
 import { ROUTES } from "@constants/routes";
 
@@ -39,13 +40,13 @@ export const NAV_CONFIG = [
         title: "Companies",
         icon: IconBuilding,
         path: ROUTES.COMPANIES.ROOT,
-        roles: [ROLES.PLATFORM_ADMIN],
+        permission: [PERMISSIONS.COMPANY.READ],
       },
       {
         title: "Master Operations",
         icon: IconListCheck,
         path: ROUTES.OPERATIONS.ROOT,
-        roles: [ROLES.PLATFORM_ADMIN],
+        permission: [PERMISSIONS.OPERATION.READ],
       },
     ],
   },

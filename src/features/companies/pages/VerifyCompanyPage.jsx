@@ -40,7 +40,7 @@ const validationSchema = Yup.object({
     .required("Administrator name is required"),
 
   password: Yup.string()
-    .min(12, "Password must contain at least 12 characters")
+    .min(8, "Password must contain at least 8 characters")
     .required("Password is required"),
 
   company: Yup.object({
@@ -616,7 +616,7 @@ const VerifyCompanyPage = () => {
                 placeholder="Create a secure password"
                 required
                 icon={IconLock}
-                helperText="Password must contain at least 12 characters."
+                helperText="Password must contain at least 8 characters."
                 {...getFieldProps("password")}
               />
             </div>

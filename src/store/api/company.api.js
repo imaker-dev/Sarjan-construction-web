@@ -14,7 +14,7 @@ export default false
       },
 
       reissueCompanyClaimTokenApi: (companyId) => {
-        return Api.post(`/platform/companies/${companyId}/claim-token`);
+        return Api.post(`/platform/companies/${companyId}/claim-token`,{});
       },
 
       getCompanyDetailsApi: (companyId) => {

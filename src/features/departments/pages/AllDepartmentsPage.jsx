@@ -93,10 +93,23 @@ const AllDepartmentsPage = ({ onView, onEdit, onDelete }) => {
       render: (d) => formatText(d.scopeType),
     },
     {
-      key: "head",
-      header: "Head",
+      key: "baseHeadOffice",
+      header: "Base Head Office",
       render: (d) =>
-        d.headEmployeeName || (d.headEmployeeId ? "Assigned" : "Not assigned"),
+        d.baseHeadOffice ? (
+          <div className="leading-tight">
+            <div className="text-[13.5px] font-medium text-slate-800 dark:text-slate-100">
+              {d.baseHeadOffice.name}
+            </div>
+            <div className="text-[12.5px] text-slate-400 dark:text-slate-500">
+              {d.baseHeadOffice.code}
+            </div>
+          </div>
+        ) : (
+          <span className="text-[12.5px] text-slate-400 dark:text-slate-500">
+            Not assigned
+          </span>
+        ),
     },
 
     {
@@ -147,6 +160,13 @@ const AllDepartmentsPage = ({ onView, onEdit, onDelete }) => {
         onClick: (d) =>
           navigate(ROUTES.DEPARTMENTS.DETAILS + `?departmentId=${d.id}`),
       },
+
+      {
+        label: "Edit",
+        icon: Pencil,
+        onClick: (department) =>
+          navigate(ROUTES.DEPARTMENTS.EDIT + "?departmentId=" + department.id),
+      },
       {
         label: "Manage Operations",
         icon: Settings2,
@@ -155,7 +175,6 @@ const AllDepartmentsPage = ({ onView, onEdit, onDelete }) => {
             `${ROUTES.DEPARTMENTS.OPERATIONS}?departmentId=${department.id}`,
           ),
       },
-      { label: "Edit", icon: Pencil, onClick: onEdit },
       { label: "Delete", icon: Trash2, onClick: onDelete, danger: true },
     ],
     [onView, onEdit, onDelete],

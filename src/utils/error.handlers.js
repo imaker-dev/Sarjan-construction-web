@@ -12,6 +12,7 @@ const errorPatterns = {
     "Invalid or expired token",
     "The user belonging to this token no longer exists",
     "Access token expired",
+    "Session is not active",
   ],
 
   [ERROR_TYPES.ORDER]: [

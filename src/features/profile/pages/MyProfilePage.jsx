@@ -405,11 +405,8 @@ const MyProfilePage = () => {
 
   if (isGettingProfile && !profileData) {
     return (
-      <div>
-        <PageHeaderBanner title="My Profile" />
-        <div className="mt-6">
-          <ProfileSkeleton />
-        </div>
+      <div className="mt-6">
+        <ProfileSkeleton />
       </div>
     );
   }
@@ -417,7 +414,6 @@ const MyProfilePage = () => {
   if (!profileData) {
     return (
       <div>
-        <PageHeaderBanner title="My Profile" />
         <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-12 text-center text-sm text-slate-500 dark:border-slate-700">
           We couldn't load your profile. Refresh the page to try again.
         </div>

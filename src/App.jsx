@@ -1,3 +1,4 @@
+import SplashScreen from "@components/feedback/SplashScreen";
 import { ROUTES } from "@constants/routes";
 import LoginPage from "@features/auth/pages/LoginPage";
 import VerifyCompanyPage from "@features/companies/pages/VerifyCompanyPage";
@@ -20,7 +21,7 @@ function App() {
   }, [dispatch, logIn]);
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<SplashScreen />}>
       <Routes>
         
         <Route path={ROUTES.COMPANIES.VERIFY} element={<VerifyCompanyPage />} />

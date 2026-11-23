@@ -25,6 +25,7 @@ import {
 import { handleResponse } from "@utils/async.utils";
 import StatCard from "@components/ui/StatCard";
 import AttendanceHero from "../components/AttandanceHero";
+import WeeklyWorkProgressBar from "../components/WeeklyWorkProgressBar";
 import {
   BREAK_TYPES,
   DEFAULT_POLICY,
@@ -459,9 +460,9 @@ const ActivityLog = memo(function ActivityLog({ logs }) {
 });
 
 /** Stat cards + timeline. Everything is totalled across ALL of today's sessions. */
-const Summary = memo(function Summary({ day, status, rules }) {
+const Summary = memo(function Summary({ day, status, rules, totals: propTotals }) {
   const now = useNow(STATUS[status].live ? 10_000 : 60_000);
-  const totals = getDayTotals(day, now);
+  const totals = propTotals ?? getDayTotals(day, now);
   const segments = getSegments(day, now);
 
   const diff = rules.fullDayThresholdHours * HOUR - totals.worked;
@@ -588,6 +589,7 @@ export default function AttendancePage({
   const { activeSession } = useSelector((state) => state.attendance);
   const session = activeSession?.session ?? null;
   const activityLog = activeSession?.activityLog ?? session?.activityLog;
+  const weeklyProgress = activeSession?.weeklyProgress ?? session?.weeklyProgress ?? null;
 
   const { meData } = useSelector((state) => state.auth);
   const { departments, displayName } = meData || {};
@@ -651,6 +653,108 @@ export default function AttendancePage({
         : day.events.length
           ? "done"
           : "off";
+
+  const now = useNow(STATUS[status]?.live ? 10_000 : 60_000);
+  const totals = useMemo(() => getDayTotals(day, now), [day, now]);
+
+  // Live Weekly Progress: Combines prior days from weeklyProgress + live session ticks today
+  const liveWeeklyProgress = useMemo(() => {
+    if (!weeklyProgress) return null;
+    const targetWeeklyHours = weeklyProgress.targetWeeklyHours ?? 48.0;
+
+    // Live worked hours today (down to the second, updating every 10s)
+    const todayWorkedHours = (totals.worked || 0) / 3600000;
+
+    // Prior days of the week
+    const priorDaysHours =
+      weeklyProgress.priorDaysCompletedWeeklyHours !== undefined
+        ? weeklyProgress.priorDaysCompletedWeeklyHours
+        : Math.max(
+            0,
+            (weeklyProgress.completedWeeklyHours || 0) -
+              (weeklyProgress.todayCompletedHours || 0)
+          );
+
+    const liveCompleted = Number((priorDaysHours + todayWorkedHours).toFixed(2));
+    const liveRemaining = Number(Math.max(0, targetWeeklyHours - liveCompleted).toFixed(2));
+    const livePercentage = Number(Math.min(100, (liveCompleted / targetWeeklyHours) * 100).toFixed(1));
+    const isTargetCompleted = liveCompleted >= targetWeeklyHours;
+
+    const remainingWorkDaysInWeek = weeklyProgress.remainingWorkDaysInWeek || 1;
+    const isLastWorkingDay = weeklyProgress.isLastWorkingDay || false;
+    const requiredHoursToCompleteTarget = isTargetCompleted
+      ? 0
+      : isLastWorkingDay
+      ? liveRemaining
+      : Number((liveRemaining / remainingWorkDaysInWeek).toFixed(2));
+
+    let progStatus = weeklyProgress.status;
+    if (isTargetCompleted) {
+      progStatus = "COMPLETED";
+    } else if (isLastWorkingDay) {
+      progStatus = "DEFICIT_PENDING";
+    } else {
+      const bDate = new Date();
+      const dayOfWeek = bDate.getDay();
+      const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek;
+      const expectedHoursSoFar = Math.min(targetWeeklyHours, dayIndex * 8.0);
+      progStatus = liveCompleted >= expectedHoursSoFar * 0.85 ? "ON_TRACK" : "BEHIND";
+    }
+
+    return {
+      ...weeklyProgress,
+      completedWeeklyHours: liveCompleted,
+      remainingWeeklyHours: liveRemaining,
+      progressPercentage: livePercentage,
+      isTargetCompleted,
+      remainingWorkDaysInWeek,
+      isLastWorkingDay,
+      requiredHoursToCompleteTarget,
+      status: progStatus,
+    };
+  }, [weeklyProgress, totals.worked]);
+
+  const fallbackWeeklyProgress = useMemo(() => {
+    if (weeklyProgress) return null;
+    if (!day.events.length && status !== "working") return null;
+
+    const nowD = new Date();
+    const dayOfWeek = nowD.getDay();
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(nowD.getTime() + diffToMonday * 86400000);
+    const saturday = new Date(monday.getTime() + 5 * 86400000);
+    const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek;
+    const remainingWorkDaysInWeek = Math.max(1, 6 - dayIndex + 1);
+
+    const targetWeeklyHours = 48.0;
+    const todayWorkedHours = (totals.worked || 0) / 3600000;
+    const liveCompleted = Number(todayWorkedHours.toFixed(2));
+    const liveRemaining = Number(Math.max(0, targetWeeklyHours - liveCompleted).toFixed(2));
+    const livePercentage = Number(Math.min(100, (liveCompleted / targetWeeklyHours) * 100).toFixed(1));
+    const isTargetCompleted = liveCompleted >= targetWeeklyHours;
+    const isLastWorkingDay = dayIndex >= 6;
+    const requiredHoursToCompleteTarget = isTargetCompleted
+      ? 0
+      : isLastWorkingDay
+      ? liveRemaining
+      : Number((liveRemaining / remainingWorkDaysInWeek).toFixed(2));
+
+    return {
+      weekStartDate: monday.toISOString().slice(0, 10),
+      weekEndDate: saturday.toISOString().slice(0, 10),
+      targetWeeklyHours,
+      completedWeeklyHours: liveCompleted,
+      remainingWeeklyHours: liveRemaining,
+      progressPercentage: livePercentage,
+      isTargetCompleted,
+      remainingWorkDaysInWeek,
+      isLastWorkingDay,
+      requiredHoursToCompleteTarget,
+      status: liveCompleted >= dayIndex * 8.0 * 0.85 ? "ON_TRACK" : "BEHIND",
+    };
+  }, [weeklyProgress, day.events.length, status, totals.worked]);
+
+  const effectiveWeeklyProgress = liveWeeklyProgress || fallbackWeeklyProgress;
 
   // Full-day target comes from the API; the policy prop is only a fallback.
   const targetMins =
@@ -921,10 +1025,15 @@ export default function AttendancePage({
             onRefresh={refresh}
             onOpen={openDialog}
           />
-          <Summary day={day} status={status} rules={rules} />
+          <Summary day={day} status={status} rules={rules} totals={totals} />
         </div>
 
-        <ActivityLog logs={logs} />
+        <div className="space-y-5">
+          <ActivityLog logs={logs} />
+          {effectiveWeeklyProgress && (
+            <WeeklyWorkProgressBar data={effectiveWeeklyProgress} title="Weekly data" />
+          )}
+        </div>
       </div>
 
       <ModalAction

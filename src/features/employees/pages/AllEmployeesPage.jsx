@@ -202,6 +202,18 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         ),
       },
       {
+        key: "loginId",
+        header: "Login ID",
+        render: (e) =>
+          e.loginId ? (
+            <span className="text-[13px] text-slate-600 dark:text-slate-300">
+              {e.loginId}
+            </span>
+          ) : (
+            <Muted>Not configured</Muted>
+          ),
+      },
+      {
         key: "designation",
         header: "Designation",
         render: (e) =>

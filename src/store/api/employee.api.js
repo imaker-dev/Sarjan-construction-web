@@ -69,4 +69,22 @@ export default false
           `/employees/${id}/operations/${encodeURIComponent(operationKey)}`,
         );
       },
+
+      // Employee Document APIs
+      getEmployeeDocumentsApi: (id) => {
+        return Api.get(`/employees/${id}/documents`);
+      },
+
+      verifyEmployeeDocumentApi: ({ id, docId, values }) => {
+        return Api.post(`/employees/${id}/documents/${docId}/verify`, values);
+      },
+
+      deleteEmployeeDocumentApi: ({ id, docId }) => {
+        return Api.delete(`/employees/${id}/documents/${docId}`);
+      },
+      downloadEmployeeDocumentApi: ({ employeeId, docId }) => {
+        return Api.get(`/employees/${employeeId}/documents/${docId}/download`, {
+          responseType: "blob",
+        });
+      },
     };

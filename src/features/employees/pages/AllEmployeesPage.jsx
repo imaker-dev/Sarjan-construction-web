@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   KeyRound,
   Plus,
+  Files,
 } from "lucide-react";
 import { IconUserCheck, IconUserX } from "@tabler/icons-react";
 
@@ -202,6 +203,18 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         ),
       },
       {
+        key: "loginId",
+        header: "Login ID",
+        render: (e) =>
+          e.loginId ? (
+            <span className="text-[13px] text-slate-600 dark:text-slate-300">
+              {e.loginId}
+            </span>
+          ) : (
+            <Muted>Not configured</Muted>
+          ),
+      },
+      {
         key: "designation",
         header: "Designation",
         render: (e) =>
@@ -317,6 +330,12 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         icon: KeyRound,
         onClick: (employee) =>
           navigate(`${ROUTES.EMPLOYEES.OPERATIONS}?employeeId=${employee.id}`),
+      },
+      {
+        label: "Manage Documents",
+        icon: Files,
+        onClick: (employee) =>
+          navigate(`${ROUTES.EMPLOYEES.DOCUMENTS}?employeeId=${employee.id}`),
       },
 
       {

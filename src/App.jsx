@@ -1,8 +1,6 @@
 import SplashScreen from "@components/feedback/SplashScreen";
+import { publicRouteConfig } from "@config/route.config";
 import { ROUTES } from "@constants/routes";
-import LoginPage from "@features/auth/pages/LoginPage";
-import VerifyCompanyPage from "@features/companies/pages/VerifyCompanyPage";
-import VerifyEmployeePage from "@features/employees/pages/VerifyEmployeePage";
 import AuthenticatedRoutes from "@layout/AuthenticatedRoutes";
 import { fetchMe } from "@store/slices/auth.slice";
 import { Suspense, useEffect } from "react";
@@ -23,14 +21,20 @@ function App() {
   return (
     <Suspense fallback={<SplashScreen />}>
       <Routes>
-        
-        <Route path={ROUTES.COMPANIES.VERIFY} element={<VerifyCompanyPage />} />
-        <Route path={ROUTES.EMPLOYEES.VERIFY} element={<VerifyEmployeePage />} />
-
-
-        {/* AUTH */}
-        {!logIn && <Route path={ROUTES.AUTH.ROOT} element={<LoginPage />} />}
-        {logIn && <Route path={ROUTES.AUTH.ROOT} element={<Navigate to="/" replace />} />}
+        {/* PUBLIC (config driven) */}
+        {publicRouteConfig.map(({ path, element: Component, guestOnly }) => (
+          <Route
+            key={path}
+            path={path}
+            element={
+              guestOnly && logIn ? (
+                <Navigate to={ROUTES.HOME.ROOT} replace />
+              ) : (
+                <Component />
+              )
+            }
+          />
+        ))}
 
         {/* PROTECTED */}
         {logIn && meData && (
@@ -38,7 +42,12 @@ function App() {
         )}
 
         {/* NOT LOGGED IN */}
-        {!logIn && <Route path="*" element={<Navigate to={ROUTES.AUTH.ROOT} replace />} />}
+        {!logIn && (
+          <Route
+            path="*"
+            element={<Navigate to={ROUTES.AUTH.ROOT} replace />}
+          />
+        )}
       </Routes>
     </Suspense>
   );

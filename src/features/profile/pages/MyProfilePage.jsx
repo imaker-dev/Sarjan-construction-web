@@ -1,5 +1,9 @@
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
-import { getProfile } from "@store/slices/profile.slice";
+import {
+  downloadDocument,
+  getProfile,
+  uploadDocument,
+} from "@store/slices/profile.slice";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -11,6 +15,8 @@ import {
   Check,
   ChevronRight,
   Clock,
+  Download,
+  FileText,
   Fingerprint,
   Globe,
   HeartPulse,
@@ -26,6 +32,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Smartphone,
+  Upload,
   User,
   Users,
   Wrench,
@@ -38,12 +45,14 @@ import {
   changePassword,
   disableMfa,
   enableMfa,
-  getMfaStatus,
   resendMfaOtp,
   setupMfa,
 } from "@store/slices/security.slice";
 import MfaOtpModal from "../components/MfaOtpModal";
 import Alert from "@components/ui/Alert";
+import DocumentUploadModal from "../components/DocumentUploadModal";
+import { formatFileSize } from "@utils/file.utils";
+import { downloadFile } from "@utils/download.utils";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -123,8 +132,8 @@ const IconBox = ({ icon: Icon, tone = "default" }) => {
 /** A titled block of rows, like a group in Instagram / Facebook settings. */
 const Section = ({ title, description, action, children }) => (
   <section>
-    <div className="mb-3 flex items-end justify-between gap-3 px-1">
-      <div>
+    <div className="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
         <h2 className="text-base font-semibold text-slate-900 dark:text-white">
           {title}
         </h2>
@@ -134,7 +143,7 @@ const Section = ({ title, description, action, children }) => (
           </p>
         )}
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {children}
@@ -260,6 +269,7 @@ const TABS = [
   { id: "security", label: "Password & security", icon: ShieldCheck },
   { id: "access", label: "Roles & permissions", icon: Layers },
   { id: "work", label: "Work", icon: Briefcase },
+  { id: "documents", label: "Documents", icon: FileText },
 ];
 
 const SettingsNav = ({ active, onChange, counts }) => (
@@ -308,18 +318,19 @@ const SettingsNav = ({ active, onChange, counts }) => (
 const MyProfilePage = () => {
   const dispatch = useDispatch();
 
-  const { isGettingProfile, profileData } = useSelector(
-    (state) => state.profile,
-  );
+  const {
+    isGettingProfile,
+    profileData,
+    isUploadingDocument,
+    downloadingDocumentId,
+  } = useSelector((state) => state.profile);
 
   const {
     isChangingPassword,
-    isGettingMfaStatus,
     isSettingUpMfa,
     isEnablingMfa,
     isResendingMfaOtp,
     isDisablingMfa,
-    mfaStatusData,
     mfaSetupData,
   } = useSelector((state) => state.security);
 
@@ -331,10 +342,13 @@ const MyProfilePage = () => {
   const [mfaToken, setMfaToken] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
   const [mfaConfirmationOpen, setMfaConfirmationOpen] = useState(false);
+  const [documentUploadOpen, setDocumentUploadOpen] = useState(false);
 
-  useEffect(() => {
+  const fetchProfile = () => {
     dispatch(getProfile());
-    dispatch(getMfaStatus());
+  };
+  useEffect(() => {
+    fetchProfile();
   }, [dispatch]);
 
   const permissions = profileData?.permissions;
@@ -378,7 +392,7 @@ const MyProfilePage = () => {
     await handleResponse(dispatch(enableMfa({ mfaToken, code })), () => {
       setMfaModalOpen(false);
       setMfaToken("");
-      dispatch(getMfaStatus());
+      fetchProfile();
     });
   };
 
@@ -392,7 +406,7 @@ const MyProfilePage = () => {
   const handleDisableMfa = async () => {
     await handleResponse(dispatch(disableMfa()), () => {
       setMfaConfirmationOpen(false);
-      dispatch(getMfaStatus());
+      fetchProfile();
     });
   };
 
@@ -401,6 +415,22 @@ const MyProfilePage = () => {
 
     setMfaModalOpen(false);
     setMfaToken("");
+  };
+
+  const handleUploadDocument = async (formData) => {
+    await handleResponse(dispatch(uploadDocument(formData)), () => {
+      setDocumentUploadOpen(false);
+      fetchProfile();
+    });
+  };
+
+  const handleDownloadDocument = async (document) => {
+    await handleResponse(dispatch(downloadDocument(document.id)), (res) => {
+      downloadFile({
+        data: res.payload,
+        fileName: document.file.fileName || document.title || "document",
+      });
+    });
   };
 
   if (isGettingProfile && !profileData) {
@@ -424,6 +454,7 @@ const MyProfilePage = () => {
   /* ---- Map the nested API response ---- */
   const principal = profileData.principal || {};
   const employee = profileData.employee || {};
+  const documents = profileData.documents || [];
   const company = profileData.company || {};
   const roles = profileData.roles || [];
   const assignments = profileData.assignments || [];
@@ -434,10 +465,8 @@ const MyProfilePage = () => {
   const displayName = employee.displayName || principal.loginId || "User";
   const status = (principal.status || employee.status || "").toUpperCase();
   const primaryRole = profileData.primaryRole || roles[0];
-  const mfaEnabled = isGettingMfaStatus
-    ? !!principal.mfaEnabled
-    : !!(mfaStatusData?.mfaEnabled ?? principal.mfaEnabled);
-  const mfaType = mfaStatusData?.mfaType || principal.mfaType || "EMAIL_OTP";
+  const mfaEnabled = !!principal.mfaEnabled;
+  const mfaType = principal.mfaType || "EMAIL_OTP";
 
   const scopeLabel = (a) =>
     a.siteName || a.projectName || a.headOfficeName || company.name || "—";
@@ -446,6 +475,102 @@ const MyProfilePage = () => {
     access: (permissions || []).length,
     work: departments.length,
   };
+
+  const VERIFICATION_STYLE = {
+    PENDING:
+      "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
+    VERIFIED:
+      "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
+    REJECTED: "bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400",
+  };
+
+  function DocumentRow({ document, onDownload, downloading = false }) {
+    const file = document.file || {};
+    const fileName = file.fileName || document.fileName || document.name;
+    const url = document.url || file.url;
+    const size = formatFileSize(file.sizeBytes);
+    const uploaded = formatDate(document.createdAt);
+    const isAvailable = !file.status || file.status === "AVAILABLE";
+    const verification = document.verificationStatus;
+
+    const typeLabel = document.documentType
+      ? humanize(document.documentType)
+      : "Document";
+    const title = document.title || fileName || "Untitled document";
+
+    const meta = [
+      size,
+      uploaded && `Uploaded ${uploaded}`,
+      !isAvailable && "File not available",
+    ].filter(Boolean);
+
+    return (
+      <li className="flex items-center gap-3.5 px-4 py-3.5 sm:px-5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-400">
+          <FileText size={18} />
+        </span>
+
+        <div className="min-w-0 flex-1">
+          {/* Row 1: type + file name */}
+          <p
+            className="flex min-w-0 items-baseline gap-2"
+            title={`${typeLabel} · ${title}`}
+          >
+            <span className="shrink-0 text-[14px] font-semibold text-slate-800 dark:text-slate-100">
+              {typeLabel}
+            </span>
+            <span
+              aria-hidden="true"
+              className="text-slate-300 dark:text-slate-600"
+            >
+              &middot;
+            </span>
+            <span className="truncate text-[13px] text-slate-500 dark:text-slate-400">
+              {title}
+            </span>
+          </p>
+
+          {/* Row 2: metadata */}
+          {meta.length > 0 && (
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12.5px] text-slate-400 dark:text-slate-500">
+              {meta.map((item, i) => (
+                <React.Fragment key={`${i}-${item}`}>
+                  {i > 0 && <span aria-hidden="true">&middot;</span>}
+                  <span>{item}</span>
+                </React.Fragment>
+              ))}
+            </p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {verification && (
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[11.5px] font-medium ${
+                VERIFICATION_STYLE[verification] || VERIFICATION_STYLE.PENDING
+              }`}
+            >
+              {humanize(verification)}
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => onDownload(document)}
+            disabled={!isAvailable || downloading}
+            title={downloading ? "Downloading..." : "Download document"}
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            {downloading ? (
+              <Loader2 size={17} className="animate-spin" />
+            ) : (
+              <Download size={17} />
+            )}
+          </button>
+        </div>
+      </li>
+    );
+  }
 
   return (
     <div>
@@ -666,12 +791,7 @@ const MyProfilePage = () => {
                       onClick={() => setPasswordOpen(true)}
                     />
 
-                    {isGettingMfaStatus ? (
-                      <div className="flex items-center gap-3 px-4 py-4 text-sm text-slate-400 sm:px-5">
-                        <Loader2 size={16} className="animate-spin" />
-                        Checking security status…
-                      </div>
-                    ) : mfaEnabled ? (
+                    {mfaEnabled ? (
                       <Row
                         icon={Smartphone}
                         tone="primary"
@@ -703,11 +823,10 @@ const MyProfilePage = () => {
                   </RowList>
                 </Section>
 
-                {!isGettingMfaStatus && !mfaEnabled && (
+                {!mfaEnabled && (
                   <Alert
                     icon={ShieldAlert}
-                    description={`Two-factor authentication is off. Turn it on so a stolen
-                      password alone can't open your account.`}
+                    description="Two-factor authentication is off. Turn it on so a stolen password alone can't open your account."
                     type="warning"
                   />
                 )}
@@ -909,6 +1028,47 @@ const MyProfilePage = () => {
                 </Section>
               </>
             )}
+
+            {/* ---------------------------- Documents ---------------------------- */}
+            {activeTab === "documents" && (
+              <Section
+                title="My documents"
+                description="View and manage your uploaded employee documents."
+                action={
+                  <div className="flex items-center gap-2">
+                    <Pill>{documents.length} documents</Pill>
+
+                    <button
+                      type="button"
+                      onClick={() => setDocumentUploadOpen(true)}
+                      className="btn btn-sm btn-primary"
+                    >
+                      <Upload size={15} />
+                      <span>Upload document</span>
+                    </button>
+                  </div>
+                }
+              >
+                {documents.length ? (
+                  <RowList>
+                    {documents.map((document, index) => (
+                      <DocumentRow
+                        key={document.id || index}
+                        document={document}
+                        onDownload={handleDownloadDocument}
+                        downloading={downloadingDocumentId === document.id}
+                      />
+                    ))}
+                  </RowList>
+                ) : (
+                  <EmptyState
+                    icon={FileText}
+                    title="No documents uploaded"
+                    text="Upload your identity, professional and other employee documents to keep everything in one place."
+                  />
+                )}
+              </Section>
+            )}
           </div>
         </div>
       </div>
@@ -973,6 +1133,13 @@ const MyProfilePage = () => {
           </div>
         </div>
       )}
+
+      <DocumentUploadModal
+        isOpen={documentUploadOpen}
+        onClose={() => setDocumentUploadOpen(false)}
+        onSubmit={handleUploadDocument}
+        loading={isUploadingDocument}
+      />
     </div>
   );
 };

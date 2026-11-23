@@ -3,6 +3,18 @@ import { ROLES } from "@constants/roles";
 import { ROUTES } from "@constants/routes";
 import { lazyLoad } from "@utils/lazy.utils";
 
+
+/* -------------------------------------------------------------------------- */
+/*  Public pages                                                              */
+/* -------------------------------------------------------------------------- */
+const LoginPage = lazyLoad(() => import("@features/auth/pages/LoginPage"));
+const VerifyCompanyPage = lazyLoad(() => import("@features/companies/pages/VerifyCompanyPage"));
+const VerifyEmployeePage = lazyLoad(() => import("@features/employees/pages/VerifyEmployeePage"));
+
+
+/* -------------------------------------------------------------------------- */
+/*  Authenticated pages                                                       */
+/* -------------------------------------------------------------------------- */
 const DashboardPage = lazyLoad(() => import("@features/dashboard/pages/DashboardPage"));
 const AllDepartmentsPage = lazyLoad(() => import("@features/departments/pages/AllDepartmentsPage"));
 const CreateDepartmentPage = lazyLoad(() => import("@features/departments/pages/CreateDepartmentPage"));
@@ -33,8 +45,26 @@ const AttendancePolicyDetailsPage = lazyLoad(() => import("@features/attendance/
 const CreateAttendancePolicyPage = lazyLoad(() => import("@features/attendance/pages/CreateAttendancePolicyPage"));
 const DailyReportsListPage = lazyLoad(() => import("@features/daily-reports/pages/DailyReportsListPage"));
 const DailyReportDetailsPage = lazyLoad(() => import("@features/daily-reports/pages/DailyReportDetailsPage"));
+const EmployeeDocumentsPage = lazyLoad(() => import("@features/employees/pages/EmployeeDocumentsPage"));
 
-export const routeConfig = [
+
+/* -------------------------------------------------------------------------- */
+/*  PUBLIC ROUTES (outside the app layout)                                    */
+/*                                                                            */
+/*  guestOnly: true  -> logged-in users are redirected to home (e.g. login)   */
+/*  guestOnly: false -> reachable with or without login (default)             */
+/* -------------------------------------------------------------------------- */
+export const publicRouteConfig = [
+  // Open to everyone
+  { path: ROUTES.COMPANIES.VERIFY, element: VerifyCompanyPage },
+  { path: ROUTES.EMPLOYEES.VERIFY, element: VerifyEmployeePage },
+
+  // Guests only
+  { path: ROUTES.AUTH.ROOT, element: LoginPage, guestOnly: true },
+];
+
+
+export const privateRouteConfig = [
   {
     path: ROUTES.HOME.ROOT,
     element: DashboardPage,
@@ -83,6 +113,7 @@ export const routeConfig = [
   { path: ROUTES.EMPLOYEES.MEMBERSHIPS, element: EmployeeMembershipPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
   { path: ROUTES.EMPLOYEES.ROLES, element: EmployeeRoleAssignmentPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
   { path: ROUTES.EMPLOYEES.OPERATIONS, element: EmployeeOperationsPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
+  { path: ROUTES.EMPLOYEES.DOCUMENTS, element: EmployeeDocumentsPage, permissions: [PERMISSIONS.EMPLOYEE.READ] },
 
   // Attendance Routes
   { path: ROUTES.ATTENDANCE.ROOT, element: AttendancePage, permissions: [PERMISSIONS.ATTENDANCE.READ], },

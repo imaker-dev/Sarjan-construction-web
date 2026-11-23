@@ -81,6 +81,7 @@ export const ROUTES = {
     MEMBERSHIPS: "/employees/membership",
     ROLES: "/employees/role-assignments",
     OPERATIONS: "/employees/operations",
+    DOCUMENTS: "/employees/documents",
     VERIFY: "/verify-employee",
   },
 

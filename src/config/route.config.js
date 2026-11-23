@@ -32,6 +32,7 @@ const AllHeadOfficesPage = lazyLoad(() => import("@features/head-offices/pages/A
 const CreateHeadOfficePage = lazyLoad(() => import("@features/head-offices/pages/CreateHeadOfficePage"));
 const AllProjectsPage = lazyLoad(() => import("@features/projects/pages/AllProjectsPage"));
 const CreateProjectPage = lazyLoad(() => import("@features/projects/pages/CreateProjectPage"));
+const ProjectDetailsPage = lazyLoad(() => import("@features/projects/pages/ProjectDetailsPage"));
 const AllSitesPage = lazyLoad(() => import("@features/sites/pages/AllSitesPage"));
 const CreateSitePage = lazyLoad(() => import("@features/sites/pages/CreateSitePage"));
 const EmployeeMembershipPage = lazyLoad(() => import("@features/employees/pages/EmployeeMembershipPage"));
@@ -95,6 +96,7 @@ export const privateRouteConfig = [
   //Projects Routes
   { path: ROUTES.PROJECTS.ROOT, element: AllProjectsPage, permissions: [PERMISSIONS.PROJECT.READ] },
   { path: ROUTES.PROJECTS.CREATE, element: CreateProjectPage, permissions: [PERMISSIONS.PROJECT.CREATE] },
+  { path: ROUTES.PROJECTS.DETAILS, element: ProjectDetailsPage, permissions: [PERMISSIONS.PROJECT.READ] },
 
   //Sites Routes
   { path: ROUTES.SITES.ROOT, element: AllSitesPage, permissions: [PERMISSIONS.SITE.READ] },

@@ -38,7 +38,7 @@ export const ROUTES = {
   PROJECTS: {
     ROOT: "/projects",
     CREATE: "/projects/create",
-    DETAILS: "/projects/:id",
+    DETAILS: "/projects/details",
     EDIT: "/projects/:id/edit",
   },
 

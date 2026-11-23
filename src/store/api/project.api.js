@@ -10,6 +10,11 @@ export default false
         return Api.get("/org/projects", values);
       },
 
+      // Get project details
+      getProjectDetailsApi: (id) => {
+        return Api.get(`/org/projects/${id}`);
+      },
+
       // Create project
       createProjectApi: (values) => {
         return Api.post("/org/projects", values);

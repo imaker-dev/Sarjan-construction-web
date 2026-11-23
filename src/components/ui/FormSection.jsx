@@ -50,7 +50,7 @@ const FormSection = ({
     <div className="flex min-w-0 flex-1 items-center gap-3">
       {Icon && (
         <div
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground ${iconClassName}`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400`}
         >
           <Icon size={19} strokeWidth={1.8} />
         </div>

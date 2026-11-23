@@ -194,11 +194,16 @@ const AllProjectsPage = ({ onView, onEdit, onDelete }) => {
 
   const actions = useMemo(
     () => [
-      ...(onView ? [{ label: "View", icon: Eye, onClick: onView }] : []),
       ...(onEdit ? [{ label: "Edit", icon: Pencil, onClick: onEdit }] : []),
       ...(onDelete
         ? [{ label: "Delete", icon: Trash2, onClick: onDelete, danger: true }]
         : []),
+      {
+        label: "View",
+        icon: Eye,
+        onClick: (p) =>
+          navigate(ROUTES.PROJECTS.DETAILS + "?projectId=" + p.id),
+      },
       {
         label: "Activate Project",
         icon: Play,

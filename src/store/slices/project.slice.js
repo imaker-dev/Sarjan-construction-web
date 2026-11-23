@@ -11,6 +11,15 @@ export const listProjects = createAsyncThunk(
   },
 );
 
+// Get project details
+export const getProjectDetails = createAsyncThunk(
+  "project/getProjectDetails",
+  async (id) => {
+    const res = await projectApi.getProjectDetailsApi(id);
+    return res.data;
+  },
+);
+
 // Create project
 export const createProject = createAsyncThunk(
   "project/createProject",
@@ -49,7 +58,7 @@ const projectSlice = createSlice({
     isCreatingProject: false,
     isUpdatingProject: false,
     isUpdatingProjectStatus: false,
-
+    isGettingProjectDetails: false,
     projectsData: null,
     projectData: null,
   },
@@ -70,6 +79,19 @@ const projectSlice = createSlice({
       .addCase(listProjects.rejected, (state, action) => {
         state.isListingProjects = false;
         toast.error(action.error.message || "Failed to fetch projects");
+      })
+
+      // Get project details
+      .addCase(getProjectDetails.pending, (state) => {
+        state.isGettingProjectDetails = true;
+      })
+      .addCase(getProjectDetails.fulfilled, (state, action) => {
+        state.isGettingProjectDetails = false;
+        state.projectData = action.payload;
+      })
+      .addCase(getProjectDetails.rejected, (state, action) => {
+        state.isGettingProjectDetails = false;
+        toast.error(action.error.message || "Failed to fetch project details");
       })
 
       // Create project

@@ -1,6 +1,7 @@
 import SplashScreen from "@components/feedback/SplashScreen";
 import { publicRouteConfig } from "@config/route.config";
 import { ROUTES } from "@constants/routes";
+import { usePreventNumberInputScroll, useScrollToTop } from "@hooks/useGlobalEffects";
 import AuthenticatedRoutes from "@layout/AuthenticatedRoutes";
 import { fetchMe } from "@store/slices/auth.slice";
 import { Suspense, useEffect } from "react";
@@ -10,6 +11,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 function App() {
   const dispatch = useDispatch();
   const { meData, logIn } = useSelector((state) => state.auth);
+
+  useScrollToTop();
+  usePreventNumberInputScroll();
 
   // FETCH PROFILE
   useEffect(() => {

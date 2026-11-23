@@ -24,7 +24,6 @@ import ModalAction from "@components/ui/ModalAction";
 export const EMPLOYEE_ROLES = [
   { label: "Company Owner", value: "COMPANY_OWNER" },
   { label: "Head Office Admin", value: "HO_ADMIN" },
-  { label: "Finanace Manager", value: "FINANCE_MANAGER" },
   { label: "Project Director", value: "PROJECT_DIRECTOR" },
   { label: "Project Incharge", value: "PROJECT_INCHARGE" },
   { label: "Project Manager", value: "PROJECT_MANAGER" },

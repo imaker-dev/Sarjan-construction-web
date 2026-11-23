@@ -14,6 +14,7 @@ import profileSlice from './store/slices/profile.slice';
 import notificationSlice from './store/slices/notification.slice';
 import securitySlice from './store/slices/security.slice';
 import attendanceSlice from './store/slices/attendance.slice';
+import dailyReportSlice from './store/slices/dailyReport.slice';
 
 const reducer = {
   auth: authSlice,
@@ -31,6 +32,7 @@ const reducer = {
   notification: notificationSlice,
   security: securitySlice,
   attendance: attendanceSlice,
+  dailyReport: dailyReportSlice,
 };
 
 const store = configureStore({

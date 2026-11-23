@@ -31,6 +31,8 @@ const AttendancePage = lazyLoad(() => import("@features/attendance/pages/Attenda
 const AllAttendancePoliciesPage = lazyLoad(() => import("@features/attendance/pages/AllAttendancePoliciesPage"));
 const AttendancePolicyDetailsPage = lazyLoad(() => import("@features/attendance/pages/AttendancePolicyDetailsPage"));
 const CreateAttendancePolicyPage = lazyLoad(() => import("@features/attendance/pages/CreateAttendancePolicyPage"));
+const DailyReportsListPage = lazyLoad(() => import("@features/daily-reports/pages/DailyReportsListPage"));
+const DailyReportDetailsPage = lazyLoad(() => import("@features/daily-reports/pages/DailyReportDetailsPage"));
 
 export const routeConfig = [
   {
@@ -71,7 +73,7 @@ export const routeConfig = [
   { path: ROUTES.SITES.CREATE, element: CreateSitePage, permissions: [PERMISSIONS.SITE.CREATE] },
 
   // Departments Routes
-  { path: ROUTES.DEPARTMENTS.ROOT, element: AllDepartmentsPage,  permissions: [PERMISSIONS.DEPARTMENT.READ]},
+  { path: ROUTES.DEPARTMENTS.ROOT, element: AllDepartmentsPage, permissions: [PERMISSIONS.DEPARTMENT.READ] },
   { path: ROUTES.DEPARTMENTS.CREATE, element: CreateDepartmentPage, permissions: [PERMISSIONS.DEPARTMENT.CONFIGURE] },
   { path: ROUTES.DEPARTMENTS.OPERATIONS, element: DepartmentOperationsPage, permissions: [PERMISSIONS.DEPARTMENT.CONFIGURE] },
 
@@ -87,8 +89,15 @@ export const routeConfig = [
   { path: ROUTES.ATTENDANCE.POLICIES, element: AllAttendancePoliciesPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE], },
   { path: ROUTES.ATTENDANCE.POLICY_DETAILS, element: AttendancePolicyDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
   { path: ROUTES.ATTENDANCE.CREATE_POLICY, element: CreateAttendancePolicyPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
+  { path: "/attendance/muster-roll", element: DailyReportsListPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
+
+  // Daily Reports & Settlement Routes (Separate Feature)
+  { path: ROUTES.DAILY_REPORTS.ROOT, element: DailyReportsListPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
+  { path: ROUTES.DAILY_REPORTS.DETAILS, element: DailyReportDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
+  { path: "/attendance/daily-reports", element: DailyReportsListPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
+  { path: "/attendance/daily-reports/:id", element: DailyReportDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
 
   // Notifications Routes
   { path: ROUTES.NOTIFICATIONS.ROOT, element: NotificationPage, roles: [ROLES.COMPANY_OWNER] },
-  
+
 ];

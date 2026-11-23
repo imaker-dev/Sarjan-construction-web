@@ -151,6 +151,18 @@ export const ROUTES = {
     POLICY_DETAILS: "/attendance/policies/policy",
     CREATE_POLICY: "/attendance/policies/create",
     UPDATE_POLICY: "/attendance/policies/create",
+    DAILY_REPORTS: "/daily-reports",
+    DAILY_REPORT_DETAILS: "/daily-reports/:id",
+    MUSTER_ROLL: "/daily-reports?tab=muster-roll",
+  },
+
+  // =========================
+  // DAILY REPORTS (CENTRAL FINANCE & SITE AUDIT)
+  // =========================
+  DAILY_REPORTS: {
+    ROOT: "/daily-reports",
+    DETAILS: "/daily-reports/:id",
+    MUSTER_ROLL: "/daily-reports?tab=muster-roll",
   },
 
   // =========================

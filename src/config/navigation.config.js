@@ -12,6 +12,8 @@ import {
   IconBriefcase,
   IconMapPin,
   IconClockCheck,
+  IconReportAnalytics,
+  IconClipboardList,
 } from "@tabler/icons-react";
 
 export const NAV_CONFIG = [
@@ -96,6 +98,12 @@ export const NAV_CONFIG = [
           text: "New",
           color: "primary",
         },
+        permissions: [PERMISSIONS.ATTENDANCE.READ],
+      },
+      {
+        title: "Daily Reports",
+        icon: IconReportAnalytics,
+        path: ROUTES.DAILY_REPORTS.ROOT,
         permissions: [PERMISSIONS.ATTENDANCE.READ],
       },
     ],

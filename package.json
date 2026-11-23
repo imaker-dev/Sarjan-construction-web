@@ -24,6 +24,8 @@
     "react-aria-components": "^1.21.1",
     "react-date-range": "^2.0.1",
     "react-dom": "^19.2.8",
+    "react-dropzone": "^20.2.1",
+    "react-easy-crop": "^6.2.5",
     "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.3",
     "react-top-loading-bar": "^3.0.2",

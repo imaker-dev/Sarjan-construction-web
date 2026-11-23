@@ -9,4 +9,7 @@ export default false
       getProfileApi: () => {
         return Api.get("/profile");
       },
+      uploadDocumentApi: (values) => {
+        return Api.post(`/me/documents/upload`,values)
+      }
     };

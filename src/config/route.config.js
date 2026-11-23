@@ -1,6 +1,7 @@
 import { PERMISSIONS } from "@constants/permissions";
 import { ROLES } from "@constants/roles";
 import { ROUTES } from "@constants/routes";
+import EmployeeDocumentsPage from "@features/employees/pages/EmployeeDocumentsPage";
 import { lazyLoad } from "@utils/lazy.utils";
 
 const DashboardPage = lazyLoad(() => import("@features/dashboard/pages/DashboardPage"));
@@ -81,6 +82,7 @@ export const routeConfig = [
   { path: ROUTES.EMPLOYEES.MEMBERSHIPS, element: EmployeeMembershipPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
   { path: ROUTES.EMPLOYEES.ROLES, element: EmployeeRoleAssignmentPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
   { path: ROUTES.EMPLOYEES.OPERATIONS, element: EmployeeOperationsPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
+  { path: ROUTES.EMPLOYEES.DOCUMENTS, element: EmployeeDocumentsPage, permissions: [PERMISSIONS.EMPLOYEE.READ] },
 
   // Attendance Routes
   { path: ROUTES.ATTENDANCE.ROOT, element: AttendancePage, permissions: [PERMISSIONS.ATTENDANCE.READ], },

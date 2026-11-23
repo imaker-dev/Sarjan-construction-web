@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   KeyRound,
   Plus,
+  Files,
 } from "lucide-react";
 import { IconUserCheck, IconUserX } from "@tabler/icons-react";
 
@@ -329,6 +330,12 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
         icon: KeyRound,
         onClick: (employee) =>
           navigate(`${ROUTES.EMPLOYEES.OPERATIONS}?employeeId=${employee.id}`),
+      },
+      {
+        label: "Manage Documents",
+        icon: Files,
+        onClick: (employee) =>
+          navigate(`${ROUTES.EMPLOYEES.DOCUMENTS}?employeeId=${employee.id}`),
       },
 
       {

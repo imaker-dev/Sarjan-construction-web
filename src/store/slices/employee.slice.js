@@ -166,6 +166,62 @@ export const revokeEmployeeOperation = createAsyncThunk(
   },
 );
 
+/* =========================================================
+   EMPLOYEE DOCUMENTS
+========================================================= */
+
+// Get Employee Documents
+export const getEmployeeDocuments = createAsyncThunk(
+  "employee/getEmployeeDocuments",
+  async (id) => {
+    const res = await employeeApi.getEmployeeDocumentsApi(id);
+    return res.data;
+  },
+);
+
+// Verify Employee Document
+export const verifyEmployeeDocument = createAsyncThunk(
+  "employee/verifyEmployeeDocument",
+  async ({ id, docId, values }) => {
+    const res = await employeeApi.verifyEmployeeDocumentApi({
+      id,
+      docId,
+      values,
+    });
+
+    return { docId, ...res.data };
+  },
+);
+
+// Delete Employee Document
+export const deleteEmployeeDocument = createAsyncThunk(
+  "employee/deleteEmployeeDocument",
+  async ({ id, docId }) => {
+    const res = await employeeApi.deleteEmployeeDocumentApi({
+      id,
+      docId,
+    });
+
+    return { docId, ...res.data };
+  },
+);
+
+// Download Employee Document
+export const downloadEmployeeDocument = createAsyncThunk(
+  "employee/downloadEmployeeDocument",
+  async ({ employeeId, docId }) => {
+    const res = await employeeApi.downloadEmployeeDocumentApi({
+      employeeId,
+      docId,
+    });
+
+    return {
+      docId,
+      data: res.data,
+    };
+  },
+);
+
 const employeeSlice = createSlice({
   name: "employee",
 
@@ -196,6 +252,13 @@ const employeeSlice = createSlice({
     isRevokingOperation: false,
     isUpdatingOperationStatus: false,
     employeeOperations: [],
+
+    // Employee Documents
+    isLoadingEmployeeDocuments: false,
+    isVerifyingEmployeeDocument: false,
+    isDeletingEmployeeDocument: false,
+    isDownloadingEmployeeDocument: false,
+    employeeDocuments: [],
   },
 
   reducers: {
@@ -481,6 +544,91 @@ const employeeSlice = createSlice({
       .addCase(revokeEmployeeOperation.rejected, (state, action) => {
         state.isRevokingOperation = false;
         toast.error(action.error.message || "Failed to revoke operation");
+      })
+
+      // ==================================================
+      // EMPLOYEE DOCUMENTS
+      // ==================================================
+
+      // Get Employee Documents
+      .addCase(getEmployeeDocuments.pending, (state) => {
+        state.isLoadingEmployeeDocuments = true;
+      })
+      .addCase(getEmployeeDocuments.fulfilled, (state, action) => {
+        state.isLoadingEmployeeDocuments = false;
+        state.employeeDocuments =
+          action.payload?.documents || action.payload || [];
+      })
+      .addCase(getEmployeeDocuments.rejected, (state, action) => {
+        state.isLoadingEmployeeDocuments = false;
+        toast.error(
+          action.error.message || "Failed to fetch employee documents",
+        );
+      })
+
+      // Verify Employee Document
+      .addCase(verifyEmployeeDocument.pending, (state) => {
+        state.isVerifyingEmployeeDocument = true;
+      })
+      .addCase(verifyEmployeeDocument.fulfilled, (state, action) => {
+        state.isVerifyingEmployeeDocument = false;
+
+        const { docId, ...updatedDocument } = action.payload;
+
+        state.employeeDocuments = state.employeeDocuments.map((doc) =>
+          (doc.id || doc.docId) === docId
+            ? { ...doc, ...updatedDocument }
+            : doc,
+        );
+
+        toast.success(
+          action.payload?.message ||
+            "Document verification updated successfully!",
+        );
+      })
+      .addCase(verifyEmployeeDocument.rejected, (state, action) => {
+        state.isVerifyingEmployeeDocument = false;
+        toast.error(
+          action.error.message || "Failed to verify employee document",
+        );
+      })
+
+      // Delete Employee Document
+      .addCase(deleteEmployeeDocument.pending, (state) => {
+        state.isDeletingEmployeeDocument = true;
+      })
+      .addCase(deleteEmployeeDocument.fulfilled, (state, action) => {
+        state.isDeletingEmployeeDocument = false;
+
+        const { docId } = action.payload;
+
+        state.employeeDocuments = state.employeeDocuments.filter(
+          (doc) => (doc.id || doc.docId) !== docId,
+        );
+
+        toast.success(
+          action.payload?.message || "Employee document deleted successfully!",
+        );
+      })
+      .addCase(deleteEmployeeDocument.rejected, (state, action) => {
+        state.isDeletingEmployeeDocument = false;
+        toast.error(
+          action.error.message || "Failed to delete employee document",
+        );
+      })
+
+      // Download Employee Document
+      .addCase(downloadEmployeeDocument.pending, (state) => {
+        state.isDownloadingEmployeeDocument = true;
+      })
+      .addCase(downloadEmployeeDocument.fulfilled, (state) => {
+        state.isDownloadingEmployeeDocument = false;
+      })
+      .addCase(downloadEmployeeDocument.rejected, (state, action) => {
+        state.isDownloadingEmployeeDocument = false;
+        toast.error(
+          action.error.message || "Failed to download employee document",
+        );
       });
   },
 });

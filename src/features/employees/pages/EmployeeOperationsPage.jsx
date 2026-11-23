@@ -134,7 +134,7 @@ const EmployeeOperationsPage = () => {
     {
       key: "description",
       header: "Description",
-       mobileStacked: true, 
+      mobileStacked: true,
       render: (row) => (
         <div className="min-w-[280px] max-w-[320px] ">
           <p className="text-sm leading-5 text-gray-600 dark:text-gray-300">
@@ -156,17 +156,34 @@ const EmployeeOperationsPage = () => {
       key: "source",
       header: "Source",
       render: (row) => {
-        const isInherited = row.inherited || row.source === "DEPARTMENT";
+        const source =
+          row.source || (row.inherited ? "DEPARTMENT" : "EMPLOYEE");
+
+        const sourceConfig = {
+          DEPARTMENT: {
+            label: "Department",
+            className:
+              "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+          },
+          ROLE: {
+            label: "Role",
+            className:
+              "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+          },
+          EMPLOYEE: {
+            label: "Employee",
+            className:
+              "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+          },
+        };
+
+        const config = sourceConfig[source] || sourceConfig.EMPLOYEE;
 
         return (
           <span
-            className={`rounded-md px-2.5 py-1 text-xs font-medium ${
-              isInherited
-                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                : "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
-            }`}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium ${config.className}`}
           >
-            {isInherited ? "Department" : "Employee"}
+            {config.label}
           </span>
         );
       },

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -8,7 +8,6 @@ import {
   Loader2,
   LogIn,
   LogOut,
-  MapPin,
   Play,
   RefreshCw,
   Timer,
@@ -17,110 +16,58 @@ import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import ModalAction from "@components/ui/ModalAction"; // <- adjust to where your modal lives
 import { useDispatch, useSelector } from "react-redux";
 import {
+  endAttendanceBreak,
   getActiveSession,
-  getAttendanceSessions,
   punchIn,
+  punchOut,
+  startAttendanceBreak,
 } from "@store/slices/attendance.slice";
 import { handleResponse } from "@utils/async.utils";
+import StatCard from "@components/ui/StatCard";
+import AttendanceHero from "../components/AttandanceHero";
+import {
+  BREAK_TYPES,
+  DEFAULT_POLICY,
+  EMPTY_ARR,
+  EMPTY_DAY,
+  HOUR,
+  MIN,
+  STATUS,
+  TONES,
+  ZERO_TOTALS,
+  breakLabel,
+  buildDay,
+  buildLogs,
+  clockFmt,
+  dayLabel,
+  durFmt,
+  eventsFromSessions,
+  getDayTotals,
+  getSegments,
+  round6,
+  timeFmt,
+  useNow,
+} from "@utils/attendance.utils";
 
 /* ========================================================================== */
-/*  HOW TO WIRE THE API (sections 3.1 - 3.4)                                  */
+/*  DATA FLOW                                                                 */
 /*                                                                            */
-/*  <TeamShiftPage                                                            */
-/*    session={activeSession}              // GET /attendance/sessions/active  */
-/*                                         //   -> response.session (or null) */
-/*    isLoading={isFetchingSession}                                           */
-/*    sites={mySites}                      // [{ id, code, name }]             */
-/*    onRefresh={() => dispatch(getActiveSession()).unwrap()}                 */
-/*    onPunchIn={(payload) => dispatch(punchIn(payload)).unwrap()}            */
-/*    onStartBreak={(payload) => dispatch(startBreak(payload)).unwrap()}      */
-/*    onEndBreak={(payload) => dispatch(endBreak(payload)).unwrap()}          */
-/*    onPunchOut={(payload) => dispatch(punchOut(payload)).unwrap()}          */
-/*  />                                                                        */
+/*  state.attendance.activeSession = GET /attendance/sessions/active          */
+/*    {                                                                       */
+/*      session,                 -> the CURRENT session only                  */
+/*      activityLog[],           -> EVERY check-in / break / check-out today  */
+/*      isDelayedClockIn, scheduledClockInAt, targetWorkDurationMins, ...     */
+/*    }                                                                       */
 /*                                                                            */
-/*  - Each handler receives the ready-to-send payload and must return a       */
-/*    promise. If it rejects, the error (with `code`/`message`) is shown.     */
-/*  - After every success the page calls onRefresh() to re-sync (3.1).        */
-/*  - onPunchOut should resolve with the 3.4 response to show settled hazri.  */
-/*  - No backend yet? Use the exported useMockAttendance() hook (bottom).     */
+/*  Everything on this page (worked time, breaks, timeline, log, status) is   */
+/*  derived from `activityLog`, so multiple check-ins in one day add up.      */
+/*  If activityLog is missing, it falls back to the `session` object.         */
 /* ========================================================================== */
 
 /* -------------------------------------------------------------------------- */
-/*  Helpers                                                                   */
+/*  Geolocation                                                               */
 /* -------------------------------------------------------------------------- */
 
-const MIN = 60_000;
-const HOUR = 3_600_000;
-const EMPTY_SHIFT = { clockInAt: null, clockOutAt: null, breaks: [] };
-const DEFAULT_POLICY = { fullDayThresholdHours: 8, halfDayThresholdHours: 4 };
-
-const BREAK_TYPES = [
-  { key: "LUNCH", label: "Lunch" },
-  { key: "TEA", label: "Tea" },
-  { key: "PRAYER", label: "Prayer" },
-  { key: "EMERGENCY", label: "Emergency" },
-  { key: "OTHER", label: "Other" },
-];
-const breakLabel = (key) =>
-  BREAK_TYPES.find((b) => b.key === key)?.label || "Break";
-
-const pad = (n) => String(n).padStart(2, "0");
-
-const clockFmt = (ms) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
-};
-
-const durFmt = (ms) => {
-  const m = Math.floor(Math.max(0, ms) / MIN);
-  if (m < 1) return ms > 0 ? "<1m" : "0m";
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  if (!h) return `${r}m`;
-  return r ? `${h}h ${r}m` : `${h}h`;
-};
-
-const timeFmt = (d) =>
-  d
-    ? d
-        .toLocaleTimeString("en-IN", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
-        .toUpperCase()
-    : "—";
-
-const dayLabel = (d, now) => {
-  if (d.toDateString() === now.toDateString()) return "Today";
-  const y = new Date(now);
-  y.setDate(y.getDate() - 1);
-  if (d.toDateString() === y.toDateString()) return "Yesterday";
-  return d.toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-};
-
-const round6 = (n) => Number(n.toFixed(6));
-const titleCase = (s) =>
-  String(s || "")
-    .toLowerCase()
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-
-function useNow(interval = 1000) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), interval);
-    return () => clearInterval(id);
-  }, [interval]);
-  return now;
-}
-
-/** Asks the browser for the current position while `active` is true. */
 function useGeolocation(active) {
   const [state, setState] = useState({ status: "idle" });
 
@@ -163,65 +110,10 @@ function useGeolocation(active) {
   return { ...state, retry: locate };
 }
 
-/** API session -> the shape the timers use. */
-const toShift = (s) =>
-  s
-    ? {
-        clockInAt: new Date(s.punchInAt),
-        clockOutAt: s.punchOutAt ? new Date(s.punchOutAt) : null,
-        breaks: (s.breaks || []).map((b) => ({
-          start: new Date(b.startedAt),
-          end: b.endedAt ? new Date(b.endedAt) : null,
-        })),
-      }
-    : EMPTY_SHIFT;
-
-const getStatus = (shift) => {
-  if (!shift.clockInAt) return "off";
-  if (shift.clockOutAt) return "done";
-  return shift.breaks.some((b) => !b.end) ? "break" : "working";
-};
-
-function getTotals(shift, now) {
-  if (!shift.clockInAt) return { worked: 0, breaks: 0, openBreak: 0 };
-  const end = shift.clockOutAt || now;
-  const breaks = shift.breaks.reduce(
-    (sum, b) => sum + Math.max(0, (b.end || end) - b.start),
-    0,
-  );
-  const open = shift.breaks.find((b) => !b.end);
-  return {
-    worked: Math.max(0, end - shift.clockInAt - breaks),
-    breaks,
-    openBreak: open ? Math.max(0, now - open.start) : 0,
-  };
-}
-
-function getSegments(shift, now) {
-  if (!shift.clockInAt) return [];
-  const end = (shift.clockOutAt || now).getTime();
-  const segments = [];
-  let cursor = shift.clockInAt.getTime();
-  [...shift.breaks]
-    .sort((a, b) => a.start - b.start)
-    .forEach((b) => {
-      const from = b.start.getTime();
-      const to = (b.end || new Date(end)).getTime();
-      if (from > cursor)
-        segments.push({ type: "work", from: cursor, to: from });
-      segments.push({ type: "break", from, to });
-      cursor = to;
-    });
-  if (end > cursor) segments.push({ type: "work", from: cursor, to: end });
-  return segments;
-}
-
-const estimateUnits = (workedMs, policy) => {
+const estimateUnits = (workedMs, rules) => {
   const h = workedMs / HOUR;
-  if (h >= policy.fullDayThresholdHours)
-    return { units: "1.0", label: "Full day" };
-  if (h >= policy.halfDayThresholdHours)
-    return { units: "0.5", label: "Half day" };
+  if (h >= rules.fullDayThresholdHours) return { units: "1.0", label: "Full day" };
+  if (h >= rules.halfDayThresholdHours) return { units: "0.5", label: "Half day" };
   return { units: "0.0", label: "Absent" };
 };
 
@@ -245,8 +137,7 @@ const ERROR_COPY = {
     resync: true,
   },
   GEOFENCE_BREACH: {
-    message:
-      "You're outside the site boundary. Move closer to the site gate and try again.",
+    message: "You're outside the allowed boundary. Move closer and try again.",
   },
   TVT_NOT_ATTENDED: {
     message:
@@ -273,59 +164,12 @@ const errorText = (e) =>
   e?.data?.message ??
   (typeof e === "string" ? e : null);
 
-const FLAG_COPY = {
-  GEOFENCE_BREACH: "Outside site range",
-  TVT_NOT_ATTENDED: "Safety briefing not attended",
-};
-
 /* -------------------------------------------------------------------------- */
 /*  Styling maps                                                              */
 /* -------------------------------------------------------------------------- */
 
 const CARD =
   "rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1C2536]";
-
-const TONES = {
-  emerald:
-    "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
-  amber: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
-  sky: "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400",
-  rose: "bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400",
-  indigo:
-    "bg-indigo-50 text-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-400",
-  slate: "bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400",
-};
-
-const STATUS = {
-  off: {
-    label: "Off the clock",
-    pill: TONES.slate,
-    dot: "bg-slate-400",
-    ring: "stroke-slate-300",
-    live: false,
-  },
-  working: {
-    label: "Working",
-    pill: TONES.emerald,
-    dot: "bg-emerald-500",
-    ring: "stroke-emerald-500",
-    live: true,
-  },
-  break: {
-    label: "On break",
-    pill: TONES.amber,
-    dot: "bg-amber-500",
-    ring: "stroke-amber-400",
-    live: true,
-  },
-  done: {
-    label: "Shift ended",
-    pill: TONES.indigo,
-    dot: "bg-indigo-500",
-    ring: "stroke-indigo-400",
-    live: false,
-  },
-};
 
 const LOG_META = {
   clock_in: { title: "Clocked in", icon: LogIn, tone: "emerald" },
@@ -340,173 +184,60 @@ const FILTERS = [
   { key: "breaks", label: "Breaks", types: ["break_start", "break_end"] },
 ];
 
-const BUTTON_TONES = {
-  emerald:
-    "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25 hover:bg-emerald-600 focus-visible:ring-emerald-500/40",
-  amber:
-    "bg-amber-500 text-white shadow-sm shadow-amber-500/25 hover:bg-amber-600 focus-visible:ring-amber-500/40",
-  amberSoft:
-    "bg-amber-50 text-amber-700 hover:bg-amber-100 focus-visible:ring-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25",
-  roseSoft:
-    "bg-rose-50 text-rose-600 hover:bg-rose-100 focus-visible:ring-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300 dark:hover:bg-rose-500/25",
-  neutral:
-    "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-300 dark:border-slate-700 dark:bg-transparent dark:text-slate-200 dark:hover:bg-slate-700/40",
-};
+const WARN = "text-amber-600 dark:text-amber-400";
 
 /* -------------------------------------------------------------------------- */
-/*  Activity log (built from session data: no extra API needed)               */
+/*  Activity log                                                              */
 /* -------------------------------------------------------------------------- */
-
-function buildLogs(sessions) {
-  const out = [];
-  sessions.forEach((s) => {
-    out.push({
-      id: `${s.id}-in`,
-      type: "clock_in",
-      at: s.punchInAt,
-      session: s,
-    });
-    (s.breaks || []).forEach((b) => {
-      out.push({
-        id: `${b.id}-s`,
-        type: "break_start",
-        at: b.startedAt,
-        brk: b,
-      });
-      if (b.endedAt)
-        out.push({ id: `${b.id}-e`, type: "break_end", at: b.endedAt, brk: b });
-    });
-    if (s.punchOutAt)
-      out.push({
-        id: `${s.id}-out`,
-        type: "clock_out",
-        at: s.punchOutAt,
-        session: s,
-      });
-  });
-  return out;
-}
 
 function logDetails(log) {
-  const s = log.session;
+  const e = log.event;
   const lines = [];
-  if (log.type === "clock_in") {
-    if (s.site?.name) {
-      const dist =
-        s.punchInDistanceM != null
-          ? ` · ${s.punchInDistanceM} m from site`
-          : "";
-      lines.push({ text: `${s.site.name}${dist}` });
-    }
-    if (s.isFlagged)
-      lines.push({
-        text: `Flagged: ${FLAG_COPY[s.flagReason] || titleCase(s.flagReason) || "needs review"}`,
-        tone: "text-amber-600 dark:text-amber-400",
-      });
+
+  if (log.type === "clock_in" || log.type === "clock_out") {
+    const where = [];
+    if (e.siteName) where.push(e.siteName);
+    if (e.distanceM != null) where.push(`${e.distanceM} m from site`);
+    if (e.withinGeofence === true) where.push("Within allowed range");
+    if (where.length) lines.push({ text: where.join(" · ") });
+    if (e.withinGeofence === false)
+      lines.push({ text: "Outside allowed range", tone: WARN });
   }
+
+  if (log.type === "clock_in" && log.late > 0)
+    lines.push({ text: `Late by ${durFmt(log.late * MIN)}`, tone: WARN });
+
   if (log.type === "break_start")
-    lines.push({ text: `${breakLabel(log.brk.breakType)} break` });
+    lines.push({ text: `${breakLabel(log.breakType)} break` });
+
   if (log.type === "break_end") {
-    const mins =
-      log.brk.durationMins ||
-      Math.round(
-        (new Date(log.brk.endedAt) - new Date(log.brk.startedAt)) / MIN,
-      );
+    const mins = e.durationMins;
     lines.push({
-      text: `${breakLabel(log.brk.breakType)} break lasted ${durFmt(mins * MIN)}`,
+      text:
+        mins != null
+          ? `${breakLabel(log.breakType)} break lasted ${durFmt(mins * MIN)}`
+          : `${breakLabel(log.breakType)} break`,
     });
   }
-  if (log.type === "clock_out") {
-    const bits = [];
-    if (s.netDurationMins != null)
-      bits.push(`Worked ${durFmt(s.netDurationMins * MIN)}`);
-    if (s.totalPUnits != null) bits.push(`${s.totalPUnits} hazri`);
-    if (bits.length) lines.push({ text: bits.join(" · ") });
+
+  if (log.type === "clock_out" && log.summary) {
+    const { workedMs, breakMs } = log.summary;
+    lines.push({
+      text:
+        `Worked ${durFmt(workedMs)}` +
+        (breakMs > 0 ? ` · ${durFmt(breakMs)} on breaks` : ""),
+    });
   }
+
+  if ((log.type === "clock_in" || log.type === "clock_out") && e.remarks)
+    lines.push({ text: `Note: ${e.remarks}` });
+
   return lines;
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Small components                                                          */
 /* -------------------------------------------------------------------------- */
-
-function ShiftButton({ tone, icon: Icon, label, onClick, disabled, title }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-[14.5px] font-semibold transition focus:outline-none focus-visible:ring-2 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${BUTTON_TONES[tone]}`}
-    >
-      <Icon size={18} strokeWidth={2.25} />
-      {label}
-    </button>
-  );
-}
-
-function ProgressRing({ pct, ringClass, children }) {
-  const R = 88;
-  const C = 2 * Math.PI * R;
-  return (
-    <div className="relative h-52 w-52 shrink-0 sm:h-60 sm:w-60">
-      <svg
-        viewBox="0 0 200 200"
-        className="h-full w-full -rotate-90"
-        aria-hidden="true"
-      >
-        <circle
-          cx="100"
-          cy="100"
-          r={R}
-          fill="none"
-          strokeWidth="10"
-          className="stroke-slate-100 dark:stroke-slate-700/60"
-        />
-        <circle
-          cx="100"
-          cy="100"
-          r={R}
-          fill="none"
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={C}
-          strokeDashoffset={C * (1 - pct)}
-          className={`${ringClass} transition-[stroke-dashoffset] duration-700 ease-linear motion-reduce:transition-none`}
-          style={{ opacity: pct > 0 ? 1 : 0 }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ icon: Icon, tone, label, value, sub }) {
-  return (
-    <div className={`${CARD} flex items-center gap-3 p-4`}>
-      <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TONES[tone]}`}
-      >
-        <Icon size={18} strokeWidth={2} />
-      </span>
-      <div className="min-w-0">
-        <p className="text-[12px] text-slate-400 dark:text-slate-500">
-          {label}
-        </p>
-        <p className="truncate text-[17px] font-semibold tabular-nums leading-tight text-slate-800 dark:text-white">
-          {value}
-        </p>
-        {sub && (
-          <p className="text-[11.5px] text-slate-400 dark:text-slate-500">
-            {sub}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function Notice({ tone = "rose", children }) {
   const styles =
@@ -524,21 +255,42 @@ function Notice({ tone = "rose", children }) {
   );
 }
 
-function Timeline({ segments, shift }) {
+const SEGMENT_STYLE = {
+  work: { bar: "bg-emerald-500", label: "Working" },
+  break: { bar: "bg-amber-400", label: "Break" },
+  off: { bar: "bg-slate-300 dark:bg-slate-600", label: "Off the clock" },
+};
+
+const Timeline = memo(function Timeline({ segments, day, totals }) {
   const total = segments.reduce((s, x) => s + (x.to - x.from), 0);
   return (
     <section className={`${CARD} p-5 sm:p-6`}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-[15px] font-semibold text-slate-800 dark:text-white">
           Today&rsquo;s timeline
         </h3>
         <div className="flex items-center gap-4 text-[12px] text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500" /> Work
+            <span className="font-medium tabular-nums text-slate-700 dark:text-slate-200">
+              {durFmt(totals.worked)}
+            </span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-amber-400" /> Break
+            <span className="font-medium tabular-nums text-slate-700 dark:text-slate-200">
+              {durFmt(totals.breaks)}
+            </span>
           </span>
+          {totals.off > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600" />{" "}
+              Off
+              <span className="font-medium tabular-nums text-slate-700 dark:text-slate-200">
+                {durFmt(totals.off)}
+              </span>
+            </span>
+          )}
         </div>
       </div>
       {total > 0 ? (
@@ -547,17 +299,17 @@ function Timeline({ segments, shift }) {
             {segments.map((s, i) => (
               <div
                 key={i}
-                title={`${s.type === "work" ? "Working" : "Break"} · ${durFmt(s.to - s.from)}`}
+                title={`${SEGMENT_STYLE[s.type].label} · ${durFmt(s.to - s.from)}`}
                 style={{ flexGrow: s.to - s.from, flexBasis: 0, minWidth: 3 }}
-                className={
-                  s.type === "work" ? "bg-emerald-500" : "bg-amber-400"
-                }
+                className={SEGMENT_STYLE[s.type].bar}
               />
             ))}
           </div>
           <div className="mt-2 flex justify-between text-[12px] tabular-nums text-slate-400 dark:text-slate-500">
-            <span>{timeFmt(shift.clockInAt)}</span>
-            <span>{shift.clockOutAt ? timeFmt(shift.clockOutAt) : "Now"}</span>
+            <span>{timeFmt(new Date(day.firstClockInAt))}</span>
+            <span>
+              {day.lastClockOutAt ? timeFmt(new Date(day.lastClockOutAt)) : "Now"}
+            </span>
           </div>
         </>
       ) : (
@@ -567,9 +319,9 @@ function Timeline({ segments, shift }) {
       )}
     </section>
   );
-}
+});
 
-function LogItem({ log, isLast }) {
+const LogItem = memo(function LogItem({ log, isLast }) {
   const { title, icon: Icon, tone } = LOG_META[log.type];
   const lines = logDetails(log);
   return (
@@ -608,14 +360,16 @@ function LogItem({ log, isLast }) {
       </div>
     </li>
   );
-}
+});
 
-function ActivityLog({ logs, now }) {
+const ActivityLog = memo(function ActivityLog({ logs }) {
+  const now = useNow(60_000);
   const [filter, setFilter] = useState("all");
 
   const groups = useMemo(() => {
     const types = FILTERS.find((f) => f.key === filter).types;
     const map = new Map();
+    // newest first
     [...logs]
       .filter((l) => !types || types.includes(l.type))
       .sort((a, b) => new Date(b.at) - new Date(a.at))
@@ -676,13 +430,18 @@ function ActivityLog({ logs, now }) {
           </p>
         </div>
       ) : (
-        <div className="max-h-[640px] space-y-6 overflow-y-auto px-5 py-5 sm:px-6">
+        <div className="max-h-[640px] overflow-y-auto px-5 pb-5 sm:px-6">
           {groups.map((items) => (
             <div key={items[0].id}>
-              <p className="mb-3 text-[12.5px] font-semibold text-slate-500 dark:text-slate-400">
-                {dayLabel(new Date(items[0].at), now)}
-              </p>
-              <ol>
+              <div className="sticky top-0 z-20 -mx-5 flex items-center justify-between bg-white/90 px-5 py-3 backdrop-blur dark:bg-[#1C2536]/90 sm:-mx-6 sm:px-6">
+                <p className="text-[12.5px] font-semibold text-slate-500 dark:text-slate-400">
+                  {dayLabel(new Date(items[0].at), now)}
+                </p>
+                <span className="text-[12px] tabular-nums text-slate-400 dark:text-slate-500">
+                  {items.length} {items.length === 1 ? "event" : "events"}
+                </span>
+              </div>
+              <ol className="mb-3 mt-1">
                 {items.map((log, i) => (
                   <LogItem
                     key={log.id}
@@ -697,27 +456,52 @@ function ActivityLog({ logs, now }) {
       )}
     </section>
   );
-}
+});
 
-function ClockCardSkeleton() {
+/** Stat cards + timeline. Everything is totalled across ALL of today's sessions. */
+const Summary = memo(function Summary({ day, status, rules }) {
+  const now = useNow(STATUS[status].live ? 10_000 : 60_000);
+  const totals = getDayTotals(day, now);
+  const segments = getSegments(day, now);
+
+  const diff = rules.fullDayThresholdHours * HOUR - totals.worked;
+  const overtime = diff < 0;
+
   return (
-    <div
-      className="grid gap-6 px-5 py-8 sm:px-6 md:grid-cols-[auto_minmax(0,1fr)] md:items-center md:gap-10"
-      aria-hidden="true"
-    >
-      <div className="mx-auto h-52 w-52 animate-pulse rounded-full bg-slate-100 dark:bg-slate-700/40 sm:h-60 sm:w-60" />
-      <div className="space-y-4">
-        <div className="h-4 w-40 animate-pulse rounded bg-slate-100 dark:bg-slate-700/40" />
-        <div className="h-12 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700/40" />
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+        <StatCard
+          icon={LogIn}
+          color="emerald"
+          label="First clock-in"
+          value={timeFmt(day.firstClockInAt ? new Date(day.firstClockInAt) : null)}
+        />
+        <StatCard
+          icon={Timer}
+          color="indigo"
+          label="Worked"
+          value={durFmt(totals.worked)}
+        />
+        <StatCard
+          icon={Coffee}
+          color="amber"
+          label={`Break time (${day.breakCount} ${day.breakCount === 1 ? "break" : "breaks"})`}
+          value={durFmt(totals.breaks)}
+        />
+        <StatCard
+          icon={Hourglass}
+          color={overtime ? "rose" : "sky"}
+          label={overtime ? "Overtime" : "Remaining"}
+          value={durFmt(Math.abs(diff))}
+        />
       </div>
-    </div>
+
+      <Timeline segments={segments} day={day} totals={totals} />
+    </>
   );
-}
+});
 
 /* ---- Modal contents ------------------------------------------------------ */
-
-const FIELD_INPUT =
-  "w-full rounded-lg border border-border bg-card px-3 py-2 text-[13.5px] text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20";
 
 function Field({ label, children }) {
   return (
@@ -739,7 +523,7 @@ function RemarksField({ value, onChange }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Add a note for your supervisor"
-        className={`${FIELD_INPUT} resize-none`}
+        className="form-textarea resize-none"
       />
     </Field>
   );
@@ -753,6 +537,7 @@ function LocationRow({ geo }) {
         Location found &middot; accurate to {geo.accuracy} m
       </div>
     );
+
   if (geo.status === "error")
     return (
       <div className="space-y-2">
@@ -766,6 +551,7 @@ function LocationRow({ geo }) {
         </button>
       </div>
     );
+
   return (
     <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 px-3 py-2.5 text-[13px] text-muted-foreground">
       <Loader2 size={16} className="shrink-0 animate-spin" />
@@ -789,53 +575,49 @@ function SummaryTile({ label, value }) {
 /*  Page                                                                      */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Props
- *  title          banner title (default "Attendance")
- *  userName       shows a greeting
- *  session        active session from GET /attendance/sessions/active (or null)
- *  history        optional past sessions (same shape, with punchOutAt) shown in the log
- *  isLoading      initial fetch in progress
- *  sites          [{ id, code, name }] the worker can clock into
- *  defaultSiteId  preselected site
- *  policy         { fullDayThresholdHours, halfDayThresholdHours } (defaults 8 / 4)
- *  requireLocation  block clock in/out until GPS is available (default true)
- *  onRefresh / onPunchIn / onStartBreak / onEndBreak / onPunchOut   see top of file
- */
 export default function AttendancePage({
   title = "Attendance",
-  userName,
-  session = null,
-  history = [],
-  isLoading = false,
-  sites = [],
-  defaultSiteId,
+  history = EMPTY_ARR, // optional past sessions (full session objects) for the log
+  isLoading: isLoadingProp = false,
   policy = DEFAULT_POLICY,
   requireLocation = true,
   onRefresh,
-  onPunchIn,
-  onStartBreak,
-  onEndBreak,
-  onPunchOut,
 }) {
   const dispatch = useDispatch();
-  const { isPunchingIn, isPunchingOut, isStartingBreak, isEndingBreak } =
-    useSelector((state) => state.attendance);
+
+  const { activeSession } = useSelector((state) => state.attendance);
+  const session = activeSession?.session ?? null;
+  const activityLog = activeSession?.activityLog ?? session?.activityLog;
+
+  const { meData } = useSelector((state) => state.auth);
+  const { departments, displayName } = meData || {};
+  const headOfficeId = departments?.[0]?.headOfficeId || null;
+
+  const isSubmitting = useSelector((state) => {
+    const a = state.attendance;
+    return !!(
+      a.isPunchingIn ||
+      a.isPunchingOut ||
+      a.isStartingBreak ||
+      a.isEndingBreak
+    );
+  });
+
+  // Show the skeleton until the first fetch settles (no "Clock in" flash).
+  const [loaded, setLoaded] = useState(() => !!session);
   useEffect(() => {
-    dispatch(getActiveSession());
+    let alive = true;
+    Promise.resolve(dispatch(getActiveSession())).finally(() => {
+      if (alive) setLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
   }, [dispatch]);
 
-  const isSubmitting =
-    isPunchingIn || isPunchingOut || isStartingBreak || isEndingBreak;
-
-  const now = useNow();
-  const [completed, setCompleted] = useState(null); // settled record shown after clock out
-  const [dialog, setDialog] = useState({ open: false, type: null });
-  const [form, setForm] = useState({
-    siteId: "",
-    breakType: "LUNCH",
-    remarks: "",
-  });
+  const [completed, setCompleted] = useState(null); // settled record after clock out
+  const [dialog, setDialog] = useState({ open: false, type: null, at: 0 });
+  const [form, setForm] = useState({ breakType: "LUNCH", remarks: "" });
   const [modalError, setModalError] = useState("");
   const [notice, setNotice] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -844,123 +626,144 @@ export default function AttendancePage({
     if (session) setCompleted(null);
   }, [session]);
 
-  const record = session ?? completed; // what the card is currently showing
-  const shift = toShift(record);
-  const status = getStatus(shift);
-  const st = STATUS[status];
-  const totals = getTotals(shift, now);
-  const segments = getSegments(shift, now);
-  const openBreak = session?.breaks?.find((b) => !b.endedAt);
+  const record = session ?? completed; // current / just-finished session object
 
-  const target = policy.fullDayThresholdHours * HOUR;
-  const pct = Math.min(1, totals.worked / target);
-  const diff = target - totals.worked;
-  const overtime = diff < 0;
-  const count = shift.breaks.length;
+  /* ---- today's day model (all sessions) ----------------------------------- */
 
-  const hour = now.getHours();
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const todayEvents = useMemo(
+    () =>
+      activityLog?.length
+        ? activityLog
+        : eventsFromSessions(record ? [record] : EMPTY_ARR),
+    [activityLog, record],
+  );
+
+  const day = useMemo(
+    () => (todayEvents.length ? buildDay(todayEvents) : EMPTY_DAY),
+    [todayEvents],
+  );
+
+  const status =
+    day.state === "working"
+      ? "working"
+      : day.state === "break"
+        ? "break"
+        : day.events.length
+          ? "done"
+          : "off";
+
+  // Full-day target comes from the API; the policy prop is only a fallback.
+  const targetMins =
+    activeSession?.targetWorkDurationMins ?? record?.targetWorkDurationMins;
+  const rules = useMemo(
+    () => ({
+      halfDayThresholdHours: policy.halfDayThresholdHours,
+      fullDayThresholdHours: targetMins
+        ? targetMins / 60
+        : policy.fullDayThresholdHours,
+    }),
+    [targetMins, policy.halfDayThresholdHours, policy.fullDayThresholdHours],
+  );
+
+  // "Late" is measured from the FIRST clock-in of the day, not the current session.
+  const scheduledAt =
+    activeSession?.scheduledClockInAt ?? record?.scheduledClockInAt;
+  const isDelayed =
+    activeSession?.isDelayedClockIn ?? record?.isDelayedClockIn;
+  const late = useMemo(() => {
+    if (!isDelayed || !scheduledAt || !day.firstClockInAt) return null;
+    const minutes = Math.round((day.firstClockInAt - Date.parse(scheduledAt)) / MIN);
+    return minutes > 0
+      ? { minutes, scheduledAt, at: day.firstClockInAt }
+      : null;
+  }, [isDelayed, scheduledAt, day.firstClockInAt]);
 
   const logs = useMemo(
-    () => buildLogs([...(history || []), ...(record ? [record] : [])]),
-    [history, record],
+    () => buildLogs([...eventsFromSessions(history), ...todayEvents], late),
+    [history, todayEvents, late],
   );
+
+  /* ---- geolocation + dialog ---------------------------------------------- */
 
   const needsGeo =
     dialog.open && (dialog.type === "in" || dialog.type === "out");
   const geo = useGeolocation(needsGeo);
 
-  /* ---- dialog controls ---------------------------------------------------- */
+  // Numbers shown inside a modal are frozen at the moment it opened.
+  const dialogTotals = useMemo(
+    () => (dialog.open ? getDayTotals(day, new Date(dialog.at)) : ZERO_TOTALS),
+    [dialog.open, dialog.at, day],
+  );
+  const openBreak = day.openBreak;
 
-  const openDialog = (type) => {
+  const openDialog = useCallback((type) => {
     setModalError("");
     setNotice("");
-    setForm({
-      siteId: defaultSiteId || sites[0]?.id || "",
-      breakType: "LUNCH",
-      remarks: "",
-    });
-    setDialog({ open: true, type });
-  };
-  const closeDialog = () => setDialog((d) => ({ ...d, open: false }));
+    setForm({ breakType: "LUNCH", remarks: "" });
+    setDialog({ open: true, type, at: Date.now() });
+  }, []);
 
-  const refresh = async () => {
+  const closeDialog = useCallback(
+    () => setDialog((d) => ({ ...d, open: false })),
+    [],
+  );
+
+  const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await onRefresh?.();
+      await (onRefresh ? onRefresh() : dispatch(getActiveSession()));
     } catch {
       /* the next action will surface any real problem */
     } finally {
       setRefreshing(false);
     }
+  }, [onRefresh, dispatch]);
+
+  /* ---- submit ------------------------------------------------------------- */
+
+  // Throws when a thunk is rejected so the catch below can show the error.
+  const exec = async (thunk) => {
+    const res = await dispatch(thunk);
+    if (res?.error) throw res.payload ?? res.error;
+    return res;
   };
 
-  /* ---- submit: builds the payload for each endpoint ----------------------- */
-
   const submit = async () => {
-    const remarks = form.remarks.trim();
-    const withRemarks = (p) => (remarks ? { ...p, remarks } : p);
     const ready = geo.status === "ready";
+    const coords = ready
+      ? { latitude: round6(geo.lat), longitude: round6(geo.lng) }
+      : {};
     setModalError("");
     try {
       if (dialog.type === "in") {
-        // 3.2 POST /attendance/punch-in
-        await handleResponse(
-          dispatch(
-            punchIn({
-              // siteId: form.siteId,
-              ...(ready && {
-                punchInLat: round6(geo.lat),
-                punchInLng: round6(geo.lng),
-              }),
-              source: "MOBILE_SELF",
-            }),
-          ),
+        await exec(
+          punchIn({ headOfficeId, ...coords, source: "MOBILE_SELF" }),
         );
-        // await onPunchIn?.(
-        //   withRemarks({
-        //     // siteId: form.siteId,
-        //     ...(ready && {
-        //       punchInLat: round6(geo.lat),
-        //       punchInLng: round6(geo.lng),
-        //     }),
-        //     source: "MOBILE_SELF",
-        //   }),
-        // );
       } else if (dialog.type === "break") {
-        // 3.3 POST /attendance/breaks/start
-        await onStartBreak?.(
-          withRemarks({ sessionId: session.id, breakType: form.breakType }),
-        );
+        await exec(startAttendanceBreak({ remarks: form.breakType }));
       } else if (dialog.type === "endBreak") {
-        // 3.3 POST /attendance/breaks/end
-        await onEndBreak?.({ sessionId: session.id });
+        await exec(endAttendanceBreak({}));
       } else if (dialog.type === "out") {
-        // 3.4 POST /attendance/punch-out
-        const res = await onPunchOut?.(
-          withRemarks({
-            sessionId: session.id,
-            ...(ready && {
-              punchOutLat: round6(geo.lat),
-              punchOutLng: round6(geo.lng),
-            }),
-          }),
+        const fresh = getDayTotals(day, new Date());
+        await handleResponse(
+          dispatch(punchOut({ headOfficeId, ...coords })),
+          (res) => {
+            const settled = res.payload;
+            setCompleted({
+              ...session,
+              ...settled,
+              status: "COMPLETED",
+              punchOutAt: settled.punchOutAt ?? new Date().toISOString(),
+              netDurationMins:
+                settled.netDurationMins ?? Math.round(fresh.worked / MIN),
+              breakDurationMins:
+                settled.breakDurationMins ?? Math.round(fresh.breaks / MIN),
+            });
+          },
         );
-        const settled = res?.data ?? res ?? {};
-        setCompleted({
-          ...session,
-          ...settled,
-          status: "COMPLETED",
-          punchOutAt: settled.punchOutAt ?? new Date().toISOString(),
-          netDurationMins:
-            settled.netDurationMins ?? Math.round(totals.worked / MIN),
-          breakDurationMins:
-            settled.breakDurationMins ?? Math.round(totals.breaks / MIN),
-        });
       }
       closeDialog();
-      refresh(); // 3.1 re-sync
+      refresh(); // re-sync with the server
     } catch (e) {
       const known = ERROR_COPY[errorCode(e)];
       if (known?.resync) {
@@ -980,8 +783,7 @@ export default function AttendancePage({
   /* ---- modal configuration ------------------------------------------------ */
 
   const geoBlocked = requireLocation && geo.status !== "ready";
-  const units = estimateUnits(totals.worked, policy);
-  const noSite = dialog.type === "in" && !form.siteId;
+  const units = estimateUnits(dialogTotals.worked, rules);
 
   const MODALS = {
     in: {
@@ -991,8 +793,7 @@ export default function AttendancePage({
       theme: "success",
       submitText: "Clock in",
       loadingText: "Clocking in...",
-      // disabled: noSite || geoBlocked,
-      disabled: geoBlocked,
+      disabled: geoBlocked || !headOfficeId,
     },
     break: {
       title: "Start a break?",
@@ -1005,7 +806,7 @@ export default function AttendancePage({
     endBreak: {
       title: "End your break?",
       desc: openBreak
-        ? `You've been on a ${breakLabel(openBreak.breakType).toLowerCase()} break for ${clockFmt(totals.openBreak)}.`
+        ? `You've been on a ${breakLabel(openBreak.type).toLowerCase()} break for ${clockFmt(dialogTotals.openBreak)}.`
         : "Resume work now.",
       icon: Play,
       theme: "info",
@@ -1024,92 +825,64 @@ export default function AttendancePage({
   };
   const m = MODALS[dialog.type] || {};
 
-  const modalBody = (
+  const setRemarks = (v) => setForm((f) => ({ ...f, remarks: v }));
+
+  const modalBody = dialog.open ? (
     <div className="space-y-4">
       {modalError && <Notice>{modalError}</Notice>}
 
       {dialog.type === "in" && (
         <>
-          {sites.length > 1 ? (
-            <Field label="Site">
-              <select
-                value={form.siteId}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, siteId: e.target.value }))
-                }
-                className={FIELD_INPUT}
-              >
-                {sites.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.code})
-                  </option>
-                ))}
-              </select>
-            </Field>
-          ) : sites.length === 1 ? (
-            <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 px-3 py-2.5 text-[13px] text-foreground">
-              <MapPin size={16} className="shrink-0 text-muted-foreground" />
-              {sites[0].name} ({sites[0].code})
-            </div>
-          ) : (
+          {!headOfficeId && (
             <Notice>
-              No site is assigned to you yet. Ask your supervisor to assign one
-              before you clock in.
+              We couldn&rsquo;t find a head office linked to your profile.
+              Contact your administrator before you clock in.
             </Notice>
           )}
           {requireLocation && <LocationRow geo={geo} />}
-          <RemarksField
-            value={form.remarks}
-            onChange={(v) => setForm((f) => ({ ...f, remarks: v }))}
-          />
+          <RemarksField value={form.remarks} onChange={setRemarks} />
         </>
       )}
 
       {dialog.type === "break" && (
-        <>
-          <Field label="Break type">
-            <div
-              className="flex flex-wrap gap-2"
-              role="radiogroup"
-              aria-label="Break type"
-            >
-              {BREAK_TYPES.map((b) => (
-                <button
-                  key={b.key}
-                  type="button"
-                  role="radio"
-                  aria-checked={form.breakType === b.key}
-                  onClick={() => setForm((f) => ({ ...f, breakType: b.key }))}
-                  className={`rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 ${
-                    form.breakType === b.key
-                      ? "border-warning-500 bg-warning-50 text-warning-600 dark:bg-warning-950/30 dark:text-warning-400"
-                      : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  {b.label}
-                </button>
-              ))}
-            </div>
-          </Field>
-          <RemarksField
-            value={form.remarks}
-            onChange={(v) => setForm((f) => ({ ...f, remarks: v }))}
-          />
-        </>
+        <Field label="Break type">
+          <div
+            className="flex flex-wrap gap-2"
+            role="radiogroup"
+            aria-label="Break type"
+          >
+            {BREAK_TYPES.map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                role="radio"
+                aria-checked={form.breakType === b.key}
+                onClick={() => setForm((f) => ({ ...f, breakType: b.key }))}
+                className={`rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 ${
+                  form.breakType === b.key
+                    ? "border-warning-500 bg-warning-50 text-warning-600 dark:bg-warning-950/30 dark:text-warning-400"
+                    : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </Field>
       )}
 
       {dialog.type === "out" && (
         <>
           <div className="grid grid-cols-3 gap-2.5">
-            <SummaryTile label="Worked" value={durFmt(totals.worked)} />
-            <SummaryTile label="Breaks" value={durFmt(totals.breaks)} />
+            <SummaryTile label="Worked" value={durFmt(dialogTotals.worked)} />
+            <SummaryTile label="Breaks" value={durFmt(dialogTotals.breaks)} />
             <SummaryTile label="Hazri so far" value={units.units} />
           </div>
           {units.units === "0.0" ? (
             <Notice>
               You&rsquo;ve worked less than a half day (
-              {policy.halfDayThresholdHours}h). If you clock out now it counts
-              as absent.
+              {rules.halfDayThresholdHours}h). If you clock out now it counts as
+              absent.
             </Notice>
           ) : (
             <p className="text-[12.5px] text-muted-foreground">
@@ -1118,14 +891,11 @@ export default function AttendancePage({
             </p>
           )}
           {requireLocation && <LocationRow geo={geo} />}
-          <RemarksField
-            value={form.remarks}
-            onChange={(v) => setForm((f) => ({ ...f, remarks: v }))}
-          />
+          <RemarksField value={form.remarks} onChange={setRemarks} />
         </>
       )}
     </div>
-  );
+  ) : null;
 
   /* ---- render -------------------------------------------------------------- */
 
@@ -1135,223 +905,26 @@ export default function AttendancePage({
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="space-y-5">
-          <section className={CARD}>
-            <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 sm:px-6 sm:pt-6">
-              <div>
-                <p className="text-[12.5px] font-medium text-slate-400 dark:text-slate-500">
-                  {userName ? `${greeting}, ${userName}` : greeting}
-                </p>
-                <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-slate-800 dark:text-white">
-                  {timeFmt(now)}
-                </p>
-                <p className="text-[13px] text-slate-500 dark:text-slate-400">
-                  {now.toLocaleDateString("en-IN", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span
-                  aria-live="polite"
-                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12.5px] font-medium ${st.pill}`}
-                >
-                  <span className="relative flex h-2 w-2">
-                    {st.live && (
-                      <span
-                        className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:animate-none ${st.dot}`}
-                      />
-                    )}
-                    <span
-                      className={`relative inline-flex h-2 w-2 rounded-full ${st.dot}`}
-                    />
-                  </span>
-                  {st.label}
-                </span>
-                {onRefresh && (
-                  <button
-                    type="button"
-                    onClick={refresh}
-                    disabled={refreshing}
-                    aria-label="Refresh status"
-                    title="Refresh status"
-                    className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 disabled:opacity-60 dark:hover:bg-slate-700/50 dark:hover:text-slate-200"
-                  >
-                    <RefreshCw
-                      size={16}
-                      className={refreshing ? "animate-spin" : ""}
-                    />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {isLoading ? (
-              <ClockCardSkeleton />
-            ) : (
-              <div className="grid gap-6 px-5 py-6 sm:px-6 sm:py-8 md:grid-cols-[auto_minmax(0,1fr)] md:items-center md:gap-10">
-                <div className="flex justify-center">
-                  <ProgressRing pct={pct} ringClass={st.ring}>
-                    <span className="text-[12.5px] text-slate-400 dark:text-slate-500">
-                      Worked today
-                    </span>
-                    <span
-                      role="timer"
-                      aria-label="Time worked today"
-                      className="mt-1 text-[32px] font-semibold tabular-nums tracking-tight text-slate-800 dark:text-white sm:text-4xl"
-                    >
-                      {clockFmt(totals.worked)}
-                    </span>
-                    <span className="mt-1 text-[12.5px] text-slate-400 dark:text-slate-500">
-                      of {policy.fullDayThresholdHours}h &middot;{" "}
-                      {Math.round(pct * 100)}%
-                    </span>
-                  </ProgressRing>
-                </div>
-
-                <div className="space-y-4">
-                  {record?.site && (
-                    <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-medium ${TONES.slate}`}
-                      >
-                        <MapPin size={13} /> {record.site.name}
-                      </span>
-                      {record.punchInWithinGeofence != null && (
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-medium ${
-                            record.punchInWithinGeofence && !record.isFlagged
-                              ? TONES.emerald
-                              : TONES.amber
-                          }`}
-                        >
-                          {record.punchInWithinGeofence && !record.isFlagged
-                            ? "Within site range"
-                            : FLAG_COPY[record.flagReason] ||
-                              "Flagged for review"}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {status === "break" && openBreak && (
-                    <p className="flex items-center justify-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-[13.5px] font-medium tabular-nums text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 md:justify-start">
-                      <Coffee size={16} />
-                      {breakLabel(openBreak.breakType)} break &middot;{" "}
-                      {clockFmt(totals.openBreak)}
-                    </p>
-                  )}
-
-                  {status === "off" && (
-                    <ShiftButton
-                      tone="emerald"
-                      icon={LogIn}
-                      label="Clock in"
-                      onClick={() => openDialog("in")}
-                    />
-                  )}
-
-                  {status === "working" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <ShiftButton
-                        tone="amberSoft"
-                        icon={Coffee}
-                        label="Start break"
-                        onClick={() => openDialog("break")}
-                      />
-                      <ShiftButton
-                        tone="roseSoft"
-                        icon={LogOut}
-                        label="Clock out"
-                        onClick={() => openDialog("out")}
-                      />
-                    </div>
-                  )}
-
-                  {status === "break" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <ShiftButton
-                        tone="amber"
-                        icon={Play}
-                        label="End break"
-                        onClick={() => openDialog("endBreak")}
-                      />
-                      <ShiftButton
-                        tone="neutral"
-                        icon={LogOut}
-                        label="Clock out"
-                        disabled
-                        title="End your break before clocking out"
-                      />
-                    </div>
-                  )}
-
-                  {status === "done" && (
-                    <>
-                      <div className={`rounded-xl px-4 py-3 ${TONES.indigo}`}>
-                        <p className="text-[14px] font-medium">
-                          Shift complete
-                        </p>
-                        <p className="mt-0.5 text-[12.5px] opacity-80">
-                          {durFmt(totals.worked)} worked,{" "}
-                          {durFmt(totals.breaks)} on breaks
-                          {completed?.totalPUnits != null && (
-                            <> &middot; {completed.totalPUnits} hazri</>
-                          )}
-                          {Number(completed?.overtimeHours) > 0 && (
-                            <> &middot; {completed.overtimeHours}h overtime</>
-                          )}
-                        </p>
-                      </div>
-                      <ShiftButton
-                        tone="neutral"
-                        icon={Play}
-                        label="Start new shift"
-                        onClick={() => openDialog("in")}
-                      />
-                    </>
-                  )}
-
-                  {notice && <Notice tone="sky">{notice}</Notice>}
-                </div>
-              </div>
-            )}
-          </section>
-
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
-            <StatCard
-              icon={LogIn}
-              tone="emerald"
-              label="Clocked in"
-              value={timeFmt(shift.clockInAt)}
-            />
-            <StatCard
-              icon={Timer}
-              tone="indigo"
-              label="Worked"
-              value={durFmt(totals.worked)}
-            />
-            <StatCard
-              icon={Coffee}
-              tone="amber"
-              label="Break time"
-              value={durFmt(totals.breaks)}
-              sub={`${count} ${count === 1 ? "break" : "breaks"}`}
-            />
-            <StatCard
-              icon={Hourglass}
-              tone={overtime ? "rose" : "sky"}
-              label={overtime ? "Overtime" : "Remaining"}
-              value={durFmt(Math.abs(diff))}
-            />
-          </div>
-
-          <Timeline segments={segments} shift={shift} />
+          <AttendanceHero
+            record={record}
+            day={day}
+            status={status}
+            userName={displayName}
+            rules={rules}
+            completed={completed}
+            notice={notice}
+            late={late}
+            openBreak={openBreak}
+            refreshing={refreshing}
+            isLoading={isLoadingProp || !loaded}
+            requireLocation={requireLocation}
+            onRefresh={refresh}
+            onOpen={openDialog}
+          />
+          <Summary day={day} status={status} rules={rules} />
         </div>
 
-        <ActivityLog logs={logs} now={now} />
+        <ActivityLog logs={logs} />
       </div>
 
       <ModalAction
@@ -1374,93 +947,4 @@ export default function AttendancePage({
       </ModalAction>
     </div>
   );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Dev-only: fake backend so you can preview the page before the API exists  */
-/*                                                                            */
-/*    const mock = useMockAttendance();                                       */
-/*    return <TeamShiftPage {...mock} userName="Sahil" />;                    */
-/* -------------------------------------------------------------------------- */
-
-export function useMockAttendance(
-  site = { id: "s001", code: "S-04", name: "Metro Station 4" },
-) {
-  const [session, setSession] = useState(null);
-  const wait = (ms = 600) => new Promise((r) => setTimeout(r, ms));
-
-  return {
-    session,
-    sites: [site],
-    onRefresh: async () => {},
-    onPunchIn: async (p) => {
-      await wait();
-      const s = {
-        id: `mock-${Date.now()}`,
-        siteId: p.siteId,
-        status: "IN_PROGRESS",
-        punchInAt: new Date().toISOString(),
-        punchInDistanceM: 42,
-        punchInWithinGeofence: true,
-        isFlagged: false,
-        flagReason: null,
-        site,
-        breaks: [],
-      };
-      setSession(s);
-      return s;
-    },
-    onStartBreak: async (p) => {
-      await wait();
-      const b = {
-        id: `brk-${Date.now()}`,
-        breakType: p.breakType,
-        startedAt: new Date().toISOString(),
-        endedAt: null,
-        durationMins: 0,
-      };
-      setSession((s) => ({ ...s, breaks: [...s.breaks, b] }));
-      return b;
-    },
-    onEndBreak: async () => {
-      await wait();
-      const end = new Date();
-      setSession((s) => ({
-        ...s,
-        breaks: s.breaks.map((b) =>
-          b.endedAt
-            ? b
-            : {
-                ...b,
-                endedAt: end.toISOString(),
-                durationMins: Math.round((end - new Date(b.startedAt)) / MIN),
-              },
-        ),
-      }));
-    },
-    onPunchOut: async () => {
-      await wait();
-      const out = new Date();
-      const brk = session.breaks.reduce(
-        (s, b) => s + (new Date(b.endedAt || out) - new Date(b.startedAt)),
-        0,
-      );
-      const gross = out - new Date(session.punchInAt);
-      const net = Math.max(0, gross - brk);
-      const u = estimateUnits(net, DEFAULT_POLICY).units;
-      setSession(null);
-      return {
-        id: session.id,
-        status: "COMPLETED",
-        punchOutAt: out.toISOString(),
-        grossDurationMins: Math.round(gross / MIN),
-        breakDurationMins: Math.round(brk / MIN),
-        netDurationMins: Math.round(net / MIN),
-        presentUnits: u,
-        overtimePUnits: "0.0",
-        totalPUnits: u,
-        overtimeHours: "0",
-      };
-    },
-  };
 }

@@ -52,11 +52,11 @@ export const routeConfig = [
   { path: ROUTES.PLATFORM.OPERATIONS, element: MasterOperationsPage },
 
   // Company Routes
-  { path: ROUTES.COMPANIES.ROOT, element: AllCompaniesPage, permissions: [PERMISSIONS.COMPANY.READ], },
-  { path: ROUTES.COMPANIES.CREATE, element: CreateCompanyPage, permissions: [PERMISSIONS.COMPANY.CREATE], },
+  { path: ROUTES.COMPANIES.ROOT, element: AllCompaniesPage, roles: [ROLES.PLATFORM_ADMIN], },
+  { path: ROUTES.COMPANIES.CREATE, element: CreateCompanyPage, roles: [ROLES.PLATFORM_ADMIN], },
 
   // Operations Routes
-  { path: ROUTES.OPERATIONS.ROOT, element: AllOperationsPage, permissions: [PERMISSIONS.OPERATION.READ] },
+  { path: ROUTES.OPERATIONS.ROOT, element: AllOperationsPage, roles: [ROLES.PLATFORM_ADMIN] },
 
   // Head Offices Routes
   { path: ROUTES.HEAD_OFFICES.ROOT, element: AllHeadOfficesPage, permissions: [PERMISSIONS.HEAD_OFFICE.READ], },
@@ -83,10 +83,10 @@ export const routeConfig = [
   { path: ROUTES.EMPLOYEES.OPERATIONS, element: EmployeeOperationsPage, permissions: [PERMISSIONS.EMPLOYEE.MANAGE] },
 
   // Attendance Routes
-  { path: ROUTES.ATTENDANCE.ROOT, element: AttendancePage },
-  { path: ROUTES.ATTENDANCE.POLICIES, element: AllAttendancePoliciesPage },
-  { path: ROUTES.ATTENDANCE.POLICY_DETAILS, element: AttendancePolicyDetailsPage },
-  { path: ROUTES.ATTENDANCE.CREATE_POLICY, element: CreateAttendancePolicyPage },
+  { path: ROUTES.ATTENDANCE.ROOT, element: AttendancePage, permissions: [PERMISSIONS.ATTENDANCE.READ], },
+  { path: ROUTES.ATTENDANCE.POLICIES, element: AllAttendancePoliciesPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE], },
+  { path: ROUTES.ATTENDANCE.POLICY_DETAILS, element: AttendancePolicyDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
+  { path: ROUTES.ATTENDANCE.CREATE_POLICY, element: CreateAttendancePolicyPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
 
   // Notifications Routes
   { path: ROUTES.NOTIFICATIONS.ROOT, element: NotificationPage, roles: [ROLES.COMPANY_OWNER] },

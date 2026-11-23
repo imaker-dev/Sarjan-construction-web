@@ -287,7 +287,7 @@ const attendanceSlice = createSlice({
       })
       .addCase(getActiveSession.fulfilled, (state, action) => {
         state.isFetchingActiveSession = false;
-        state.activeSession = action.payload?.session ?? null;
+        state.activeSession = action.payload ?? null;
       })
       .addCase(getActiveSession.rejected, (state, action) => {
         state.isFetchingActiveSession = false;

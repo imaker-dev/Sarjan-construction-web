@@ -1,13 +1,12 @@
-
 import React from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 import AppLayout from "./AppLayout";
-import { routeConfig } from "@config/route.config";
 import UnauthorizedPage from "@components/feedback/UnauthorizedPage";
 import NotFoundPage from "@components/feedback/NotFoundPage";
 import { hasAccess } from "@utils/access.utils";
+import { privateRouteConfig } from "@config/route.config";
 
 const AuthenticatedRoutes = () => {
   const { meData } = useSelector((state) => state.auth);
@@ -19,7 +18,7 @@ const AuthenticatedRoutes = () => {
   return (
     <AppLayout>
       <Routes>
-        {routeConfig.map((route) => {
+        {privateRouteConfig.map((route) => {
           const {
             path,
             element: DefaultComponent,
@@ -29,8 +28,7 @@ const AuthenticatedRoutes = () => {
             permissionMode,
           } = route;
 
-          const SelectedComponent =
-            elements?.[userRole] || DefaultComponent;
+          const SelectedComponent = elements?.[userRole] || DefaultComponent;
 
           if (!SelectedComponent) return null;
 

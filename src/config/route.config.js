@@ -1,9 +1,20 @@
 import { PERMISSIONS } from "@constants/permissions";
 import { ROLES } from "@constants/roles";
 import { ROUTES } from "@constants/routes";
-import EmployeeDocumentsPage from "@features/employees/pages/EmployeeDocumentsPage";
 import { lazyLoad } from "@utils/lazy.utils";
 
+
+/* -------------------------------------------------------------------------- */
+/*  Public pages                                                              */
+/* -------------------------------------------------------------------------- */
+const LoginPage = lazyLoad(() => import("@features/auth/pages/LoginPage"));
+const VerifyCompanyPage = lazyLoad(() => import("@features/companies/pages/VerifyCompanyPage"));
+const VerifyEmployeePage = lazyLoad(() => import("@features/employees/pages/VerifyEmployeePage"));
+
+
+/* -------------------------------------------------------------------------- */
+/*  Authenticated pages                                                       */
+/* -------------------------------------------------------------------------- */
 const DashboardPage = lazyLoad(() => import("@features/dashboard/pages/DashboardPage"));
 const AllDepartmentsPage = lazyLoad(() => import("@features/departments/pages/AllDepartmentsPage"));
 const CreateDepartmentPage = lazyLoad(() => import("@features/departments/pages/CreateDepartmentPage"));
@@ -32,8 +43,26 @@ const AttendancePage = lazyLoad(() => import("@features/attendance/pages/Attenda
 const AllAttendancePoliciesPage = lazyLoad(() => import("@features/attendance/pages/AllAttendancePoliciesPage"));
 const AttendancePolicyDetailsPage = lazyLoad(() => import("@features/attendance/pages/AttendancePolicyDetailsPage"));
 const CreateAttendancePolicyPage = lazyLoad(() => import("@features/attendance/pages/CreateAttendancePolicyPage"));
+const EmployeeDocumentsPage = lazyLoad(() => import("@features/employees/pages/EmployeeDocumentsPage"));
 
-export const routeConfig = [
+
+/* -------------------------------------------------------------------------- */
+/*  PUBLIC ROUTES (outside the app layout)                                    */
+/*                                                                            */
+/*  guestOnly: true  -> logged-in users are redirected to home (e.g. login)   */
+/*  guestOnly: false -> reachable with or without login (default)             */
+/* -------------------------------------------------------------------------- */
+export const publicRouteConfig = [
+  // Open to everyone
+  { path: ROUTES.COMPANIES.VERIFY, element: VerifyCompanyPage },
+  { path: ROUTES.EMPLOYEES.VERIFY, element: VerifyEmployeePage },
+
+  // Guests only
+  { path: ROUTES.AUTH.ROOT, element: LoginPage, guestOnly: true },
+];
+
+
+export const privateRouteConfig = [
   {
     path: ROUTES.HOME.ROOT,
     element: DashboardPage,

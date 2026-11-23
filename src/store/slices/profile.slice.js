@@ -1,16 +1,12 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import profileApi from "@store/api/profile.api";
 import { toast } from "sonner";
 
 // Get profile
-export const getProfile = createAsyncThunk(
-  "profile/getProfile",
-  async () => {
-    const res = await profileApi.getProfileApi();
-    return res.data;
-  },
-);
+export const getProfile = createAsyncThunk("profile/getProfile", async () => {
+  const res = await profileApi.getProfileApi();
+  return res.data;
+});
 
 // Upload document
 export const uploadDocument = createAsyncThunk(
@@ -21,12 +17,22 @@ export const uploadDocument = createAsyncThunk(
   },
 );
 
+// Download document
+export const downloadDocument = createAsyncThunk(
+  "profile/downloadDocument",
+  async (fileId) => {
+    const res = await profileApi.downloadDocumentApi(fileId);
+    return res.data;
+  },
+);
+
 const profileSlice = createSlice({
   name: "profile",
 
   initialState: {
     isGettingProfile: false,
     isUploadingDocument: false,
+    downloadingDocumentId: null,
     profileData: null,
   },
 
@@ -59,6 +65,18 @@ const profileSlice = createSlice({
       .addCase(uploadDocument.rejected, (state, action) => {
         state.isUploadingDocument = false;
         toast.error(action.error.message || "Failed to upload document");
+      })
+
+      // Download document
+      .addCase(downloadDocument.pending, (state, action) => {
+        state.downloadingDocumentId = action.meta.arg;
+      })
+      .addCase(downloadDocument.fulfilled, (state) => {
+        state.downloadingDocumentId = null;
+      })
+      .addCase(downloadDocument.rejected, (state, action) => {
+        state.downloadingDocumentId = null;
+        toast.error(action.error.message || "Failed to download document");
       });
   },
 });

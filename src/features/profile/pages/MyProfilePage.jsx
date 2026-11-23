@@ -1,5 +1,9 @@
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
-import { getProfile, uploadDocument } from "@store/slices/profile.slice";
+import {
+  downloadDocument,
+  getProfile,
+  uploadDocument,
+} from "@store/slices/profile.slice";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -11,6 +15,7 @@ import {
   Check,
   ChevronRight,
   Clock,
+  Download,
   FileText,
   Fingerprint,
   Globe,
@@ -40,7 +45,6 @@ import {
   changePassword,
   disableMfa,
   enableMfa,
-  getMfaStatus,
   resendMfaOtp,
   setupMfa,
 } from "@store/slices/security.slice";
@@ -48,6 +52,7 @@ import MfaOtpModal from "../components/MfaOtpModal";
 import Alert from "@components/ui/Alert";
 import DocumentUploadModal from "../components/DocumentUploadModal";
 import { formatFileSize } from "@utils/file.utils";
+import { downloadFile } from "@utils/download.utils";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -313,18 +318,19 @@ const SettingsNav = ({ active, onChange, counts }) => (
 const MyProfilePage = () => {
   const dispatch = useDispatch();
 
-  const { isGettingProfile, profileData, isUploadingDocument } = useSelector(
-    (state) => state.profile,
-  );
+  const {
+    isGettingProfile,
+    profileData,
+    isUploadingDocument,
+    downloadingDocumentId,
+  } = useSelector((state) => state.profile);
 
   const {
     isChangingPassword,
-    isGettingMfaStatus,
     isSettingUpMfa,
     isEnablingMfa,
     isResendingMfaOtp,
     isDisablingMfa,
-    mfaStatusData,
     mfaSetupData,
   } = useSelector((state) => state.security);
 
@@ -343,7 +349,6 @@ const MyProfilePage = () => {
   };
   useEffect(() => {
     fetchProfile();
-    dispatch(getMfaStatus());
   }, [dispatch]);
 
   const permissions = profileData?.permissions;
@@ -387,7 +392,7 @@ const MyProfilePage = () => {
     await handleResponse(dispatch(enableMfa({ mfaToken, code })), () => {
       setMfaModalOpen(false);
       setMfaToken("");
-      dispatch(getMfaStatus());
+      fetchProfile();
     });
   };
 
@@ -401,7 +406,7 @@ const MyProfilePage = () => {
   const handleDisableMfa = async () => {
     await handleResponse(dispatch(disableMfa()), () => {
       setMfaConfirmationOpen(false);
-      dispatch(getMfaStatus());
+      fetchProfile();
     });
   };
 
@@ -416,6 +421,15 @@ const MyProfilePage = () => {
     await handleResponse(dispatch(uploadDocument(formData)), () => {
       setDocumentUploadOpen(false);
       fetchProfile();
+    });
+  };
+
+  const handleDownloadDocument = async (document) => {
+    await handleResponse(dispatch(downloadDocument(document.id)), (res) => {
+      downloadFile({
+        data: res.payload,
+        fileName: document.file.fileName || document.title || "document",
+      });
     });
   };
 
@@ -451,10 +465,8 @@ const MyProfilePage = () => {
   const displayName = employee.displayName || principal.loginId || "User";
   const status = (principal.status || employee.status || "").toUpperCase();
   const primaryRole = profileData.primaryRole || roles[0];
-  const mfaEnabled = isGettingMfaStatus
-    ? !!principal.mfaEnabled
-    : !!(mfaStatusData?.mfaEnabled ?? principal.mfaEnabled);
-  const mfaType = mfaStatusData?.mfaType || principal.mfaType || "EMAIL_OTP";
+  const mfaEnabled = !!principal.mfaEnabled;
+  const mfaType = principal.mfaType || "EMAIL_OTP";
 
   const scopeLabel = (a) =>
     a.siteName || a.projectName || a.headOfficeName || company.name || "—";
@@ -472,7 +484,7 @@ const MyProfilePage = () => {
     REJECTED: "bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400",
   };
 
-  function DocumentRow({ document }) {
+  function DocumentRow({ document, onDownload, downloading = false }) {
     const file = document.file || {};
     const fileName = file.fileName || document.fileName || document.name;
     const url = document.url || file.url;
@@ -542,28 +554,19 @@ const MyProfilePage = () => {
             </span>
           )}
 
-          {/* {url && isAvailable && (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-              title="View document"
-              aria-label="View document"
-              className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-800"
-            >
-              <ExternalLink size={17} />
-            </button>
-            <a
-              href={url}
-              download={fileName}
-              title="Download document"
-              aria-label="Download document"
-              className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-800"
-            >
+          <button
+            type="button"
+            onClick={() => onDownload(document)}
+            disabled={!isAvailable || downloading}
+            title={downloading ? "Downloading..." : "Download document"}
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            {downloading ? (
+              <Loader2 size={17} className="animate-spin" />
+            ) : (
               <Download size={17} />
-            </a>
-          </div>
-        )} */}
+            )}
+          </button>
         </div>
       </li>
     );
@@ -788,12 +791,7 @@ const MyProfilePage = () => {
                       onClick={() => setPasswordOpen(true)}
                     />
 
-                    {isGettingMfaStatus ? (
-                      <div className="flex items-center gap-3 px-4 py-4 text-sm text-slate-400 sm:px-5">
-                        <Loader2 size={16} className="animate-spin" />
-                        Checking security status…
-                      </div>
-                    ) : mfaEnabled ? (
+                    {mfaEnabled ? (
                       <Row
                         icon={Smartphone}
                         tone="primary"
@@ -825,11 +823,10 @@ const MyProfilePage = () => {
                   </RowList>
                 </Section>
 
-                {!isGettingMfaStatus && !mfaEnabled && (
+                {!mfaEnabled && (
                   <Alert
                     icon={ShieldAlert}
-                    description={`Two-factor authentication is off. Turn it on so a stolen
-                      password alone can't open your account.`}
+                    description="Two-factor authentication is off. Turn it on so a stolen password alone can't open your account."
                     type="warning"
                   />
                 )}
@@ -1058,6 +1055,8 @@ const MyProfilePage = () => {
                       <DocumentRow
                         key={document.id || index}
                         document={document}
+                        onDownload={handleDownloadDocument}
+                        downloading={downloadingDocumentId === document.id}
                       />
                     ))}
                   </RowList>

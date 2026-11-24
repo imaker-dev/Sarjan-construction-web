@@ -32,10 +32,16 @@ import { InputField } from "@components/fields/InputField";
 import { SelectField } from "@components/fields/SelectField";
 import { TextareaField } from "@components/fields/TextareaField";
 
-import { createProject } from "@store/slices/project.slice";
+import {
+  createProject,
+  updateProject,
+  getProjectDetails,
+} from "@store/slices/project.slice";
 import { ROUTES } from "@constants/routes";
 import LocationPicker from "@components/fields/LocationPicker";
 import { handleResponse } from "@utils/async.utils";
+import { useQueryParams } from "@hooks/useQueryParams";
+import Loader from "@components/ui/Loader";
 
 /* -------------------------------------------------------------------------- */
 /*  Options                                                                   */
@@ -211,7 +217,6 @@ const SECTIONS = [
   { id: "approvals", label: "Approvals", fields: ["approvals"] },
   { id: "budget", label: "Initial budget", fields: ["initialBudget"] },
 ];
-const SECTION_IDS = SECTIONS.map((s) => s.id);
 
 /* -------------------------------------------------------------------------- */
 /*  Validation                                                                */
@@ -479,34 +484,37 @@ const round6 = (n) => Number(Number(n).toFixed(6));
 const clean = (obj) =>
   Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 
+const buildParcel = (p) =>
+  clean({
+    id: p.id, // undefined for new rows, dropped by clean()
+    surveyNo: text(p.surveyNo),
+    plotNo: text(p.plotNo),
+    area: decimal(p.area),
+    areaUnit: blank(p.area) ? undefined : p.areaUnit,
+    boundaryDescription: text(p.boundaryDescription),
+    possessionDate: text(p.possessionDate),
+  });
+
+const buildApproval = (a) =>
+  clean({
+    id: a.id,
+    approvalType: a.approvalType,
+    customType: a.approvalType === "OTHER" ? text(a.customType) : undefined,
+    issuingAuthority: text(a.issuingAuthority),
+    jurisdiction: text(a.jurisdiction),
+    referenceNo: text(a.referenceNo),
+    status: a.status,
+    appliedDate: text(a.appliedDate),
+  });
+
 function buildPayload(v) {
   const isInfra = v.projectType === "INFRASTRUCTURE";
   const showBuilding = !isInfra;
   const showLinear = isInfra || v.projectType === "OTHER";
   const hasGeo = !blank(v.geoLatitude) && !blank(v.geoLongitude);
 
-  const landParcels = v.landParcels.map((p) =>
-    clean({
-      surveyNo: text(p.surveyNo),
-      plotNo: text(p.plotNo),
-      area: decimal(p.area),
-      areaUnit: blank(p.area) ? undefined : p.areaUnit,
-      boundaryDescription: text(p.boundaryDescription),
-      possessionDate: text(p.possessionDate),
-    }),
-  );
-
-  const approvals = v.approvals.map((a) =>
-    clean({
-      approvalType: a.approvalType,
-      customType: a.approvalType === "OTHER" ? text(a.customType) : undefined,
-      issuingAuthority: text(a.issuingAuthority),
-      jurisdiction: text(a.jurisdiction),
-      referenceNo: text(a.referenceNo),
-      status: a.status,
-      appliedDate: text(a.appliedDate),
-    }),
-  );
+  const landParcels = v.landParcels.map(buildParcel);
+  const approvals = v.approvals.map(buildApproval);
 
   const b = v.initialBudget;
   const initialBudget = budgetStarted(b)
@@ -582,6 +590,111 @@ function buildPayload(v) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Edit mode: API -> form values, and diff-based update payload               */
+/* -------------------------------------------------------------------------- */
+
+const toDateInput = (iso) => (iso ? String(iso).slice(0, 10) : "");
+const toStr = (v) => (v === null || v === undefined ? "" : String(v));
+
+function mapProjectToForm(p) {
+  return {
+    ...INITIAL_VALUES,
+    code: toStr(p.code),
+    name: toStr(p.name),
+    description: toStr(p.description),
+    projectType: p.projectType ?? "RESIDENTIAL",
+    projectSubtype: toStr(p.projectSubtype),
+    contractType: toStr(p.contractType),
+
+    clientName: toStr(p.clientName),
+    clientContactName: toStr(p.clientContactName),
+    clientContactPhone: toStr(p.clientContactPhone),
+    clientContactEmail: toStr(p.clientContactEmail),
+
+    contractRef: toStr(p.contractRef),
+    workOrderRef: toStr(p.workOrderRef),
+    tenderRef: toStr(p.tenderRef),
+    contractValue: toStr(p.contractValue),
+    contractCurrency: p.contractCurrency ?? "INR",
+    contractDate: toDateInput(p.contractDate),
+    workOrderDate: toDateInput(p.workOrderDate),
+
+    locationAddressLine: toStr(p.locationAddressLine),
+    locationLocality: toStr(p.locationLocality),
+    locationCity: toStr(p.locationCity),
+    locationDistrict: toStr(p.locationDistrict),
+    locationState: toStr(p.locationState),
+    locationPin: toStr(p.locationPin),
+    locationCountry: toStr(p.locationCountry),
+    geoLatitude: toStr(p.geoLatitude),
+    geoLongitude: toStr(p.geoLongitude),
+    timezone: p.timezone ?? "Asia/Kolkata",
+
+    scopeSummary: toStr(p.scopeSummary),
+    landArea: toStr(p.landArea),
+    landAreaUnit: p.landAreaUnit ?? "SQM",
+    builtUpArea: toStr(p.builtUpArea),
+    numBuildings: toStr(p.numBuildings),
+    numFloorsMax: toStr(p.numFloorsMax),
+    numUnits: toStr(p.numUnits),
+    linearLengthKm: toStr(p.linearLengthKm),
+    carriagewayWidthM: toStr(p.carriagewayWidthM),
+
+    startDate: toDateInput(p.startDate),
+    endDate: toDateInput(p.endDate),
+    ntpDate: toDateInput(p.ntpDate),
+    revisedEndDate: toDateInput(p.revisedEndDate),
+    actualStartDate: toDateInput(p.actualStartDate),
+    actualEndDate: toDateInput(p.actualEndDate),
+
+    landParcels: (p.landParcels ?? []).map((l) => ({
+      id: l.id,
+      surveyNo: toStr(l.surveyNo),
+      plotNo: toStr(l.plotNo),
+      area: toStr(l.area),
+      areaUnit: l.areaUnit ?? "SQM",
+      boundaryDescription: toStr(l.boundaryDescription),
+      possessionDate: toDateInput(l.possessionDate),
+    })),
+
+    approvals: (p.approvals ?? []).map((a) => ({
+      id: a.id,
+      approvalType: toStr(a.approvalType),
+      customType: toStr(a.customType),
+      issuingAuthority: toStr(a.issuingAuthority),
+      jurisdiction: toStr(a.jurisdiction),
+      referenceNo: toStr(a.referenceNo),
+      status: a.status ?? "APPLIED",
+      appliedDate: toDateInput(a.appliedDate),
+    })),
+
+    // The project response has no budget, so it isn't edited here.
+    initialBudget: INITIAL_VALUES.initialBudget,
+  };
+}
+
+const NESTED = ["landParcels", "approvals", "initialBudget"];
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+function buildUpdatePayload(values, initialValues, version) {
+  const next = buildPayload(values);
+  const prev = buildPayload(initialValues);
+  const changes = { version };
+
+  new Set([...Object.keys(prev), ...Object.keys(next)]).forEach((key) => {
+    if (NESTED.includes(key)) return;
+    if (!same(prev[key], next[key])) changes[key] = next[key] ?? null; // null = cleared
+  });
+
+  if (!same(prev.landParcels, next.landParcels))
+    changes.landParcels = next.landParcels ?? [];
+  if (!same(prev.approvals, next.approvals))
+    changes.approvals = next.approvals ?? [];
+
+  return changes;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Small pieces                                                              */
 /* -------------------------------------------------------------------------- */
 
@@ -630,13 +743,13 @@ const scrollToSection = (id) =>
     .getElementById(id)
     ?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-function SideNav({ active, errorIds }) {
+function SideNav({ sections, active, errorIds }) {
   return (
     <nav aria-label="Form sections" className="space-y-0.5">
       <p className="mb-2 px-3 text-xs font-medium text-slate-400 dark:text-slate-500">
         On this page
       </p>
-      {SECTIONS.map((s) => {
+      {sections.map((s) => {
         const isActive = active === s.id;
         return (
           <button
@@ -739,20 +852,29 @@ const GRID = "grid grid-cols-1 gap-5 md:grid-cols-2";
 const PAIR = "grid grid-cols-[minmax(0,1fr)_7.5rem] gap-3";
 
 /* -------------------------------------------------------------------------- */
-/*  Page                                                                      */
+/*  Form (create + edit)                                                      */
 /* -------------------------------------------------------------------------- */
 
-const CreateProjectPage = () => {
+const ProjectForm = ({ project }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const isEditMode = Boolean(project);
 
-  const isCreatingProject = useSelector(
-    (state) => state.project.isCreatingProject,
+  const { isCreatingProject, isUpdatingProject } = useSelector(
+    (state) => state.project,
   );
+  const isSaving = isCreatingProject || isUpdatingProject;
+
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 
+  const initialValues = useMemo(
+    () => (project ? mapProjectToForm(project) : INITIAL_VALUES),
+    [project],
+  );
+
   const formik = useFormik({
-    initialValues: INITIAL_VALUES,
+    initialValues,
+    enableReinitialize: true,
     validationSchema,
     onSubmit: (_, { setSubmitting }) => {
       setSubmitting(false);
@@ -794,24 +916,31 @@ const CreateProjectPage = () => {
   }, [showBuilding, showLinear, setFieldValue]);
 
   /* ---- navigation + error badges ------------------------------------------- */
-  const activeSection = useActiveSection(SECTION_IDS);
+  // Budget is only part of the create flow.
+  const sections = useMemo(
+    () => (isEditMode ? SECTIONS.filter((s) => s.id !== "budget") : SECTIONS),
+    [isEditMode],
+  );
+  const sectionIds = useMemo(() => sections.map((s) => s.id), [sections]);
+
+  const activeSection = useActiveSection(sectionIds);
   const errorIds = useMemo(
     () =>
       formik.submitCount > 0
         ? new Set(
-            SECTIONS.filter((s) => s.fields.some((f) => getIn(errors, f))).map(
-              (s) => s.id,
-            ),
+            sections
+              .filter((s) => s.fields.some((f) => getIn(errors, f)))
+              .map((s) => s.id),
           )
         : new Set(),
-    [errors, formik.submitCount],
+    [errors, formik.submitCount, sections],
   );
 
   // After a failed submit, jump to the first section that needs attention.
   useEffect(() => {
     if (formik.isSubmitting || formik.submitCount === 0 || formik.isValid)
       return;
-    const first = SECTIONS.find((s) => s.fields.some((f) => getIn(errors, f)));
+    const first = sections.find((s) => s.fields.some((f) => getIn(errors, f)));
     if (first) scrollToSection(first.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formik.isSubmitting]);
@@ -828,14 +957,21 @@ const CreateProjectPage = () => {
 
   /* ---- submit --------------------------------------------------------------- */
   const handleConfirm = async () => {
-    await handleResponse(dispatch(createProject(buildPayload(values))), () => {
+    const action = isEditMode
+      ? updateProject({
+          projectId: project.id,
+          data: buildUpdatePayload(values, initialValues, project.version),
+        })
+      : createProject(buildPayload(values));
+
+    await handleResponse(dispatch(action), () => {
       setIsConfirmationOpen(false);
       navigate(ROUTES.PROJECTS.ROOT);
     });
   };
 
   const handleCloseConfirmation = () => {
-    if (isCreatingProject) return;
+    if (isSaving) return;
     setIsConfirmationOpen(false);
   };
 
@@ -847,7 +983,9 @@ const CreateProjectPage = () => {
   return (
     <FormikProvider value={formik}>
       <div className="space-y-5">
-        <PageHeaderBanner title="Create Project" />
+        <PageHeaderBanner
+          title={isEditMode ? "Edit Project" : "Create Project"}
+        />
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_210px]">
           <form
@@ -874,6 +1012,7 @@ const CreateProjectPage = () => {
                     placeholder="e.g. PRJ-001"
                     required
                     uppercase
+                    disabled={isEditMode}
                     {...fieldProps("code")}
                   />
                   <SelectField
@@ -1224,9 +1363,9 @@ const CreateProjectPage = () => {
                         />
                       ) : (
                         <>
-                          {values.landParcels.map((_, i) => (
+                          {values.landParcels.map((p, i) => (
                             <Repeater
-                              key={i}
+                              key={p.id ?? i}
                               title={`Parcel ${i + 1}`}
                               onRemove={() => remove(i)}
                             >
@@ -1306,7 +1445,7 @@ const CreateProjectPage = () => {
                         <>
                           {values.approvals.map((a, i) => (
                             <Repeater
-                              key={i}
+                              key={a.id ?? i}
                               title={`Approval ${i + 1}`}
                               onRemove={() => remove(i)}
                             >
@@ -1374,127 +1513,129 @@ const CreateProjectPage = () => {
               </FormSection>
             </Section>
 
-            {/* Initial budget */}
-            <Section id="budget">
-              <FormSection
-                title="Initial Budget"
-                description="Optional. Add the sanctioned estimate now, or set it up later."
-                icon={IconReportMoney}
-              >
-                <div className="space-y-5">
-                  <div className={GRID}>
-                    <InputField
-                      label="Budget Code"
-                      placeholder="e.g. BASE"
-                      uppercase
-                      {...fieldProps("initialBudget.code")}
-                    />
-                    <InputField
-                      label="Budget Name"
-                      placeholder="e.g. Sanctioned Estimate"
-                      {...fieldProps("initialBudget.name")}
-                    />
-                    <SelectField
-                      label="Currency"
-                      options={CURRENCIES}
-                      {...fieldProps("initialBudget.currency")}
-                    />
-                    <InputField
-                      label="Notes"
-                      placeholder="e.g. Per tender TN-55/2026"
-                      {...fieldProps("initialBudget.notes")}
-                    />
-                  </div>
+            {/* Initial budget (create only) */}
+            {!isEditMode && (
+              <Section id="budget">
+                <FormSection
+                  title="Initial Budget"
+                  description="Optional. Add the sanctioned estimate now, or set it up later."
+                  icon={IconReportMoney}
+                >
+                  <div className="space-y-5">
+                    <div className={GRID}>
+                      <InputField
+                        label="Budget Code"
+                        placeholder="e.g. BASE"
+                        uppercase
+                        {...fieldProps("initialBudget.code")}
+                      />
+                      <InputField
+                        label="Budget Name"
+                        placeholder="e.g. Sanctioned Estimate"
+                        {...fieldProps("initialBudget.name")}
+                      />
+                      <SelectField
+                        label="Currency"
+                        options={CURRENCIES}
+                        {...fieldProps("initialBudget.currency")}
+                      />
+                      <InputField
+                        label="Notes"
+                        placeholder="e.g. Per tender TN-55/2026"
+                        {...fieldProps("initialBudget.notes")}
+                      />
+                    </div>
 
-                  <FieldArray name="initialBudget.lines">
-                    {({ push, remove }) => (
-                      <div className="space-y-3">
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                          Budget lines
-                        </p>
+                    <FieldArray name="initialBudget.lines">
+                      {({ push, remove }) => (
+                        <div className="space-y-3">
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                            Budget lines
+                          </p>
 
-                        {values.initialBudget.lines.length === 0 ? (
-                          <EmptyRegister
-                            message="No budget lines added yet."
-                            actionLabel="Add budget line"
-                            onAdd={() => push({ ...NEW_LINE })}
-                          />
-                        ) : (
-                          <>
-                            {values.initialBudget.lines.map((_, i) => (
-                              <Repeater
-                                key={i}
-                                title={`Line ${i + 1}`}
-                                onRemove={() => remove(i)}
-                              >
-                                <div className="grid grid-cols-1 gap-5 md:grid-cols-[12rem_minmax(0,1fr)_11rem]">
-                                  <SelectField
-                                    label="Category"
-                                    required
-                                    options={BUDGET_CATEGORIES}
-                                    placeholder="Select category"
-                                    {...fieldProps(
-                                      `initialBudget.lines.${i}.category`,
+                          {values.initialBudget.lines.length === 0 ? (
+                            <EmptyRegister
+                              message="No budget lines added yet."
+                              actionLabel="Add budget line"
+                              onAdd={() => push({ ...NEW_LINE })}
+                            />
+                          ) : (
+                            <>
+                              {values.initialBudget.lines.map((_, i) => (
+                                <Repeater
+                                  key={i}
+                                  title={`Line ${i + 1}`}
+                                  onRemove={() => remove(i)}
+                                >
+                                  <div className="grid grid-cols-1 gap-5 md:grid-cols-[12rem_minmax(0,1fr)_11rem]">
+                                    <SelectField
+                                      label="Category"
+                                      required
+                                      options={BUDGET_CATEGORIES}
+                                      placeholder="Select category"
+                                      {...fieldProps(
+                                        `initialBudget.lines.${i}.category`,
+                                      )}
+                                    />
+                                    <InputField
+                                      label="Description"
+                                      placeholder="e.g. Civil materials"
+                                      {...fieldProps(
+                                        `initialBudget.lines.${i}.description`,
+                                      )}
+                                    />
+                                    <InputField
+                                      label="Amount"
+                                      type="number"
+                                      required
+                                      placeholder="0.00"
+                                      {...fieldProps(
+                                        `initialBudget.lines.${i}.amount`,
+                                      )}
+                                    />
+                                  </div>
+                                </Repeater>
+                              ))}
+
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <AddRow
+                                  label="Add another line"
+                                  disabled={false}
+                                  onAdd={() => push({ ...NEW_LINE })}
+                                />
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                  Total{" "}
+                                  <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                                    {formatMoney(
+                                      budgetTotal,
+                                      values.initialBudget.currency,
                                     )}
-                                  />
-                                  <InputField
-                                    label="Description"
-                                    placeholder="e.g. Civil materials"
-                                    {...fieldProps(
-                                      `initialBudget.lines.${i}.description`,
-                                    )}
-                                  />
-                                  <InputField
-                                    label="Amount"
-                                    type="number"
-                                    required
-                                    placeholder="0.00"
-                                    {...fieldProps(
-                                      `initialBudget.lines.${i}.amount`,
-                                    )}
-                                  />
-                                </div>
-                              </Repeater>
-                            ))}
-
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <AddRow
-                                label="Add another line"
-                                disabled={false}
-                                onAdd={() => push({ ...NEW_LINE })}
-                              />
-                              <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Total{" "}
-                                <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
-                                  {formatMoney(
-                                    budgetTotal,
-                                    values.initialBudget.currency,
-                                  )}
-                                </span>
-                              </p>
-                            </div>
-                          </>
-                        )}
-
-                        {typeof errors.initialBudget?.lines === "string" &&
-                          formik.submitCount > 0 && (
-                            <p className="text-xs text-rose-600 dark:text-rose-400">
-                              {errors.initialBudget.lines}
-                            </p>
+                                  </span>
+                                </p>
+                              </div>
+                            </>
                           )}
-                      </div>
-                    )}
-                  </FieldArray>
-                </div>
-              </FormSection>
-            </Section>
+
+                          {typeof errors.initialBudget?.lines === "string" &&
+                            formik.submitCount > 0 && (
+                              <p className="text-xs text-rose-600 dark:text-rose-400">
+                                {errors.initialBudget.lines}
+                              </p>
+                            )}
+                        </div>
+                      )}
+                    </FieldArray>
+                  </div>
+                </FormSection>
+              </Section>
+            )}
 
             {/* Form Actions */}
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => navigate(ROUTES.PROJECTS.ROOT)}
-                disabled={isCreatingProject}
+                disabled={isSaving}
                 className="btn btn-outline"
               >
                 <ArrowLeft size={17} strokeWidth={1.8} />
@@ -1513,20 +1654,21 @@ const CreateProjectPage = () => {
                       : `${errorIds.size} sections need attention`}
                   </p>
                 )}
+
                 <button
                   type="submit"
-                  disabled={isCreatingProject}
+                  disabled={isSaving}
                   className="btn btn-primary"
                 >
-                  {isCreatingProject ? (
+                  {isSaving ? (
                     <>
                       <LoaderCircle size={17} className="animate-spin" />
-                      Creating...
+                      {isEditMode ? "Saving..." : "Creating..."}
                     </>
                   ) : (
                     <>
                       <Check size={18} strokeWidth={2} />
-                      Review & Create
+                      {isEditMode ? "Review & Save" : "Review & Create"}
                     </>
                   )}
                 </button>
@@ -1535,7 +1677,11 @@ const CreateProjectPage = () => {
           </form>
 
           <aside className="sticky top-16 hidden lg:block">
-            <SideNav active={activeSection} errorIds={errorIds} />
+            <SideNav
+              sections={sections}
+              active={activeSection}
+              errorIds={errorIds}
+            />
           </aside>
         </div>
 
@@ -1545,16 +1691,20 @@ const CreateProjectPage = () => {
           isOpen={isConfirmationOpen}
           onClose={handleCloseConfirmation}
           onSubmit={handleConfirm}
-          title="Create Project?"
-          desc="Review the key details before creating this project."
+          title={isEditMode ? "Save Changes?" : "Create Project?"}
+          desc={
+            isEditMode
+              ? "Review the key details before saving your changes."
+              : "Review the key details before creating this project."
+          }
           icon={IconBriefcase}
           theme="primary"
-          submitText="Confirm & Create"
-          loadingText="Creating..."
+          submitText={isEditMode ? "Confirm & Save" : "Confirm & Create"}
+          loadingText={isEditMode ? "Saving..." : "Creating..."}
           cancelText="Go Back"
-          loading={isCreatingProject}
-          closeOnBackdrop={!isCreatingProject}
-          closeOnEscape={!isCreatingProject}
+          loading={isSaving}
+          closeOnBackdrop={!isSaving}
+          closeOnEscape={!isSaving}
           showCancel
         >
           <dl className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-slate-50 dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-800/50">
@@ -1614,12 +1764,41 @@ const CreateProjectPage = () => {
           </dl>
 
           <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            This will create a new project in your organization.
+            {isEditMode
+              ? "This will update the existing project."
+              : "This will create a new project in your organization."}
           </p>
         </ModalAction>
       </div>
     </FormikProvider>
   );
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Page (loads the project in edit mode, then mounts the form)                */
+/* -------------------------------------------------------------------------- */
+
+const CreateProjectPage = () => {
+  const dispatch = useDispatch();
+  const { get } = useQueryParams();
+  const projectId = get("projectId");
+  const { isGettingProjectDetails, projectData } = useSelector(
+    (state) => state.project,
+  );
+
+  useEffect(() => {
+    if (projectId) dispatch(getProjectDetails(projectId));
+  }, [dispatch, projectId]);
+
+  // Create mode
+  if (!projectId) return <ProjectForm />;
+
+  // Edit mode: ignore stale data from a previously opened project
+  const loaded = projectData?.id === projectId ? projectData : null;
+  if (isGettingProjectDetails || !loaded)
+    return <Loader title="" description="" />;
+
+  return <ProjectForm key={loaded.id} project={loaded} />;
 };
 
 export default CreateProjectPage;

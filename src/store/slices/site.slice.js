@@ -1,4 +1,3 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import siteApi from "@store/api/site.api";
 import { toast } from "sonner";
@@ -8,6 +7,15 @@ export const listSites = createAsyncThunk(
   "site/listSites",
   async (values = {}) => {
     const res = await siteApi.listSitesApi(values);
+    return res.data;
+  },
+);
+
+// Get site details
+export const getSiteDetails = createAsyncThunk(
+  "site/getSiteDetails",
+  async (id) => {
+    const res = await siteApi.getSiteDetailsApi(id);
     return res.data;
   },
 );
@@ -47,6 +55,7 @@ const siteSlice = createSlice({
 
   initialState: {
     isListingSites: false,
+    isGettingSiteDetails: false,
     isCreatingSite: false,
     isUpdatingSite: false,
     isUpdatingSiteStatus: false,
@@ -73,6 +82,22 @@ const siteSlice = createSlice({
         toast.error(action.error.message || "Failed to fetch sites");
       })
 
+      // Get site details
+      .addCase(getSiteDetails.pending, (state) => {
+        state.isGettingSiteDetails = true;
+        state.siteData = null;
+      })
+      .addCase(getSiteDetails.fulfilled, (state, action) => {
+        state.isGettingSiteDetails = false;
+        state.siteData = action.payload;
+      })
+      .addCase(getSiteDetails.rejected, (state, action) => {
+        state.isGettingSiteDetails = false;
+        state.siteData = null;
+
+        toast.error(action.error.message || "Failed to fetch site details");
+      })
+
       // Create site
       .addCase(createSite.pending, (state) => {
         state.isCreatingSite = true;
@@ -81,9 +106,7 @@ const siteSlice = createSlice({
         state.isCreatingSite = false;
         state.siteData = action.payload;
 
-        toast.success(
-          action.payload?.message || "Site created successfully!",
-        );
+        toast.success(action.payload?.message || "Site created successfully!");
       })
       .addCase(createSite.rejected, (state, action) => {
         state.isCreatingSite = false;
@@ -98,9 +121,7 @@ const siteSlice = createSlice({
         state.isUpdatingSite = false;
         state.siteData = action.payload;
 
-        toast.success(
-          action.payload?.message || "Site updated successfully!",
-        );
+        toast.success(action.payload?.message || "Site updated successfully!");
       })
       .addCase(updateSite.rejected, (state, action) => {
         state.isUpdatingSite = false;
@@ -118,9 +139,7 @@ const siteSlice = createSlice({
 
         const updateSiteInList = (sites) =>
           sites?.map((site) =>
-            site.id === updatedSite?.id
-              ? { ...site, ...updatedSite }
-              : site,
+            site.id === updatedSite?.id ? { ...site, ...updatedSite } : site,
           );
 
         if (Array.isArray(state.sitesData)) {
@@ -137,9 +156,7 @@ const siteSlice = createSlice({
       })
       .addCase(updateSiteStatus.rejected, (state, action) => {
         state.isUpdatingSiteStatus = false;
-        toast.error(
-          action.error.message || "Failed to update site status",
-        );
+        toast.error(action.error.message || "Failed to update site status");
       });
   },
 });

@@ -13,7 +13,7 @@ import ModalBasic from "@components/ui/ModalBasic.jsx";
 import { formatFileSize } from "@utils/file.utils";
 
 /**
- * Reusable drag & drop uploader (local files only).
+ * Reusable drag & drop uploader (local files only). Light + dark theme ready.
  *
  * Props
  * - value:        File | string | Array<File | string>
@@ -137,14 +137,14 @@ const FilePreview = ({ file, config, canCrop, onCrop, onRemove }) => {
   return (
     <div className="group relative">
       <div
-        className={`${config.preview} overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm transition-all duration-200 group-hover:border-primary-300 group-hover:shadow-md`}
+        className={`${config.preview} overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all duration-200 group-hover:border-primary-300 group-hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:group-hover:border-primary-500/60`}
       >
         {kind === "image" && src && (
           <img src={src} alt={name} className="h-full w-full object-cover" />
         )}
 
         {kind === "video" && src && (
-          <div className="relative h-full w-full bg-gray-900">
+          <div className="relative h-full w-full bg-slate-900">
             <video
               src={src}
               className="h-full w-full object-cover opacity-80"
@@ -157,8 +157,8 @@ const FilePreview = ({ file, config, canCrop, onCrop, onRemove }) => {
 
         {kind === "file" && (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-1">
-            <FileText className="h-6 w-6 text-primary-500" />
-            <span className="w-full truncate px-1 text-center text-[10px] text-gray-500">
+            <FileText className="h-6 w-6 text-primary-500 dark:text-primary-400" />
+            <span className="w-full truncate px-1 text-center text-[10px] text-slate-500 dark:text-slate-400">
               {name}
             </span>
           </div>
@@ -171,11 +171,12 @@ const FilePreview = ({ file, config, canCrop, onCrop, onRemove }) => {
           <button
             type="button"
             title="Crop image"
+            aria-label="Crop image"
             onClick={(e) => {
               e.stopPropagation();
               onCrop();
             }}
-            className={`${config.actionBtn} flex items-center justify-center rounded-full bg-primary-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-primary-600`}
+            className={`${config.actionBtn} flex items-center justify-center rounded-full bg-primary-500 text-white shadow-lg ring-2 ring-white transition-all hover:scale-110 hover:bg-primary-600 dark:ring-slate-900`}
           >
             <Crop className={config.actionIcon} />
           </button>
@@ -183,11 +184,12 @@ const FilePreview = ({ file, config, canCrop, onCrop, onRemove }) => {
         <button
           type="button"
           title="Remove"
+          aria-label="Remove file"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          className={`${config.actionBtn} flex items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600`}
+          className={`${config.actionBtn} flex items-center justify-center rounded-full bg-red-500 text-white shadow-lg ring-2 ring-white transition-all hover:scale-110 hover:bg-red-600 dark:ring-slate-900`}
         >
           <X className={config.actionIcon} />
         </button>
@@ -195,7 +197,7 @@ const FilePreview = ({ file, config, canCrop, onCrop, onRemove }) => {
 
       {/* File size for local files */}
       {!isString && (
-        <p className="mt-1 text-center text-[10px] text-gray-400">
+        <p className="mt-1 text-center text-[10px] text-slate-400 dark:text-slate-500">
           {formatFileSize(file.size)}
         </p>
       )}
@@ -352,7 +354,7 @@ const DragDropUploader = ({
           size="2xl"
         >
           <div className="p-4">
-            <div className="relative h-96 w-full overflow-hidden rounded-xl bg-gray-900">
+            <div className="relative h-96 w-full overflow-hidden rounded-xl bg-slate-900">
               {croppingFile && (
                 <Cropper
                   image={croppingFile.preview}
@@ -373,7 +375,7 @@ const DragDropUploader = ({
               <button
                 type="button"
                 onClick={closeCropper}
-                className="btn border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="btn border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -396,32 +398,40 @@ const DragDropUploader = ({
           config.container
         } ${
           disabled
-            ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-60"
+            ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-60 dark:border-slate-800 dark:bg-slate-900"
             : isDragReject
-              ? "cursor-pointer border-red-400 bg-red-50"
+              ? "cursor-pointer border-red-400 bg-red-50 dark:border-red-500/60 dark:bg-red-500/10"
               : isDragActive
-                ? "cursor-pointer border-primary-500 bg-primary-50 ring-4 ring-primary-100"
-                : "cursor-pointer border-gray-300 bg-white hover:border-primary-400 hover:bg-primary-50/50"
+                ? "cursor-pointer border-primary-500 bg-primary-50 ring-4 ring-primary-100 dark:bg-primary-500/10 dark:ring-primary-500/20"
+                : "cursor-pointer border-slate-300 bg-white hover:border-primary-400 hover:bg-primary-50/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-primary-500/60 dark:hover:bg-primary-500/5"
         }`}
       >
         <input {...getInputProps()} />
 
         {/* Soft decorative glow */}
-        <div className="pointer-events-none absolute -top-10 left-1/2 h-24 w-48 -translate-x-1/2 rounded-full bg-primary-200/30 blur-3xl transition-opacity duration-300 group-hover:opacity-100 opacity-0" />
+        <div className="pointer-events-none absolute -top-10 left-1/2 h-24 w-48 -translate-x-1/2 rounded-full bg-primary-200/30 opacity-0 blur-3xl transition-opacity duration-300 group-hover:opacity-100 dark:bg-primary-500/20" />
 
         <div className="relative flex flex-col items-center gap-2">
           <div
             className={`${config.iconBox} flex items-center justify-center rounded-2xl shadow-sm transition-all duration-300 ${
-              isDragActive
-                ? "-translate-y-1 scale-110 bg-primary-500 text-white"
-                : "bg-primary-50 text-primary-600 group-hover:-translate-y-0.5 group-hover:bg-primary-100"
+              isDragReject
+                ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400"
+                : isDragActive
+                  ? "-translate-y-1 scale-110 bg-primary-500 text-white"
+                  : "bg-primary-50 text-primary-600 group-hover:-translate-y-0.5 group-hover:bg-primary-100 dark:bg-primary-500/10 dark:text-primary-400 dark:group-hover:bg-primary-500/20"
             }`}
           >
             <UploadCloud className={config.icon} />
           </div>
 
           <div>
-            <p className={`${config.title} text-gray-900`}>
+            <p
+              className={`${config.title} ${
+                isDragReject
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-slate-900 dark:text-white"
+              }`}
+            >
               {isDragReject
                 ? "This file type isn't allowed"
                 : isDragActive
@@ -429,19 +439,23 @@ const DragDropUploader = ({
                   : title || (
                       <>
                         Drag & drop or{" "}
-                        <span className="text-primary-600 underline-offset-2 group-hover:underline">
+                        <span className="text-primary-600 underline-offset-2 group-hover:underline dark:text-primary-400">
                           browse
                         </span>
                       </>
                     )}
             </p>
-            <p className={`${config.subtitle} mt-1 text-gray-500`}>
+            <p
+              className={`${config.subtitle} mt-1 text-slate-500 dark:text-slate-400`}
+            >
               {description ||
                 (multiple
                   ? `Upload up to ${maxFiles} files`
                   : "Upload a single file")}
             </p>
-            <p className={`${config.info} mt-1.5 text-gray-400`}>
+            <p
+              className={`${config.info} mt-1.5 text-slate-400 dark:text-slate-500`}
+            >
               {isImageOnly ? "Images only" : "All supported files"} · Max{" "}
               {formatFileSize(maxSize)}
               {enableCrop && " · Crop available"}
@@ -452,9 +466,12 @@ const DragDropUploader = ({
 
       {/* Error */}
       {error && (
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+        <div
+          role="alert"
+          className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 dark:border-red-500/20 dark:bg-red-500/10"
+        >
           <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 

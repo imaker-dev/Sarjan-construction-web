@@ -54,7 +54,7 @@ const Muted = ({ children }) => (
   <span className="text-slate-400 dark:text-slate-500">{children}</span>
 );
 
-const AllProjectsPage = ({ onView, onEdit, onDelete }) => {
+const AllProjectsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [statusConfirmation, setStatusConfirmation] = useState(null);
@@ -194,16 +194,20 @@ const AllProjectsPage = ({ onView, onEdit, onDelete }) => {
 
   const actions = useMemo(
     () => [
-      ...(onEdit ? [{ label: "Edit", icon: Pencil, onClick: onEdit }] : []),
-      ...(onDelete
-        ? [{ label: "Delete", icon: Trash2, onClick: onDelete, danger: true }]
-        : []),
       {
         label: "View",
         icon: Eye,
         onClick: (p) =>
           navigate(ROUTES.PROJECTS.DETAILS + "?projectId=" + p.id),
       },
+      {
+        label: "Edit",
+        icon: Pencil,
+        onClick: (p) => navigate(ROUTES.PROJECTS.EDIT + "?projectId=" + p.id),
+        hidden: (p) => p.status === "ARCHIVED",
+      },
+
+      // PLANNED → ACTIVE
       {
         label: "Activate Project",
         icon: Play,
@@ -214,8 +218,10 @@ const AllProjectsPage = ({ onView, onEdit, onDelete }) => {
             "Activate Project",
             "Are you sure you want to activate this project?",
           ),
-        hidden: (project) => project.status !== "PLANNED",
+        hidden: (p) => p.status !== "PLANNED",
       },
+
+      // ACTIVE → ON_HOLD
       {
         label: "Put On Hold",
         icon: Pause,
@@ -226,8 +232,10 @@ const AllProjectsPage = ({ onView, onEdit, onDelete }) => {
             "Put Project On Hold",
             "Are you sure you want to put this project on hold?",
           ),
-        hidden: (project) => project.status !== "ACTIVE",
+        hidden: (p) => p.status !== "ACTIVE",
       },
+
+      // ON_HOLD → ACTIVE
       {
         label: "Resume Project",
         icon: RefreshCw,
@@ -238,8 +246,10 @@ const AllProjectsPage = ({ onView, onEdit, onDelete }) => {
             "Resume Project",
             "Are you sure you want to resume this project?",
           ),
-        hidden: (project) => project.status !== "ON_HOLD",
+        hidden: (p) => p.status !== "ON_HOLD",
       },
+
+      // ACTIVE / ON_HOLD → COMPLETED
       {
         label: "Complete Project",
         icon: CheckCircle2,
@@ -250,10 +260,25 @@ const AllProjectsPage = ({ onView, onEdit, onDelete }) => {
             "Complete Project",
             "Are you sure you want to mark this project as completed?",
           ),
-        hidden: (project) => !["ACTIVE", "ON_HOLD"].includes(project.status),
+        hidden: (p) => !["ACTIVE", "ON_HOLD"].includes(p.status),
+      },
+
+      // PLANNED / ACTIVE / ON_HOLD / COMPLETED → ARCHIVED
+      {
+        label: "Archive Project",
+        icon: Trash2,
+        onClick: (project) =>
+          handleOpenStatusConfirmation(
+            project,
+            "ARCHIVED",
+            "Archive Project",
+            "Are you sure you want to archive this project? This action will prevent further status changes.",
+          ),
+        hidden: (p) =>
+          !["PLANNED", "ACTIVE", "ON_HOLD", "COMPLETED"].includes(p.status),
       },
     ],
-    [onView, onEdit, onDelete, handleOpenStatusConfirmation],
+    [navigate, handleOpenStatusConfirmation],
   );
 
   return (
@@ -297,56 +322,76 @@ const AllProjectsPage = ({ onView, onEdit, onDelete }) => {
         cancelText="Cancel"
       >
         {/* Project Status Confirmation Card */}
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          {/* Project Details */}
-          <div className="flex items-center gap-3.5 p-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              <BriefcaseBusiness size={20} strokeWidth={1.7} />
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.12)] dark:border-white/[0.07] dark:bg-slate-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_12px_32px_-16px_rgba(0,0,0,0.6)]">
+          {/* soft top glow */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-primary-500/[0.06] to-transparent dark:from-primary-400/[0.08]"
+          />
+
+          {/* Project */}
+          <div className="relative flex items-center gap-3.5 px-5 pb-4 pt-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-[0_4px_12px_-4px] shadow-primary-600/50 ring-1 ring-inset ring-white/20">
+              <BriefcaseBusiness size={20} strokeWidth={1.8} />
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                Project
+              </p>
+              <p className="mt-0.5 truncate text-[15px] font-semibold leading-tight text-slate-900 dark:text-white">
                 {statusConfirmation?.project?.name || "Untitled Project"}
               </p>
+            </div>
 
-              <p className="mt-1 text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500">
-                {statusConfirmation?.project?.code || "—"}
-              </p>
+            <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[11px] font-medium text-slate-500 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-slate-400">
+              {statusConfirmation?.project?.code || "—"}
+            </span>
+          </div>
+
+          {/* Divider */}
+          <div className="mx-5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-white/[0.08]" />
+
+          {/* Transition */}
+          <div className="relative px-5 py-5">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              {/* Current */}
+              <div className="min-w-0">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                  Current
+                </p>
+                <div className="opacity-90">
+                  <StatusBadge status={statusConfirmation?.project?.status} />
+                </div>
+              </div>
+
+              {/* Connector */}
+              <div className="flex items-center gap-1.5 pt-5 text-slate-300 dark:text-slate-600">
+                <span className="h-px w-5 bg-current sm:w-8" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm dark:border-white/10 dark:bg-slate-800 dark:text-slate-300">
+                  <ArrowRight size={14} strokeWidth={2.2} />
+                </span>
+                <span className="h-px w-5 bg-current sm:w-8" />
+              </div>
+
+              {/* New */}
+              <div className="min-w-0 text-right">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-600 dark:text-primary-300">
+                  New
+                </p>
+                <div className="inline-flex ">
+                  <StatusBadge status={statusConfirmation?.status} />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Status Transition */}
-          <div className="mx-4 mb-4 rounded-xl border border-slate-100 bg-slate-50/80 p-4 dark:border-slate-700/70 dark:bg-slate-800/50">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-              {/* Current Status */}
-              <div className="min-w-0">
-                <div className="mb-2 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
-                    Current Status
-                  </p>
-                </div>
-
-                <StatusBadge status={statusConfirmation?.project?.status} />
-              </div>
-
-              {/* Transition Arrow */}
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                <ArrowRight size={16} strokeWidth={2} />
-              </div>
-
-              {/* New Status */}
-              <div className="min-w-0 text-right">
-                <div className="mb-2 flex items-center justify-end gap-1.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
-                    New Status
-                  </p>
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                </div>
-
-                <StatusBadge status={statusConfirmation?.status} />
-              </div>
-            </div>
+          {/* Footer note */}
+          <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-3 dark:border-white/[0.06] dark:bg-white/[0.02]">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              This change takes effect immediately and can be updated later.
+            </p>
           </div>
         </div>
       </ModalAction>

@@ -9,6 +9,11 @@ export default false
         return Api.get("/org/sites", values);
       },
 
+      // Get site details
+      getSiteDetailsApi: (id) => {
+        return Api.get(`/org/sites/${id}`);
+      },
+
       createSiteApi: (values) => {
         return Api.post("/org/sites", values);
       },

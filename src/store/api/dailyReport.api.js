@@ -11,10 +11,11 @@ const dailyReportApi = {
     return Api.get(`/attendance/daily-reports/${id}`);
   },
 
-  // 3. Trigger on-demand muster calculation
-  recalculateDailyReportApi: ({ siteId, businessDate }) => {
+  // 3. Trigger on-demand muster calculation (Site or Head Office)
+  recalculateDailyReportApi: ({ siteId, headOfficeId, businessDate }) => {
     return Api.post("/attendance/daily-reports/calculate", {
-      siteId,
+      ...(siteId ? { siteId } : {}),
+      ...(headOfficeId ? { headOfficeId } : {}),
       businessDate,
     });
   },

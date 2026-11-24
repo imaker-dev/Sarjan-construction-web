@@ -33,13 +33,14 @@ export const getDailyReportDetails = createAsyncThunk(
   }
 );
 
-// 3. Trigger recalculate
+// 3. Trigger recalculate (Site or Head Office)
 export const recalculateDailyReport = createAsyncThunk(
   "dailyReport/recalculateDailyReport",
-  async ({ siteId, businessDate }, { rejectWithValue }) => {
+  async ({ siteId, headOfficeId, businessDate }, { rejectWithValue }) => {
     try {
       const res = await dailyReportApi.recalculateDailyReportApi({
         siteId,
+        headOfficeId,
         businessDate,
       });
       return res.data;

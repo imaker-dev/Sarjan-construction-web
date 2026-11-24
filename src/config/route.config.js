@@ -122,13 +122,10 @@ export const privateRouteConfig = [
   { path: ROUTES.ATTENDANCE.POLICIES, element: AllAttendancePoliciesPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE], },
   { path: ROUTES.ATTENDANCE.POLICY_DETAILS, element: AttendancePolicyDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
   { path: ROUTES.ATTENDANCE.CREATE_POLICY, element: CreateAttendancePolicyPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
-  { path: "/attendance/muster-roll", element: DailyReportsListPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
 
   // Daily Reports & Settlement Routes (Separate Feature)
   { path: ROUTES.DAILY_REPORTS.ROOT, element: DailyReportsListPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
   { path: ROUTES.DAILY_REPORTS.DETAILS, element: DailyReportDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
-  { path: "/attendance/daily-reports", element: DailyReportsListPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
-  { path: "/attendance/daily-reports/:id", element: DailyReportDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
 
   // Notifications Routes
   { path: ROUTES.NOTIFICATIONS.ROOT, element: NotificationPage, roles: [ROLES.COMPANY_OWNER] },

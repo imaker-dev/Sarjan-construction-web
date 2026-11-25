@@ -116,6 +116,10 @@ export default false
         return Api.post(`/attendance/sessions/${id}/regularize`, values);
       },
 
+      createManualSessionApi: (values) => {
+        return Api.post("/attendance/sessions", values);
+      },
+
       // ----------------------------------------------
       // DAILY SUMMARY
       // ----------------------------------------------

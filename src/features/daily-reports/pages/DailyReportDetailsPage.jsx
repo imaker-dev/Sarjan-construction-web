@@ -18,6 +18,7 @@ import EditLabourSummaryModal from "../components/EditLabourSummaryModal";
 import RejectReportModal from "../components/RejectReportModal";
 import EditDailyReportHeaderModal from "../components/EditDailyReportHeaderModal";
 import RegularizeSessionModal from "../components/RegularizeSessionModal";
+import CreateManualSessionModal from "../components/CreateManualSessionModal";
 import PrintableDailyReport from "../components/PrintableDailyReport";
 import DailyReportActionBar from "../components/details/DailyReportActionBar";
 import DailyReportHeaderCard from "../components/details/DailyReportHeaderCard";
@@ -35,12 +36,16 @@ import {
   exportDailySiteReport,
 } from "@store/slices/dailyReport.slice";
 import { getMusterRoll } from "@store/slices/attendance.slice";
+import { useAccess } from "@hooks/useAccess";
+import { PERMISSIONS } from "@constants/permissions";
 import { ROUTES } from "@constants/routes";
 
 export default function DailyReportDetailsPage() {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { can } = useAccess();
+  const canManageAttendance = can({ permissions: [PERMISSIONS.ATTENDANCE.MANAGE] });
 
   const {
     currentReport,
@@ -61,6 +66,7 @@ export default function DailyReportDetailsPage() {
   const [isEditHeaderModalOpen, setIsEditHeaderModalOpen] = useState(false);
   const [editLabourItem, setEditLabourItem] = useState(null);
   const [selectedSessionForRegularize, setSelectedSessionForRegularize] = useState(null);
+  const [isManualSessionOpen, setIsManualSessionOpen] = useState(false);
 
   const loadData = () => {
     if (id) {
@@ -275,7 +281,12 @@ export default function DailyReportDetailsPage() {
             isFetchingMusterRoll={isFetchingMusterRoll}
             isLocked={isLocked}
             onRefresh={loadSessions}
-            onRegularize={(s) => setSelectedSessionForRegularize(s)}
+            onRegularize={
+              canManageAttendance ? (s) => setSelectedSessionForRegularize(s) : undefined
+            }
+            onAddManualSession={
+              canManageAttendance ? () => setIsManualSessionOpen(true) : undefined
+            }
           />
         )}
 
@@ -342,6 +353,19 @@ export default function DailyReportDetailsPage() {
             isOpen={Boolean(selectedSessionForRegularize)}
             onClose={() => setSelectedSessionForRegularize(null)}
             session={selectedSessionForRegularize}
+            businessDate={currentReport.businessDate}
+            onSuccess={() => {
+              loadData();
+              loadSessions();
+            }}
+          />
+        )}
+
+        {isManualSessionOpen && (
+          <CreateManualSessionModal
+            isOpen={isManualSessionOpen}
+            onClose={() => setIsManualSessionOpen(false)}
+            siteId={currentReport.siteId}
             businessDate={currentReport.businessDate}
             onSuccess={() => {
               loadData();

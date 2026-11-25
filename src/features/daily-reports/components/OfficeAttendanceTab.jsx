@@ -43,6 +43,9 @@ export default function OfficeAttendanceTab({
   const departmentSummaries = Array.isArray(musterData.departmentSummaries)
     ? musterData.departmentSummaries
     : [];
+  const workerSummaries = Array.isArray(musterData.workerSummaries)
+    ? musterData.workerSummaries
+    : [];
   const rawSessions = Array.isArray(musterData.sessions)
     ? musterData.sessions
     : [];
@@ -341,6 +344,7 @@ export default function OfficeAttendanceTab({
         isOpen={Boolean(selectedDateRecord)}
         onClose={() => setSelectedDateRecord(null)}
         dateRecord={selectedDateRecord}
+        workerSummaries={workerSummaries}
         lockedReportsMap={lockedReportsMap}
         onExportMuster={onExportMuster}
         isExportingReport={isExportingReport}

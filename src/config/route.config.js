@@ -47,6 +47,9 @@ const CreateAttendancePolicyPage = lazyLoad(() => import("@features/attendance/p
 const DailyReportsListPage = lazyLoad(() => import("@features/daily-reports/pages/DailyReportsListPage"));
 const DailyReportDetailsPage = lazyLoad(() => import("@features/daily-reports/pages/DailyReportDetailsPage"));
 const EmployeeDocumentsPage = lazyLoad(() => import("@features/employees/pages/EmployeeDocumentsPage"));
+const AllSchedulesPage = lazyLoad(() => import("@features/schedules/pages/AllSchedulesPage"));
+const CreateSchedulePage = lazyLoad(() => import("@features/schedules/pages/CreateSchedulePage"));
+const ScheduleDetailsPage = lazyLoad(() => import("@features/schedules/pages/ScheduleDetailsPage"));
 
 
 /* -------------------------------------------------------------------------- */
@@ -109,6 +112,11 @@ export const privateRouteConfig = [
   { path: ROUTES.DEPARTMENTS.CREATE, element: CreateDepartmentPage, permissions: [PERMISSIONS.DEPARTMENT.CONFIGURE] },
   { path: ROUTES.DEPARTMENTS.OPERATIONS, element: DepartmentOperationsPage, permissions: [PERMISSIONS.DEPARTMENT.CONFIGURE] },
 
+  // Work Schedules Routes
+  { path: ROUTES.SCHEDULES.ROOT, element: AllSchedulesPage, permissions: [PERMISSIONS.WORK_SCHEDULE.READ] },
+  { path: ROUTES.SCHEDULES.CREATE, element: CreateSchedulePage, permissions: [PERMISSIONS.WORK_SCHEDULE.MANAGE] },
+  { path: ROUTES.SCHEDULES.DETAILS, element: ScheduleDetailsPage, permissions: [PERMISSIONS.WORK_SCHEDULE.READ] },
+
   // Employees Routes
   { path: ROUTES.EMPLOYEES.ROOT, element: AllEmployeesPage, permissions: [PERMISSIONS.EMPLOYEE.READ] },
   { path: ROUTES.EMPLOYEES.CREATE, element: CreateEmployeePage, permissions: [PERMISSIONS.EMPLOYEE.INVITE] },
@@ -119,6 +127,8 @@ export const privateRouteConfig = [
 
   // Attendance Routes
   { path: ROUTES.ATTENDANCE.ROOT, element: AttendancePage, permissions: [PERMISSIONS.ATTENDANCE.READ], },
+
+  // Attendance Policy Routes
   { path: ROUTES.ATTENDANCE.POLICIES, element: AllAttendancePoliciesPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE], },
   { path: ROUTES.ATTENDANCE.POLICY_DETAILS, element: AttendancePolicyDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
   { path: ROUTES.ATTENDANCE.CREATE_POLICY, element: CreateAttendancePolicyPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },

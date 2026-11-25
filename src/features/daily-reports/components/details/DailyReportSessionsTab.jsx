@@ -1,8 +1,14 @@
 import React, { useMemo } from "react";
-import { IconClock, IconPencil, IconRefresh } from "@tabler/icons-react";
+import { IconClock, IconPencil, IconRefresh, IconPlus } from "@tabler/icons-react";
 import DataTable from "@components/ui/DataTable";
 import StatusBadge from "@components/ui/StatusBadge";
 import { formatTimeStr, SESSION_STATUS_CONFIG } from "@utils/dailyReport.utils";
+
+const AUTO_CLOSED_LABELS = {
+  SCHEDULED_END: "Scheduled shift end",
+  EOD_SETTLEMENT: "EOD settlement",
+  STALE_SWEEP: "24h stale sweep",
+};
 
 /**
  * Individual worker attendance session logs tab powered by DataTable.
@@ -14,6 +20,7 @@ export default function DailyReportSessionsTab({
   isLocked,
   onRefresh,
   onRegularize,
+  onAddManualSession,
 }) {
   const columns = useMemo(
     () => [
@@ -100,14 +107,25 @@ export default function DailyReportSessionsTab({
                   ? "REGULARIZED"
                   : "COMPLETED";
           const cfg = SESSION_STATUS_CONFIG[key];
+          const autoReason =
+            s.status === "AUTO_CLOSED" && s.autoClosedBy
+              ? AUTO_CLOSED_LABELS[s.autoClosedBy] || s.autoClosedBy
+              : null;
           return (
-            <StatusBadge
-              label={cfg.label}
-              tone={cfg.tone}
-              icon={cfg.icon}
-              dot={cfg.dot}
-              size="xs"
-            />
+            <div className="space-y-0.5">
+              <StatusBadge
+                label={cfg.label}
+                tone={cfg.tone}
+                icon={cfg.icon}
+                dot={cfg.dot}
+                size="xs"
+              />
+              {autoReason && (
+                <span className="block text-[10px] text-amber-600 dark:text-amber-400">
+                  {autoReason}
+                </span>
+              )}
+            </div>
           );
         },
       },
@@ -138,18 +156,30 @@ export default function DailyReportSessionsTab({
               Raw punches recorded on site. Missing departures can be regularized before final lock.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="btn btn-outline btn-xs inline-flex items-center gap-1.5"
-            disabled={isFetchingMusterRoll}
-          >
-            <IconRefresh
-              size={13}
-              className={isFetchingMusterRoll ? "animate-spin" : ""}
-            />
-            <span>Refresh Logs</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {!isLocked && onAddManualSession && (
+              <button
+                type="button"
+                onClick={onAddManualSession}
+                className="btn btn-primary btn-xs inline-flex items-center gap-1"
+              >
+                <IconPlus size={13} />
+                <span>Add Missed Session</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="btn btn-outline btn-xs inline-flex items-center gap-1.5"
+              disabled={isFetchingMusterRoll}
+            >
+              <IconRefresh
+                size={13}
+                className={isFetchingMusterRoll ? "animate-spin" : ""}
+              />
+              <span>Refresh Logs</span>
+            </button>
+          </div>
         </div>
 
         <DataTable

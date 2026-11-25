@@ -48,7 +48,7 @@ export const ROUTES = {
   SITES: {
     ROOT: "/sites",
     CREATE: "/sites/create",
-    DETAILS: "/sites/:id",
+    DETAILS: "/sites/details",
     EDIT: "/sites/:id/edit",
   },
 
@@ -65,9 +65,15 @@ export const ROUTES = {
   DEPARTMENTS: {
     ROOT: "/departments",
     CREATE: "/departments/create",
-    DETAILS: "/departments/:id",
+    DETAILS: "/departments/details",
     EDIT: "/departments/create",
     OPERATIONS: "/departments/operations",
+  },
+
+  SCHEDULES: {
+    ROOT: "/schedules",
+    CREATE: "/schedules/create",
+    DETAILS: "/schedules/details",
   },
 
   // =========================
@@ -148,10 +154,10 @@ export const ROUTES = {
   // =========================
   ATTENDANCE: {
     ROOT: "/attendance",
-    POLICIES: "/attendance/policies",
-    POLICY_DETAILS: "/attendance/policies/policy",
-    CREATE_POLICY: "/attendance/policies/create",
-    UPDATE_POLICY: "/attendance/policies/create",
+    POLICIES: "/policies",
+    POLICY_DETAILS: "/policies/policy",
+    CREATE_POLICY: "/policies/create",
+    UPDATE_POLICY: "/policies/create",
     DAILY_REPORTS: "/daily-reports",
     DAILY_REPORT_DETAILS: "/daily-reports/:id",
     MUSTER_ROLL: "/daily-reports?tab=muster-roll",

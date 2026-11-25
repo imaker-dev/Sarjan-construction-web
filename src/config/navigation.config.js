@@ -14,6 +14,9 @@ import {
   IconClockCheck,
   IconReportAnalytics,
   IconClipboardList,
+  IconShieldCog,
+  IconCalendarTime,
+  IconShieldCheck,
 } from "@tabler/icons-react";
 
 export const NAV_CONFIG = [
@@ -91,13 +94,20 @@ export const NAV_CONFIG = [
         // },
       },
       {
+        title: "Work Schedules",
+        icon: IconCalendarTime,
+        path: ROUTES.SCHEDULES.ROOT,
+        permissions: [PERMISSIONS.WORK_SCHEDULE.READ],
+      },
+    ],
+  },
+  {
+    section: "ATTENDANCE & REPORTING",
+    items: [
+      {
         title: "Attendance",
         icon: IconClockCheck,
         path: ROUTES.ATTENDANCE.ROOT,
-        badge: {
-          text: "New",
-          color: "primary",
-        },
         permissions: [PERMISSIONS.ATTENDANCE.READ],
       },
       {
@@ -106,6 +116,12 @@ export const NAV_CONFIG = [
         path: ROUTES.DAILY_REPORTS.ROOT,
         permissions: [PERMISSIONS.ATTENDANCE.READ],
       },
+      {
+        title: "Attendance Policies",
+        icon: IconShieldCheck,
+        path: ROUTES.ATTENDANCE.POLICIES,
+        permissions: [PERMISSIONS.ATTENDANCE.MANAGE],
+      }
     ],
   },
 ];

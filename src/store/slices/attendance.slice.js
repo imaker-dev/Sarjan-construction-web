@@ -42,8 +42,8 @@ export const createAttendancePolicy = createAsyncThunk(
 
 export const updateAttendancePolicy = createAsyncThunk(
   "attendance/updateAttendancePolicy",
-  async ({id,values}) => {
-    const res = await attendanceApi.updateAttendancePolicyApi({id,values});
+  async ({ id, values }) => {
+    const res = await attendanceApi.updateAttendancePolicyApi({ id, values });
     return res.data;
   },
 );
@@ -173,6 +173,13 @@ export const regularizeAttendanceSession = createAsyncThunk(
     return res.data;
   },
 );
+export const createManualSession = createAsyncThunk(
+  "attendance/createManualSession",
+  async (payload) => {
+    const res = await attendanceApi.createManualSessionApi(payload);
+    return res.data;
+  },
+);
 
 // Daily Summary
 export const getAttendanceDailySummary = createAsyncThunk(
@@ -242,6 +249,7 @@ const initialState = {
   isBatchPunchingIn: false,
   isBatchPunchingOut: false,
   isSyncingAttendance: false,
+  isCreatingManualSession: false,
 
   isFetchingSessions: false,
   isFetchingSession: false,
@@ -607,6 +615,26 @@ const attendanceSlice = createSlice({
       .addCase(regularizeAttendanceSession.rejected, (state, action) => {
         state.isRegularizingSession = false;
         toast.error(action.error.message || "Failed to regularize attendance session");
+      })
+
+      .addCase(createManualSession.pending, (state) => {
+        state.isCreatingManualSession = true;
+      })
+      .addCase(createManualSession.fulfilled, (state, action) => {
+        state.isCreatingManualSession = false;
+        const created = action.payload?.session ?? action.payload;
+        if (created?.id) {
+          state.attendanceSessions = [created, ...state.attendanceSessions];
+        }
+        toast.success("Manual missed session recorded!");
+      })
+      .addCase(createManualSession.rejected, (state, action) => {
+        state.isCreatingManualSession = false;
+        const msg =
+          action.payload?.message ||
+          action.error?.message ||
+          "Failed to create manual session";
+        toast.error(msg);
       })
 
       // ----------------------------------------------

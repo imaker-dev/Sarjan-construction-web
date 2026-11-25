@@ -15,15 +15,33 @@ import {
   SESSION_STATUS_CONFIG,
 } from "../../../utils/dailyReport.utils";
 
+const WEEKLY_STATUS_TONE = {
+  COMPLETED: "emerald",
+  ON_TRACK: "blue",
+  BEHIND: "amber",
+  DEFICIT_PENDING: "rose",
+};
+
 export default function DateAttendanceDetailModal({
   isOpen,
   onClose,
   dateRecord,
+  workerSummaries = [],
   lockedReportsMap,
   onExportMuster,
   isExportingReport,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
+
+  const weeklyByEmployeeId = useMemo(() => {
+    const map = new Map();
+    for (const w of workerSummaries) {
+      if (w.employeeId && w.weeklyProgress) {
+        map.set(w.employeeId, w.weeklyProgress);
+      }
+    }
+    return map;
+  }, [workerSummaries]);
 
   const formattedDate = useMemo(() => {
     if (!dateRecord?.businessDate) return "";
@@ -45,20 +63,32 @@ export default function DateAttendanceDetailModal({
         render: (s) => {
           const emp = s.employee;
           const primaryDept = emp?.memberships?.find((m) => m.isPrimary)?.department;
+          const wp = weeklyByEmployeeId.get(emp?.id || s.employeeId);
           return (
-            <div className="leading-tight">
-              <span className="font-semibold text-slate-800 dark:text-slate-100 text-xs block">
-                {emp?.displayName || "—"}
-              </span>
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                <span className="font-mono">{emp?.employeeCode || "—"}</span>
-                {primaryDept && (
-                  <>
-                    <span>•</span>
-                    <span className="truncate max-w-[140px]">{primaryDept.name}</span>
-                  </>
-                )}
+            <div className="leading-tight space-y-1">
+              <div>
+                <span className="font-semibold text-slate-800 dark:text-slate-100 text-xs block">
+                  {emp?.displayName || "—"}
+                </span>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  <span className="font-mono">{emp?.employeeCode || "—"}</span>
+                  {primaryDept && (
+                    <>
+                      <span>•</span>
+                      <span className="truncate max-w-[140px]">{primaryDept.name}</span>
+                    </>
+                  )}
+                </div>
               </div>
+              {wp && (
+                <div className="flex items-center gap-1.5">
+                  <StatusBadge
+                    label={`${wp.completedWeeklyHours}/${wp.targetWeeklyHours}h (${wp.progressPercentage}%)`}
+                    tone={WEEKLY_STATUS_TONE[wp.status] || "slate"}
+                    size="xs"
+                  />
+                </div>
+              )}
             </div>
           );
         },

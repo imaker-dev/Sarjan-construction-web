@@ -11,7 +11,11 @@ import LockReportModal from "../components/LockReportModal";
 import RecalculateReportModal from "../components/RecalculateReportModal";
 import SiteReportsTab from "../components/SiteReportsTab";
 import OfficeAttendanceTab from "../components/OfficeAttendanceTab";
-import { listDailyReports } from "@store/slices/dailyReport.slice";
+import {
+  listDailyReports,
+  exportDailySiteReport,
+  exportMusterRollReport,
+} from "@store/slices/dailyReport.slice";
 import { getMusterRoll } from "@store/slices/attendance.slice";
 import { listProjects } from "@store/slices/project.slice";
 import { listSites } from "@store/slices/site.slice";
@@ -32,7 +36,9 @@ export default function DailyReportsListPage() {
   };
 
   // Redux Store Selectors
-  const { reports, isListingReports } = useSelector((state) => state.dailyReport);
+  const { reports, isListingReports, isExportingReport } = useSelector(
+    (state) => state.dailyReport
+  );
   const { musterRoll, isFetchingMusterRoll } = useSelector((state) => state.attendance);
   const { projectsData } = useSelector((state) => state.project);
   const { sitesData } = useSelector((state) => state.site);
@@ -100,6 +106,34 @@ export default function DailyReportsListPage() {
     if (selectedMusterSiteId) params.siteId = selectedMusterSiteId;
 
     dispatch(getMusterRoll(params));
+  };
+
+  const handleExportOfficeMuster = (format, dateOverride) => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const params = { format };
+
+    if (dateOverride) {
+      params.period = "DAILY";
+      params.date = dateOverride;
+      params.fileName = `Office_Attendance_${dateOverride}.${format}`;
+    } else if (attendanceDateFilter === "today") {
+      params.period = "DAILY";
+      params.date = todayStr;
+      params.fileName = `Office_Attendance_${todayStr}.${format}`;
+    } else {
+      params.period = "CUSTOM";
+      const from = musterFromDate || todayStr;
+      const to = musterToDate || from;
+      params.from = from;
+      params.to = to;
+      params.fileName = `Office_Attendance_${from}_to_${to}.${format}`;
+    }
+
+    if (selectedHeadOfficeId) params.headOfficeId = selectedHeadOfficeId;
+    if (selectedDepartmentId) params.departmentId = selectedDepartmentId;
+    if (selectedMusterSiteId) params.siteId = selectedMusterSiteId;
+
+    dispatch(exportMusterRollReport(params));
   };
 
   // Re-fetch triggers
@@ -241,6 +275,15 @@ export default function DailyReportsListPage() {
             navigate(ROUTES.DAILY_REPORTS.DETAILS.replace(":id", report.id))
           }
           onLockReport={(report) => setLockCandidate(report)}
+          onExportReport={(report, format) =>
+            dispatch(
+              exportDailySiteReport({
+                id: report.id,
+                format,
+                fileName: `DSR_${report.site?.code || "site"}_${report.businessDate}.${format}`,
+              })
+            )
+          }
         />
       )}
 
@@ -263,6 +306,8 @@ export default function DailyReportsListPage() {
           departmentsList={departmentsList}
           headOfficesList={headOfficesList}
           lockedReportsMap={lockedReportsMap}
+          onExportMuster={handleExportOfficeMuster}
+          isExportingReport={isExportingReport}
         />
       )}
 

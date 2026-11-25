@@ -1,14 +1,16 @@
 import React, { useMemo } from "react";
 import {
   IconLock,
-  IconCheck,
   IconEye,
   IconRefresh,
   IconFileSpreadsheet,
+  IconFileTypePdf,
+  IconFileTypeXls,
 } from "@tabler/icons-react";
 import DataTable from "@components/ui/DataTable";
 import DateRangePicker from "@components/fields/DateRangePicker";
-import { STATUS_BADGES, STATUS_LABELS } from "../../../utils/dailyReport.utils";
+import StatusBadge from "@components/ui/StatusBadge";
+import { REPORT_STATUS_CONFIG } from "../../../utils/dailyReport.utils";
 
 export default function SiteReportsTab({
   reports,
@@ -28,6 +30,7 @@ export default function SiteReportsTab({
   filteredSites,
   onViewDetails,
   onLockReport,
+  onExportReport,
 }) {
   // Client-side project filter fallback
   const displayedReports = useMemo(() => {
@@ -120,16 +123,17 @@ export default function SiteReportsTab({
         key: "status",
         header: "Status",
         mobilePosition: "header",
-        render: (r) => (
-          <span
-            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] ${STATUS_BADGES[r.status] || "bg-slate-100 text-slate-700"
-              }`}
-          >
-            {r.status === "LOCKED" && <IconLock size={12} />}
-            {r.status === "APPROVED" && <IconCheck size={12} />}
-            {STATUS_LABELS[r.status] || r.status}
-          </span>
-        ),
+        render: (r) => {
+          const cfg = REPORT_STATUS_CONFIG[r.status] || { label: r.status, tone: "slate" };
+          return (
+            <StatusBadge
+              label={cfg.label}
+              tone={cfg.tone}
+              icon={cfg.icon}
+              size="sm"
+            />
+          );
+        },
       },
     ],
     []
@@ -144,13 +148,23 @@ export default function SiteReportsTab({
         onClick: (r) => onViewDetails(r),
       },
       {
+        label: "Export PDF",
+        icon: IconFileTypePdf,
+        onClick: (r) => onExportReport?.(r, "pdf"),
+      },
+      {
+        label: "Export Excel",
+        icon: IconFileTypeXls,
+        onClick: (r) => onExportReport?.(r, "xlsx"),
+      },
+      {
         label: "Lock report",
         icon: IconLock,
         hidden: (r) => r.status !== "APPROVED",
         onClick: (r) => onLockReport(r),
       },
     ],
-    [onViewDetails, onLockReport]
+    [onViewDetails, onExportReport, onLockReport]
   );
 
   return (

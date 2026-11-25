@@ -1,20 +1,27 @@
 import React, { useMemo, useState } from "react";
 import {
-  IconLock,
-  IconCheck,
   IconUsers,
-  IconSearch,
-  IconDownload,
+  IconCsv,
+  IconFileTypePdf,
+  IconFileTypeXls,
 } from "@tabler/icons-react";
 import ModalBasic from "@components/ui/ModalBasic";
 import DataTable from "@components/ui/DataTable";
-import { formatTimeStr, exportDateAttendanceCsv } from "../../../utils/dailyReport.utils";
+import SearchBar from "@components/ui/SearchBar";
+import StatusBadge from "@components/ui/StatusBadge";
+import {
+  formatTimeStr,
+  exportDateAttendanceCsv,
+  SESSION_STATUS_CONFIG,
+} from "../../../utils/dailyReport.utils";
 
 export default function DateAttendanceDetailModal({
   isOpen,
   onClose,
   dateRecord,
   lockedReportsMap,
+  onExportMuster,
+  isExportingReport,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -133,38 +140,23 @@ export default function DateAttendanceDetailModal({
           const isApproved = reportStatus === "APPROVED";
           const isActive = s.status === "IN_PROGRESS" || (!s.punchOutAt && s.punchInAt);
 
-          if (isLocked) {
-            return (
-              <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40">
-                <IconLock size={12} />
-                Locked
-              </span>
-            );
-          }
-
-          if (isActive) {
-            return (
-              <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Clocked In
-              </span>
-            );
-          }
-
-          if (isApproved) {
-            return (
-              <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                <IconCheck size={12} />
-                Approved
-              </span>
-            );
-          }
+          const key = isLocked
+            ? "LOCKED"
+            : isActive
+              ? "IN_PROGRESS"
+              : isApproved
+                ? "APPROVED"
+                : "COMPLETED";
+          const cfg = SESSION_STATUS_CONFIG[key];
 
           return (
-            <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300">
-              <IconCheck size={12} />
-              Completed
-            </span>
+            <StatusBadge
+              label={cfg.label}
+              tone={cfg.tone}
+              icon={cfg.icon}
+              dot={cfg.dot}
+              size="sm"
+            />
           );
         },
       },
@@ -234,32 +226,43 @@ export default function DateAttendanceDetailModal({
               </div>
             </div>
 
-            {/* Modal Export Button */}
-            <button
-              type="button"
-              onClick={() => exportDateAttendanceCsv(dateRecord)}
-              className="btn btn-outline btn-xs inline-flex items-center gap-1.5 shrink-0 ml-auto"
-            >
-              <IconDownload size={13} />
-              <span>Export CSV</span>
-            </button>
+            {/* Modal Export Buttons */}
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              <button
+                type="button"
+                onClick={() => onExportMuster?.("pdf", dateRecord.businessDate)}
+                disabled={isExportingReport}
+                className="btn btn-outline btn-xs inline-flex items-center gap-1"
+              >
+                <IconFileTypePdf size={13} className="text-rose-500" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onExportMuster?.("xlsx", dateRecord.businessDate)}
+                disabled={isExportingReport}
+                className="btn btn-outline btn-xs inline-flex items-center gap-1"
+              >
+                <IconFileTypeXls size={13} className="text-emerald-600" />
+              </button>
+              <button
+                type="button"
+                onClick={() => exportDateAttendanceCsv(dateRecord)}
+                className="btn btn-outline btn-xs inline-flex items-center gap-1.5"
+              >
+                <IconCsv size={13} />
+              </button>
+            </div>
           </div>
         )}
 
         {/* Search inside modal */}
-        <div className="relative w-full max-w-xs">
-          <IconSearch
-            size={14}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          />
-          <input
-            type="text"
-            placeholder="Search employee in this day..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="form-input form-sm pl-8 text-xs w-full"
-          />
-        </div>
+        <SearchBar
+          value={searchTerm}
+          onSearch={setSearchTerm}
+          placeholder="Search employee in this day..."
+          width="w-full max-w-xs"
+          className="form-sm text-xs"
+        />
 
         {/* Session Details Table */}
         <div className="max-h-[55vh] overflow-y-auto">

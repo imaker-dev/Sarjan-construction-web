@@ -1,4 +1,30 @@
 import { toast } from "sonner";
+import { IconLock, IconCheck, IconAlertTriangle } from "@tabler/icons-react";
+import { formatDate } from "@utils/date.utils";
+import { downloadFile } from "@utils/download.utils";
+
+export const REPORT_STATUS_CONFIG = {
+  DRAFT: { label: "Draft", tone: "slate" },
+  SUBMITTED: { label: "In Review", tone: "blue" },
+  APPROVED: { label: "Approved", tone: "emerald", icon: IconCheck },
+  REJECTED: { label: "Rejected", tone: "rose" },
+  LOCKED: { label: "Locked", tone: "purple", icon: IconLock },
+};
+
+export const LABOUR_CATEGORY_CONFIG = {
+  CAT_A_STAFF: { label: "Staff", tone: "blue" },
+  CAT_B_DIRECT_LABOUR: { label: "Site Workers", tone: "emerald" },
+  CAT_C_SUBCONTRACTOR: { label: "Contractors", tone: "amber" },
+};
+
+export const SESSION_STATUS_CONFIG = {
+  LOCKED: { label: "Locked", tone: "purple", icon: IconLock },
+  APPROVED: { label: "Approved", tone: "emerald", icon: IconCheck },
+  IN_PROGRESS: { label: "Clocked In", tone: "emerald", dot: true },
+  AUTO_CLOSED: { label: "Missing Punch-Out", tone: "amber", icon: IconAlertTriangle },
+  REGULARIZED: { label: "Regularized", tone: "blue", icon: IconCheck },
+  COMPLETED: { label: "Completed", tone: "slate", icon: IconCheck },
+};
 
 export const STATUS_BADGES = {
   DRAFT:
@@ -23,17 +49,12 @@ export const STATUS_LABELS = {
 
 export const formatTimeStr = (isoStr) => {
   if (!isoStr) return "";
-  const d = new Date(isoStr);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const formatted = formatDate(isoStr, "time");
+  return formatted === "Invalid date" || formatted === "Not provided" ? "" : formatted;
 };
 
 /**
- * Aggregates raw attendance sessions by businessDate into summarized date records
+ * Aggregates raw attendance sessions by businessDate into summarized date records.
  */
 export const aggregateSessionsByDate = (rawSessions = []) => {
   const map = new Map();
@@ -61,7 +82,6 @@ export const aggregateSessionsByDate = (rawSessions = []) => {
       entry.employeeIds.add(empId);
     }
 
-    // Duration calculation
     const isActive = s.status === "IN_PROGRESS" || (!s.punchOutAt && s.punchInAt);
     let durationMins = s.netDurationMins || s.grossDurationMins || 0;
 
@@ -75,13 +95,10 @@ export const aggregateSessionsByDate = (rawSessions = []) => {
 
     entry.totalDurationMins += durationMins;
 
-    // Overtime / Extra hours:
     const otHours = Number(s.overtimeHours || 0);
     const extraMins = otHours > 0 ? Math.round(otHours * 60) : Math.max(0, durationMins - 480);
     entry.totalExtraMins += extraMins;
 
-    // Shortage hours: Standard workday is 8h (480 mins).
-    // If session is completed/punched-out and under 480 mins, count deficit
     if (!isActive && durationMins < 480) {
       entry.totalShortageMins += 480 - durationMins;
     }
@@ -101,13 +118,14 @@ export const aggregateSessionsByDate = (rawSessions = []) => {
 };
 
 /**
- * Exports a date record's sessions to CSV and triggers browser download
+ * Exports a date record's sessions to CSV using the shared downloadFile utility.
  */
 export const exportDateAttendanceCsv = (row) => {
   if (!row?.sessions?.length) {
     toast.error("No sessions available to export for this date.");
     return;
   }
+
   const headers = [
     "Date",
     "Employee Code",
@@ -139,13 +157,9 @@ export const exportDateAttendanceCsv = (row) => {
   }
 
   const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `Attendance_Report_${row.businessDate}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadFile({
+    data: blob,
+    fileName: `Attendance_Report_${row.businessDate}.csv`,
+  });
   toast.success(`Exported attendance report for ${row.businessDate}`);
 };

@@ -5,6 +5,8 @@ import {
   IconEye,
   IconDownload,
   IconCalendar,
+  IconFileTypePdf,
+  IconFileTypeXls,
 } from "@tabler/icons-react";
 import DataTable from "@components/ui/DataTable";
 import DateRangePicker from "@components/fields/DateRangePicker";
@@ -31,6 +33,8 @@ export default function OfficeAttendanceTab({
   departmentsList,
   headOfficesList,
   lockedReportsMap,
+  onExportMuster,
+  isExportingReport,
 }) {
   const [selectedDateRecord, setSelectedDateRecord] = useState(null);
 
@@ -143,7 +147,7 @@ export default function OfficeAttendanceTab({
     []
   );
 
-  // Row Actions: View detailed report & Export
+  // Row Actions: View detailed report & Exports
   const actions = useMemo(
     () => [
       {
@@ -152,12 +156,22 @@ export default function OfficeAttendanceTab({
         onClick: (row) => setSelectedDateRecord(row),
       },
       {
-        label: "Export report",
+        label: "Export PDF",
+        icon: IconFileTypePdf,
+        onClick: (row) => onExportMuster?.("pdf", row.businessDate),
+      },
+      {
+        label: "Export Excel",
+        icon: IconFileTypeXls,
+        onClick: (row) => onExportMuster?.("xlsx", row.businessDate),
+      },
+      {
+        label: "Export CSV",
         icon: IconDownload,
         onClick: (row) => exportDateAttendanceCsv(row),
       },
     ],
-    []
+    [onExportMuster]
   );
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
@@ -178,8 +192,8 @@ export default function OfficeAttendanceTab({
                   setToDate("");
                 }}
                 className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${dateFilter === "today"
-                    ? "bg-white text-slate-800 shadow-xs dark:bg-[#1C2536] dark:text-white"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  ? "bg-white text-slate-800 shadow-xs dark:bg-[#1C2536] dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
               >
                 Today
@@ -194,8 +208,8 @@ export default function OfficeAttendanceTab({
                   }
                 }}
                 className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${dateFilter === "custom"
-                    ? "bg-white text-slate-800 shadow-xs dark:bg-[#1C2536] dark:text-white"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  ? "bg-white text-slate-800 shadow-xs dark:bg-[#1C2536] dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
               >
                 Custom Date
@@ -269,19 +283,21 @@ export default function OfficeAttendanceTab({
             )}
           </div>
 
-          {/* Minimal Refresh button */}
-          <button
-            type="button"
-            onClick={fetchMusterRollData}
-            disabled={isFetchingMusterRoll}
-            title="Refresh attendance"
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/60 transition-colors shrink-0 ml-auto"
-          >
-            <IconRefresh
-              size={16}
-              className={isFetchingMusterRoll ? "animate-spin" : ""}
-            />
-          </button>
+          {/* Export & Refresh Actions */}
+          <div className="flex items-center gap-1.5 ml-auto shrink-0">
+            <button
+              type="button"
+              onClick={fetchMusterRollData}
+              disabled={isFetchingMusterRoll}
+              title="Refresh attendance"
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/60 transition-colors"
+            >
+              <IconRefresh
+                size={16}
+                className={isFetchingMusterRoll ? "animate-spin" : ""}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -326,6 +342,8 @@ export default function OfficeAttendanceTab({
         onClose={() => setSelectedDateRecord(null)}
         dateRecord={selectedDateRecord}
         lockedReportsMap={lockedReportsMap}
+        onExportMuster={onExportMuster}
+        isExportingReport={isExportingReport}
       />
     </div>
   );

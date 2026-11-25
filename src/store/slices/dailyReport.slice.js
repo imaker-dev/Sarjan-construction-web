@@ -1,10 +1,26 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import dailyReportApi from "@store/api/dailyReport.api";
+import { downloadFile } from "@utils/download.utils";
 import { toast } from "sonner";
 
 const extractError = (err, fallback) => {
   if (typeof err === "string") return err;
   return err?.message || err?.error?.message || fallback;
+};
+
+const extractFilename = (headers, fallback) => {
+  const disposition = headers?.["content-disposition"] || headers?.["Content-Disposition"];
+  if (typeof disposition === "string") {
+    const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+    if (match?.[1]) return decodeURIComponent(match[1]);
+  }
+  return fallback;
+};
+
+const triggerBlobDownload = (res, fallbackName) => {
+  const fileName = extractFilename(res.headers, fallbackName);
+  downloadFile({ data: res.data, fileName });
+  return { fileName };
 };
 
 // 1. List daily reports
@@ -145,6 +161,46 @@ export const rejectDailyReport = createAsyncThunk(
   }
 );
 
+// 11. Export single Daily Site Report (pdf | xlsx)
+export const exportDailySiteReport = createAsyncThunk(
+  "dailyReport/exportDailySiteReport",
+  async ({ id, format = "pdf", fileName }, { rejectWithValue }) => {
+    try {
+      const res = await dailyReportApi.exportDailyReportApi({ id, format });
+      return triggerBlobDownload(res, fileName || `daily-site-report.${format}`);
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+// 12. Export Muster Roll (Office / Site / Department) (pdf | xlsx)
+export const exportMusterRollReport = createAsyncThunk(
+  "dailyReport/exportMusterRollReport",
+  async ({ format = "pdf", fileName, ...params }, { rejectWithValue }) => {
+    try {
+      const res = await dailyReportApi.exportMusterRollApi({ format, ...params });
+      return triggerBlobDownload(res, fileName || `muster-roll.${format}`);
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+// 13. Unified trigger & export (supports optional recalculate)
+export const triggerReportExport = createAsyncThunk(
+  "dailyReport/triggerReportExport",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const res = await dailyReportApi.triggerReportExportApi(payload);
+      const ext = payload?.format || "pdf";
+      return triggerBlobDownload(res, `report-export.${ext}`);
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
 const initialState = {
   // Reports listing
   reports: [],
@@ -167,6 +223,7 @@ const initialState = {
   isSubmittingReport: false,
   isApprovingReport: false,
   isRejectingReport: false,
+  isExportingReport: false,
 };
 
 const dailyReportSlice = createSlice({
@@ -406,7 +463,41 @@ const dailyReportSlice = createSlice({
       .addCase(rejectDailyReport.rejected, (state, action) => {
         state.isRejectingReport = false;
         toast.error(extractError(action.payload, "Failed to reject daily report"));
-      });
+      })
+
+      // 11-13. Report Exports (PDF / Excel)
+      .addMatcher(
+        isAnyOf(
+          exportDailySiteReport.pending,
+          exportMusterRollReport.pending,
+          triggerReportExport.pending
+        ),
+        (state) => {
+          state.isExportingReport = true;
+        }
+      )
+      .addMatcher(
+        isAnyOf(
+          exportDailySiteReport.fulfilled,
+          exportMusterRollReport.fulfilled,
+          triggerReportExport.fulfilled
+        ),
+        (state, action) => {
+          state.isExportingReport = false;
+          toast.success(`Downloaded ${action.payload?.fileName || "report"}`);
+        }
+      )
+      .addMatcher(
+        isAnyOf(
+          exportDailySiteReport.rejected,
+          exportMusterRollReport.rejected,
+          triggerReportExport.rejected
+        ),
+        (state, action) => {
+          state.isExportingReport = false;
+          toast.error(extractError(action.payload, "Failed to export report"));
+        }
+      );
   },
 });
 

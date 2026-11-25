@@ -57,6 +57,29 @@ const dailyReportApi = {
   rejectDailyReportApi: ({ id, reason }) => {
     return Api.post(`/attendance/daily-reports/${id}/reject`, { reason });
   },
+
+  // 11. Export single Daily Site Report as PDF or Excel (.xlsx)
+  exportDailyReportApi: ({ id, format }) => {
+    return Api.get(`/attendance/daily-reports/${id}/export`, {
+      params: { format },
+      responseType: "blob",
+    });
+  },
+
+  // 12. Export Muster Roll (Office / Site / Department) as PDF or Excel (.xlsx)
+  exportMusterRollApi: (params = {}) => {
+    return Api.get("/attendance/muster-roll/export", {
+      params,
+      responseType: "blob",
+    });
+  },
+
+  // 13. Unified trigger (optional recalculate) & export endpoint
+  triggerReportExportApi: (payload) => {
+    return Api.post("/attendance/reports/export", payload, {
+      responseType: "blob",
+    });
+  },
 };
 
 export default dailyReportApi;

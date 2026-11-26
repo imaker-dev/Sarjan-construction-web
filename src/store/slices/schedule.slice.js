@@ -1,18 +1,8 @@
 import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import scheduleApi from "@store/api/schedule.api";
+import { extractList } from "@utils/api.utils";
+import { extractApiError } from "@utils/error.handlers";
 import { toast } from "sonner";
-
-const extractError = (err, fallback) =>
-  typeof err === "string" ? err : err?.message || err?.error?.message || fallback;
-
-export const extractList = (raw, altKey) => {
-  const p = raw?.data ?? raw;
-  if (Array.isArray(p)) return p;
-  if (altKey && Array.isArray(p?.[altKey])) return p[altKey];
-  if (Array.isArray(p?.items)) return p.items;
-  if (Array.isArray(p?.data)) return p.data;
-  return [];
-};
 
 export const listSchedules = createAsyncThunk(
   "schedule/listSchedules",
@@ -43,6 +33,18 @@ export const createSchedule = createAsyncThunk(
   async (values, { rejectWithValue }) => {
     try {
       const res = await scheduleApi.createScheduleApi(values);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const updateSchedule = createAsyncThunk(
+  "schedule/updateSchedule",
+  async ({ id, values }, { rejectWithValue }) => {
+    try {
+      const res = await scheduleApi.updateScheduleApi({ id, values });
       return res.data;
     } catch (err) {
       return rejectWithValue(err);
@@ -187,7 +189,7 @@ const scheduleSlice = createSlice({
       })
       .addCase(listSchedules.rejected, (state, action) => {
         state.isLoadingSchedules = false;
-        toast.error(extractError(action.payload, "Failed to load work schedules"));
+        toast.error(extractApiError(action.payload, "Failed to load work schedules"));
       })
 
       .addCase(getScheduleById.pending, (state) => {
@@ -199,7 +201,7 @@ const scheduleSlice = createSlice({
       })
       .addCase(getScheduleById.rejected, (state, action) => {
         state.isLoadingSchedule = false;
-        toast.error(extractError(action.payload, "Failed to load schedule details"));
+        toast.error(extractApiError(action.payload, "Failed to load schedule details"));
       })
 
       .addCase(listScheduleRevisions.fulfilled, (state, action) => {
@@ -212,7 +214,7 @@ const scheduleSlice = createSlice({
         state.effectivePreview = action.payload?.data || action.payload;
       })
       .addCase(getEffectiveSchedule.rejected, (state, action) => {
-        toast.error(extractError(action.payload, "Failed to preview effective schedule"));
+        toast.error(extractApiError(action.payload, "Failed to preview effective schedule"));
       })
       .addCase(classifyScheduleDate.fulfilled, (state, action) => {
         state.classificationResult = action.payload?.data || action.payload;
@@ -221,6 +223,7 @@ const scheduleSlice = createSlice({
       .addMatcher(
         isAnyOf(
           createSchedule.pending,
+          updateSchedule.pending,
           archiveSchedule.pending,
           addScheduleRevision.pending,
           cancelScheduleRevision.pending,
@@ -234,6 +237,7 @@ const scheduleSlice = createSlice({
       .addMatcher(
         isAnyOf(
           createSchedule.fulfilled,
+          updateSchedule.fulfilled,
           archiveSchedule.fulfilled,
           addScheduleRevision.fulfilled,
           cancelScheduleRevision.fulfilled,
@@ -248,6 +252,7 @@ const scheduleSlice = createSlice({
       .addMatcher(
         isAnyOf(
           createSchedule.rejected,
+          updateSchedule.rejected,
           archiveSchedule.rejected,
           addScheduleRevision.rejected,
           cancelScheduleRevision.rejected,
@@ -256,7 +261,7 @@ const scheduleSlice = createSlice({
         ),
         (state, action) => {
           state.isMutatingSchedule = false;
-          toast.error(extractError(action.payload, "Schedule update failed"));
+          toast.error(extractApiError(action.payload, "Schedule update failed"));
         }
       );
   },

@@ -1,6 +1,68 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import projectApi from "@store/api/project.api";
+import { extractList } from "@utils/api.utils";
+import { extractApiError } from "@utils/error.handlers";
 import { toast } from "sonner";
+
+export const fetchProjectTeam = createAsyncThunk(
+  "project/fetchProjectTeam",
+  async ({ projectId, params = {} }, { rejectWithValue }) => {
+    try {
+      const res = await projectApi.getProjectTeamApi(projectId, params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const executeProjectWorkforceAction = createAsyncThunk(
+  "project/executeProjectWorkforceAction",
+  async ({ projectId, employeeId, action, values = {} }, { rejectWithValue }) => {
+    try {
+      const res = await projectApi.workforceActionProjectApi({ id: projectId, employeeId, action, values });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const fetchProjectDocuments = createAsyncThunk(
+  "project/fetchProjectDocuments",
+  async ({ projectId, params = {} }, { rejectWithValue }) => {
+    try {
+      const res = await projectApi.getProjectDocumentsApi(projectId, params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const linkProjectDocument = createAsyncThunk(
+  "project/linkProjectDocument",
+  async ({ projectId, values }, { rejectWithValue }) => {
+    try {
+      const res = await projectApi.linkProjectDocumentApi({ id: projectId, values });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const fetchProjectActivity = createAsyncThunk(
+  "project/fetchProjectActivity",
+  async ({ projectId, params = {} }, { rejectWithValue }) => {
+    try {
+      const res = await projectApi.getProjectActivityApi(projectId, params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
 
 // List projects
 export const listProjects = createAsyncThunk(
@@ -61,6 +123,13 @@ const projectSlice = createSlice({
     isGettingProjectDetails: false,
     projectsData: null,
     projectData: null,
+    projectTeam: [],
+    isLoadingProjectTeam: false,
+    projectDocuments: [],
+    isLoadingProjectDocs: false,
+    projectActivity: [],
+    isLoadingProjectActivity: false,
+    isMutatingProjectScope: false,
   },
 
   reducers: {},
@@ -161,7 +230,64 @@ const projectSlice = createSlice({
       .addCase(updateProjectStatus.rejected, (state, action) => {
         state.isUpdatingProjectStatus = false;
         toast.error(action.error.message || "Failed to update project status");
-      });
+      })
+
+      .addCase(fetchProjectTeam.pending, (state) => {
+        state.isLoadingProjectTeam = true;
+      })
+      .addCase(fetchProjectTeam.fulfilled, (state, action) => {
+        state.isLoadingProjectTeam = false;
+        state.projectTeam = extractList(action.payload, "team");
+      })
+      .addCase(fetchProjectTeam.rejected, (state, action) => {
+        state.isLoadingProjectTeam = false;
+        toast.error(extractApiError(action.payload, "Failed to load project team"));
+      })
+
+      .addCase(fetchProjectDocuments.pending, (state) => {
+        state.isLoadingProjectDocs = true;
+      })
+      .addCase(fetchProjectDocuments.fulfilled, (state, action) => {
+        state.isLoadingProjectDocs = false;
+        state.projectDocuments = extractList(action.payload, "documents");
+      })
+      .addCase(fetchProjectDocuments.rejected, (state, action) => {
+        state.isLoadingProjectDocs = false;
+        toast.error(extractApiError(action.payload, "Failed to load project documents"));
+      })
+
+      .addCase(fetchProjectActivity.pending, (state) => {
+        state.isLoadingProjectActivity = true;
+      })
+      .addCase(fetchProjectActivity.fulfilled, (state, action) => {
+        state.isLoadingProjectActivity = false;
+        state.projectActivity = extractList(action.payload, "logs");
+      })
+      .addCase(fetchProjectActivity.rejected, (state, action) => {
+        state.isLoadingProjectActivity = false;
+        toast.error(extractApiError(action.payload, "Failed to load project activity"));
+      })
+
+      .addMatcher(
+        isAnyOf(executeProjectWorkforceAction.pending, linkProjectDocument.pending),
+        (state) => {
+          state.isMutatingProjectScope = true;
+        },
+      )
+      .addMatcher(
+        isAnyOf(executeProjectWorkforceAction.fulfilled, linkProjectDocument.fulfilled),
+        (state) => {
+          state.isMutatingProjectScope = false;
+          toast.success("Action completed successfully.");
+        },
+      )
+      .addMatcher(
+        isAnyOf(executeProjectWorkforceAction.rejected, linkProjectDocument.rejected),
+        (state, action) => {
+          state.isMutatingProjectScope = false;
+          toast.error(extractApiError(action.payload, "Operation failed"));
+        },
+      );
   },
 });
 

@@ -8,11 +8,14 @@ import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import FormSection from "@components/ui/FormSection";
 import { InputField } from "@components/fields/InputField";
 import { SelectField } from "@components/fields/SelectField";
-import { createSchedule, extractList } from "@store/slices/schedule.slice";
+import { createSchedule } from "@store/slices/schedule.slice";
+import { extractList } from "@utils/api.utils";
 import { listProjects } from "@store/slices/project.slice";
 import { listSites } from "@store/slices/site.slice";
 import { listDepartments } from "@store/slices/department.slice";
 import { listEmployees } from "@store/slices/employee.slice";
+import { fetchProjectTeam } from "@store/slices/project.slice";
+import { useAccess } from "@hooks/useAccess";
 import { ROUTES } from "@constants/routes";
 
 const toMins = (timeStr) => {
@@ -43,9 +46,11 @@ const AUTO_CLOSE_OPTIONS = [
 export default function CreateSchedulePage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user, assignments } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
 
   const { isMutatingSchedule } = useSelector((state) => state.schedule);
-  const { projectsData } = useSelector((state) => state.project);
+  const { projectsData, projectTeam: teamItems } = useSelector((state) => state.project);
   const { sitesData } = useSelector((state) => state.site);
   const { departmentsData } = useSelector((state) => state.department);
   const { employeesData } = useSelector((state) => state.employee);
@@ -101,9 +106,9 @@ export default function CreateSchedulePage() {
             breakWindowMode: values.breakWindowMode,
             ...(values.breakWindowMode === "FIXED_WINDOW"
               ? {
-                  breakWindowStartMins: toMins(values.breakStart),
-                  breakWindowEndMins: toMins(values.breakEnd),
-                }
+                breakWindowStartMins: toMins(values.breakStart),
+                breakWindowEndMins: toMins(values.breakEnd),
+              }
               : {}),
             breakDurationMins: Number(values.breakDurationMins || 0),
             autoClockOutMode: values.autoClockOutMode,
@@ -121,6 +126,7 @@ export default function CreateSchedulePage() {
   });
 
   const activeScope = formik.values.scopeType;
+  const firstProjId = assignments.find((a) => a.projectId)?.projectId;
 
   useEffect(() => {
     if (activeScope === "PROJECT" && !projectsData) {
@@ -129,10 +135,23 @@ export default function CreateSchedulePage() {
       dispatch(listSites());
     } else if (activeScope === "DEPARTMENT" && !departmentsData) {
       dispatch(listDepartments());
-    } else if (activeScope === "EMPLOYEE" && !employeesData) {
-      dispatch(listEmployees());
+    } else if (activeScope === "EMPLOYEE") {
+      if (isCompanyAdmin && !employeesData) dispatch(listEmployees());
+      else if (!isCompanyAdmin && firstProjId && teamItems.length === 0) {
+        dispatch(fetchProjectTeam({ projectId: firstProjId }));
+      }
     }
-  }, [activeScope, projectsData, sitesData, departmentsData, employeesData, dispatch]);
+  }, [
+    activeScope,
+    isCompanyAdmin,
+    firstProjId,
+    projectsData,
+    sitesData,
+    departmentsData,
+    employeesData,
+    teamItems.length,
+    dispatch,
+  ]);
 
   const targetOptions = useMemo(() => {
     if (activeScope === "PROJECT") {
@@ -154,13 +173,22 @@ export default function CreateSchedulePage() {
       }));
     }
     if (activeScope === "EMPLOYEE") {
-      return extractList(employeesData, "employees").map((e) => ({
+      const list = isCompanyAdmin ? extractList(employeesData, "employees") : teamItems;
+      return list.map((e) => ({
         label: e.employeeCode ? `${e.displayName} (${e.employeeCode})` : e.displayName,
         value: e.id,
       }));
     }
     return [];
-  }, [activeScope, projectsData, sitesData, departmentsData, employeesData]);
+  }, [
+    activeScope,
+    isCompanyAdmin,
+    projectsData,
+    sitesData,
+    departmentsData,
+    employeesData,
+    teamItems,
+  ]);
 
   return (
     <div className="space-y-6 pb-12">

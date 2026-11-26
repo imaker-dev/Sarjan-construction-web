@@ -157,3 +157,6 @@ export const formatDateForInput = (dateString) => {
 
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
+
+// ---------- TODAY ISO DATE ----------
+export const getTodayIsoDate = () => new Date().toISOString().split("T")[0];

@@ -28,4 +28,12 @@ export default false
       updateCompanyStatusApi: ({ companyId, values }) => {
         return Api.post(`/platform/companies/${companyId}/status`, values);
       },
+
+      getCompanyDelegationsApi: () => {
+        return Api.get("/org/company/delegations");
+      },
+
+      updateCompanyDelegationsApi: (values) => {
+        return Api.patch("/org/company/delegations", values);
+      },
     };

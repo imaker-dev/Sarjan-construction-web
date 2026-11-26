@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useAccess } from "@hooks/useAccess";
+import { fetchProjectTeam } from "@store/slices/project.slice";
+import { fetchSiteTeam } from "@store/slices/site.slice";
 import {
   Eye,
   Pencil,
@@ -48,6 +51,10 @@ const Muted = ({ children }) => (
 const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user, assignments } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
+  const firstProjectId = assignments.find((a) => a.projectId)?.projectId;
+  const firstSiteId = assignments.find((a) => a.siteId)?.siteId;
 
   const {
     isListingEmployees,
@@ -56,6 +63,9 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
     isUpdatingEmployeeStatus,
     isResendingEmployeeInvite,
   } = useSelector((state) => state.employee);
+  const { projectTeam } = useSelector((state) => state.project);
+  const { siteTeam } = useSelector((state) => state.site);
+  const teamItems = firstProjectId ? projectTeam : siteTeam;
 
   // --------------------------------------------------
   // Modal States
@@ -73,10 +83,20 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
   // --------------------------------------------------
 
   useEffect(() => {
-    dispatch(listEmployees());
-  }, [dispatch]);
+    if (isCompanyAdmin) {
+      dispatch(listEmployees());
+    } else if (firstProjectId) {
+      dispatch(fetchProjectTeam({ projectId: firstProjectId }));
+    } else if (firstSiteId) {
+      dispatch(fetchSiteTeam({ siteId: firstSiteId }));
+    }
+  }, [dispatch, isCompanyAdmin, firstProjectId, firstSiteId]);
 
   const rows = useMemo(() => {
+    if (!isCompanyAdmin) {
+      return teamItems;
+    }
+
     if (Array.isArray(employeesData?.employees)) {
       return employeesData.employees;
     }
@@ -86,7 +106,7 @@ const AllEmployeesPage = ({ onView, onEdit, onDelete }) => {
     }
 
     return [];
-  }, [employeesData]);
+  }, [isCompanyAdmin, employeesData, teamItems]);
 
   // --------------------------------------------------
   // Employee Invitation

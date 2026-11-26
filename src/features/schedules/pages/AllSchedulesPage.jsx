@@ -6,13 +6,13 @@ import {
   IconPlus,
   IconEye,
   IconArchive,
-  IconRefresh,
   IconSearch,
 } from "@tabler/icons-react";
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import DataTable from "@components/ui/DataTable";
 import StatusBadge from "@components/ui/StatusBadge";
 import ModalBasic from "@components/ui/ModalBasic";
+import RefreshButton from "@components/ui/RefreshButton";
 import { InputField } from "@components/fields/InputField";
 import { SelectField } from "@components/fields/SelectField";
 import {
@@ -20,9 +20,11 @@ import {
   archiveSchedule,
   getEffectiveSchedule,
   clearEffectivePreview,
-  extractList,
 } from "@store/slices/schedule.slice";
 import { listEmployees } from "@store/slices/employee.slice";
+import { extractList } from "@utils/api.utils";
+import { getTodayIsoDate } from "@utils/date.utils";
+import { fetchProjectTeam } from "@store/slices/project.slice";
 import { useAccess } from "@hooks/useAccess";
 import { PERMISSIONS } from "@constants/permissions";
 import { ROUTES } from "@constants/routes";
@@ -30,42 +32,51 @@ import { ROUTES } from "@constants/routes";
 export default function AllSchedulesPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { can } = useAccess();
+  const { can, user, assignments } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
+  const firstProjectId = assignments.find((a) => a.projectId)?.projectId;
   const { schedules, isLoadingSchedules, effectivePreview } = useSelector(
     (state) => state.schedule
   );
   const { employeesData } = useSelector((state) => state.employee);
+  const { projectTeam: teamItems } = useSelector((state) => state.project);
 
   const [scopeFilter, setScopeFilter] = useState("ALL");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewEmployeeId, setPreviewEmployeeId] = useState("");
-  const [previewDate, setPreviewDate] = useState(new Date().toISOString().split("T")[0]);
+  const [previewDate, setPreviewDate] = useState(getTodayIsoDate());
 
   const canManage = can({ permissions: [PERMISSIONS.WORK_SCHEDULE.MANAGE] });
 
   const loadSchedules = useCallback(() => {
     const params = {};
     if (scopeFilter !== "ALL") params.scopeType = scopeFilter;
+    if (!isCompanyAdmin && firstProjectId) {
+      params.projectId = firstProjectId;
+    }
     dispatch(listSchedules(params));
-  }, [dispatch, scopeFilter]);
+  }, [dispatch, scopeFilter, isCompanyAdmin, firstProjectId]);
 
   useEffect(() => {
     loadSchedules();
   }, [loadSchedules]);
 
   useEffect(() => {
-    if (isPreviewOpen && !employeesData) {
+    if (!isPreviewOpen) return;
+    if (isCompanyAdmin && !employeesData) {
       dispatch(listEmployees());
+    } else if (!isCompanyAdmin && firstProjectId && teamItems.length === 0) {
+      dispatch(fetchProjectTeam({ projectId: firstProjectId }));
     }
-  }, [isPreviewOpen, employeesData, dispatch]);
+  }, [isPreviewOpen, isCompanyAdmin, employeesData, teamItems.length, firstProjectId, dispatch]);
 
   const employeeOptions = useMemo(
     () =>
-      extractList(employeesData, "employees").map((e) => ({
+      (isCompanyAdmin ? extractList(employeesData, "employees") : teamItems).map((e) => ({
         label: e.employeeCode ? `${e.displayName} (${e.employeeCode})` : e.displayName,
         value: e.id,
       })),
-    [employeesData]
+    [isCompanyAdmin, employeesData, teamItems]
   );
 
   const columns = useMemo(
@@ -170,9 +181,9 @@ export default function AllSchedulesPage() {
           <button
             type="button"
             onClick={() => setIsPreviewOpen(true)}
-            className="btn btn-outline btn-xs inline-flex items-center gap-1.5"
+            className="btn btn-outline btn-sm h-10 inline-flex items-center gap-1.5"
           >
-            <IconSearch size={14} />
+            <IconSearch size={15} />
             <span>Preview Effective Schedule</span>
           </button>
         </div>
@@ -182,21 +193,18 @@ export default function AllSchedulesPage() {
             <button
               type="button"
               onClick={() => navigate(ROUTES.SCHEDULES.CREATE)}
-              className="btn btn-primary btn-xs inline-flex items-center gap-1"
+              className="btn btn-primary btn-sm h-10 inline-flex items-center gap-1.5"
             >
-              <IconPlus size={14} />
+              <IconPlus size={15} />
               <span>Create Schedule</span>
             </button>
           )}
-          <button
-            type="button"
+          <RefreshButton
             onClick={loadSchedules}
-            disabled={isLoadingSchedules}
-            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+            loading={isLoadingSchedules}
             title="Refresh schedules"
-          >
-            <IconRefresh size={16} className={isLoadingSchedules ? "animate-spin" : ""} />
-          </button>
+            className="h-10 w-10 inline-flex items-center justify-center border border-slate-200 dark:border-slate-700/60"
+          />
         </div>
       </div>
 

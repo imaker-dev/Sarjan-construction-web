@@ -8,7 +8,11 @@ import { SelectField } from "@components/fields/SelectField";
 import { TextareaField } from "@components/fields/TextareaField";
 import { createManualSession } from "@store/slices/attendance.slice";
 import { listEmployees } from "@store/slices/employee.slice";
-import { extractList } from "@store/slices/schedule.slice";
+import { fetchSiteTeam } from "@store/slices/site.slice";
+import { fetchProjectTeam } from "@store/slices/project.slice";
+import { extractList } from "@utils/api.utils";
+import { getTodayIsoDate } from "@utils/date.utils";
+import { useAccess } from "@hooks/useAccess";
 
 /**
  * Formik + Yup modal for POST /attendance/sessions (manual missed-session correction).
@@ -23,23 +27,34 @@ export default function CreateManualSessionModal({
   onSuccess,
 }) {
   const dispatch = useDispatch();
+  const { user, assignments } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
+  const firstProjectId = assignments.find((a) => a.projectId)?.projectId;
   const { isCreatingManualSession } = useSelector((state) => state.attendance);
   const { employeesData } = useSelector((state) => state.employee);
-  const defaultDate = businessDate || new Date().toISOString().split("T")[0];
+  const { siteTeam } = useSelector((state) => state.site);
+  const { projectTeam } = useSelector((state) => state.project);
+  const teamItems = siteId ? siteTeam : projectTeam;
+  const defaultDate = businessDate || getTodayIsoDate();
 
   useEffect(() => {
-    if (isOpen && !employeesData) {
+    if (!isOpen) return;
+    if (isCompanyAdmin && !employeesData) {
       dispatch(listEmployees());
+    } else if (!isCompanyAdmin && siteId && siteTeam.length === 0) {
+      dispatch(fetchSiteTeam({ siteId }));
+    } else if (!isCompanyAdmin && !siteId && firstProjectId && projectTeam.length === 0) {
+      dispatch(fetchProjectTeam({ projectId: firstProjectId }));
     }
-  }, [isOpen, employeesData, dispatch]);
+  }, [isOpen, isCompanyAdmin, siteId, employeesData, siteTeam.length, projectTeam.length, firstProjectId, dispatch]);
 
   const employeeOptions = useMemo(
     () =>
-      extractList(employeesData, "employees").map((e) => ({
+      (isCompanyAdmin ? extractList(employeesData, "employees") : teamItems).map((e) => ({
         label: e.employeeCode ? `${e.displayName} (${e.employeeCode})` : e.displayName,
         value: e.id,
       })),
-    [employeesData]
+    [isCompanyAdmin, employeesData, teamItems]
   );
 
   const formik = useFormik({

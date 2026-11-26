@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@constants/routes";
 import { formatText } from "@utils/text.utils";
 import { formatDate } from "@utils/date.utils";
+import { extractList } from "@utils/api.utils";
 import ModalAction from "@components/ui/ModalAction";
 import { handleResponse } from "@utils/async.utils";
 
@@ -26,11 +27,7 @@ const AllDepartmentsPage = ({ onView, onEdit, onDelete }) => {
     dispatch(listDepartments());
   }, [dispatch]);
 
-  const rows = useMemo(() => {
-    if (Array.isArray(departmentsData)) return departmentsData;
-    if (Array.isArray(departmentsData?.data)) return departmentsData.data;
-    return [];
-  }, [departmentsData]);
+  const rows = useMemo(() => extractList(departmentsData), [departmentsData]);
 
   const handleStatusToggle = (department) => {
     const nextStatus = department.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";

@@ -44,8 +44,10 @@ export default function DailyReportDetailsPage() {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { can } = useAccess();
-  const canManageAttendance = can({ permissions: [PERMISSIONS.ATTENDANCE.MANAGE] });
+  const { can, user } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
+  const canManageAttendance =
+    isCompanyAdmin || can({ permissions: [PERMISSIONS.ATTENDANCE.MANAGE] });
 
   const {
     currentReport,

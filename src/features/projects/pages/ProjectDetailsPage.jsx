@@ -1,8 +1,13 @@
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import { useQueryParams } from "@hooks/useQueryParams";
+import { useAccess } from "@hooks/useAccess";
 import { getProjectDetails } from "@store/slices/project.slice";
+import ScopedTeamTable from "@components/scoped/ScopedTeamTable";
+import ScopedDocumentsPanel from "@components/scoped/ScopedDocumentsPanel";
+import ScopedActivityFeed from "@components/scoped/ScopedActivityFeed";
+import { PERMISSIONS } from "@constants/permissions";
 import { formatDate } from "@utils/date.utils";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Building2,
@@ -779,6 +784,55 @@ const ProjectDetailsPage = () => {
           )}
         </div>
       </div>
+
+      <ProjectScopedSection projectId={p.id} />
+    </div>
+  );
+};
+
+const ProjectScopedSection = ({ projectId }) => {
+  const { can } = useAccess();
+  const [tab, setTab] = useState("team");
+
+  if (!projectId) return null;
+
+  const canSuspend = can({ permissions: [PERMISSIONS.EMPLOYEE.MEMBER_MANAGE] });
+  const canExit = can({ permissions: [PERMISSIONS.EMPLOYEE.MEMBER_MANAGE] });
+  const canLinkDocs = can({ permissions: [PERMISSIONS.DOCUMENT.LINK] });
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="border-b border-border flex items-center gap-4 text-sm font-semibold">
+        {[
+          { key: "team", label: "Team & Workforce" },
+          { key: "documents", label: "Documents" },
+          { key: "activity", label: "Activity Feed" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`pb-3 border-b-2 ${
+              tab === t.key ? "border-primary-500 text-primary-600" : "border-transparent text-muted-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "team" && (
+        <ScopedTeamTable
+          scopeType="PROJECT"
+          scopeId={projectId}
+          canSuspend={canSuspend}
+          canExit={canExit}
+        />
+      )}
+      {tab === "documents" && (
+        <ScopedDocumentsPanel scopeType="PROJECT" scopeId={projectId} canLink={canLinkDocs} />
+      )}
+      {tab === "activity" && <ScopedActivityFeed scopeType="PROJECT" scopeId={projectId} />}
     </div>
   );
 };

@@ -28,6 +28,7 @@ const MasterOperationsPage = lazyLoad(() => import("@features/platform/pages/Mas
 const AllOperationsPage = lazyLoad(() => import("@features/operations/pages/AllOperationsPage"));
 const AllCompaniesPage = lazyLoad(() => import("@features/companies/pages/AllCompaniesPage"));
 const CreateCompanyPage = lazyLoad(() => import("@features/companies/pages/CreateCompanyPage"));
+const CompanyDelegationsPage = lazyLoad(() => import("@features/companies/pages/CompanyDelegationsPage"));
 const AllHeadOfficesPage = lazyLoad(() => import("@features/head-offices/pages/AllHeadOfficesPage"));
 const CreateHeadOfficePage = lazyLoad(() => import("@features/head-offices/pages/CreateHeadOfficePage"));
 const AllProjectsPage = lazyLoad(() => import("@features/projects/pages/AllProjectsPage"));
@@ -35,6 +36,8 @@ const CreateProjectPage = lazyLoad(() => import("@features/projects/pages/Create
 const ProjectDetailsPage = lazyLoad(() => import("@features/projects/pages/ProjectDetailsPage"));
 const AllSitesPage = lazyLoad(() => import("@features/sites/pages/AllSitesPage"));
 const CreateSitePage = lazyLoad(() => import("@features/sites/pages/CreateSitePage"));
+const SiteDetailsPage = lazyLoad(() => import("@features/sites/pages/SiteDetailsPage"));
+const DepartmentDetailsPage = lazyLoad(() => import("@features/departments/pages/DepartmentDetailsPage"));
 const EmployeeMembershipPage = lazyLoad(() => import("@features/employees/pages/EmployeeMembershipPage"));
 const EmployeeRoleAssignmentPage = lazyLoad(() => import("@features/employees/pages/EmployeeRoleAssignmentPage"));
 const EmployeeOperationsPage = lazyLoad(() => import("@features/employees/pages/EmployeeOperationsPage"));
@@ -50,6 +53,7 @@ const EmployeeDocumentsPage = lazyLoad(() => import("@features/employees/pages/E
 const AllSchedulesPage = lazyLoad(() => import("@features/schedules/pages/AllSchedulesPage"));
 const CreateSchedulePage = lazyLoad(() => import("@features/schedules/pages/CreateSchedulePage"));
 const ScheduleDetailsPage = lazyLoad(() => import("@features/schedules/pages/ScheduleDetailsPage"));
+const LeavePage = lazyLoad(() => import("@features/leave/pages/LeavePage"));
 
 
 /* -------------------------------------------------------------------------- */
@@ -90,6 +94,7 @@ export const privateRouteConfig = [
   // Company Routes
   { path: ROUTES.COMPANIES.ROOT, element: AllCompaniesPage, roles: [ROLES.PLATFORM_ADMIN], },
   { path: ROUTES.COMPANIES.CREATE, element: CreateCompanyPage, roles: [ROLES.PLATFORM_ADMIN], },
+  { path: ROUTES.COMPANIES.DELEGATIONS, element: CompanyDelegationsPage, permissions: [PERMISSIONS.COMPANY.UPDATE] },
 
   // Operations Routes
   { path: ROUTES.OPERATIONS.ROOT, element: AllOperationsPage, roles: [ROLES.PLATFORM_ADMIN] },
@@ -106,10 +111,12 @@ export const privateRouteConfig = [
   //Sites Routes
   { path: ROUTES.SITES.ROOT, element: AllSitesPage, permissions: [PERMISSIONS.SITE.READ] },
   { path: ROUTES.SITES.CREATE, element: CreateSitePage, permissions: [PERMISSIONS.SITE.CREATE] },
+  { path: ROUTES.SITES.DETAILS, element: SiteDetailsPage, permissions: [PERMISSIONS.SITE.READ] },
 
   // Departments Routes
   { path: ROUTES.DEPARTMENTS.ROOT, element: AllDepartmentsPage, permissions: [PERMISSIONS.DEPARTMENT.READ] },
   { path: ROUTES.DEPARTMENTS.CREATE, element: CreateDepartmentPage, permissions: [PERMISSIONS.DEPARTMENT.CONFIGURE] },
+  { path: ROUTES.DEPARTMENTS.DETAILS, element: DepartmentDetailsPage, permissions: [PERMISSIONS.DEPARTMENT.READ] },
   { path: ROUTES.DEPARTMENTS.OPERATIONS, element: DepartmentOperationsPage, permissions: [PERMISSIONS.DEPARTMENT.CONFIGURE] },
 
   // Work Schedules Routes
@@ -129,9 +136,12 @@ export const privateRouteConfig = [
   { path: ROUTES.ATTENDANCE.ROOT, element: AttendancePage, permissions: [PERMISSIONS.ATTENDANCE.READ], },
 
   // Attendance Policy Routes
-  { path: ROUTES.ATTENDANCE.POLICIES, element: AllAttendancePoliciesPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE], },
+  { path: ROUTES.ATTENDANCE.POLICIES, element: AllAttendancePoliciesPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
   { path: ROUTES.ATTENDANCE.POLICY_DETAILS, element: AttendancePolicyDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
   { path: ROUTES.ATTENDANCE.CREATE_POLICY, element: CreateAttendancePolicyPage, permissions: [PERMISSIONS.ATTENDANCE.MANAGE] },
+
+  // Leave Routes
+  { path: ROUTES.LEAVE.ROOT, element: LeavePage, permissions: [PERMISSIONS.LEAVE.READ, PERMISSIONS.LEAVE.APPLY] },
 
   // Daily Reports & Settlement Routes (Separate Feature)
   { path: ROUTES.DAILY_REPORTS.ROOT, element: DailyReportsListPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },

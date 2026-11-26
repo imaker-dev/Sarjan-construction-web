@@ -20,6 +20,7 @@ export const ROUTES = {
     DETAILS: "/companies/:id",
     EDIT: "/companies/:id/edit",
     VERIFY: "/verify-company",
+    DELEGATIONS: "/company/delegations",
   },
 
   // =========================
@@ -170,6 +171,13 @@ export const ROUTES = {
     ROOT: "/daily-reports",
     DETAILS: "/daily-reports/:id",
     MUSTER_ROLL: "/daily-reports?tab=muster-roll",
+  },
+
+  // =========================
+  // LEAVE
+  // =========================
+  LEAVE: {
+    ROOT: "/leave",
   },
 
   // =========================

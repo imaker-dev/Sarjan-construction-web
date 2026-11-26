@@ -61,6 +61,30 @@ export const updateCompanyStatus = createAsyncThunk(
   },
 );
 
+export const getCompanyDelegations = createAsyncThunk(
+  "company/getCompanyDelegations",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await companyApi.getCompanyDelegationsApi();
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const updateCompanyDelegations = createAsyncThunk(
+  "company/updateCompanyDelegations",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await companyApi.updateCompanyDelegationsApi(values);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
 // ----------------------------------------------------------------------
 // Initial State
 // ----------------------------------------------------------------------
@@ -68,6 +92,7 @@ export const updateCompanyStatus = createAsyncThunk(
 const initialState = {
   companiesData: [],
   companyDetails: null,
+  delegations: null,
 
   isListingCompanies: false,
   isCreatingCompany: false,
@@ -75,6 +100,8 @@ const initialState = {
   isUpdatingCompany: false,
   isReissuingClaimToken: false,
   isUpdatingCompanyStatus: false,
+  isLoadingDelegations: false,
+  isUpdatingDelegations: false,
 };
 
 // ----------------------------------------------------------------------
@@ -205,6 +232,31 @@ const companySlice = createSlice({
       .addCase(updateCompanyStatus.rejected, (state) => {
         state.isUpdatingCompanyStatus = false;
         toast.error("Failed to update company status");
+      })
+
+      // Company Delegations
+      .addCase(getCompanyDelegations.pending, (state) => {
+        state.isLoadingDelegations = true;
+      })
+      .addCase(getCompanyDelegations.fulfilled, (state, action) => {
+        state.isLoadingDelegations = false;
+        state.delegations = action.payload?.delegations || action.payload?.data || action.payload;
+      })
+      .addCase(getCompanyDelegations.rejected, (state) => {
+        state.isLoadingDelegations = false;
+      })
+
+      .addCase(updateCompanyDelegations.pending, (state) => {
+        state.isUpdatingDelegations = true;
+      })
+      .addCase(updateCompanyDelegations.fulfilled, (state, action) => {
+        state.isUpdatingDelegations = false;
+        state.delegations = action.payload?.delegations || action.payload?.data || action.payload;
+        toast.success("Delegation settings updated.");
+      })
+      .addCase(updateCompanyDelegations.rejected, (state, action) => {
+        state.isUpdatingDelegations = false;
+        toast.error(action.payload?.message || "Failed to update delegation settings");
       });
   },
 });

@@ -19,13 +19,15 @@ import ModalAction from "@components/ui/ModalAction";
 
 import { InputField } from "@components/fields/InputField";
 import { SelectField } from "@components/fields/SelectField";
+import { useAccess } from "@hooks/useAccess";
+import { extractList } from "@utils/api.utils";
 
 import {
   createDepartment,
   getDepartmentById,
   updateDepartment,
 } from "@store/slices/department.slice";
-import { listProjects } from "@store/slices/project.slice";
+import { listProjects, getProjectDetails } from "@store/slices/project.slice";
 import { listSites } from "@store/slices/site.slice";
 
 import { ROUTES } from "@constants/routes";
@@ -127,8 +129,8 @@ const initialValues = {
   categoryLabel: "",
 };
 
-const getInitialValues = (department = null) => ({
-  scopeType: department?.scopeType || "COMPANY",
+const getInitialValues = (department = null, defaultScope = "COMPANY") => ({
+  scopeType: department?.scopeType || defaultScope,
   scopeId: department?.projectId || department?.siteId || "",
   baseHeadOfficeId: department?.baseHeadOfficeId || "",
   code: department?.code || "",
@@ -140,6 +142,8 @@ const getInitialValues = (department = null) => ({
 const CreateDepartmentPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user, assignments } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
   const { get } = useQueryParams();
   const departmentId = get("departmentId");
   const isEditMode = Boolean(departmentId);
@@ -155,7 +159,7 @@ const CreateDepartmentPage = () => {
 
   const isSaving = isCreatingDepartment || isUpdatingDepartment;
 
-  const { isListingProjects, projectsData } = useSelector(
+  const { isListingProjects, projectsData, projectData } = useSelector(
     (state) => state.project,
   );
 
@@ -164,20 +168,38 @@ const CreateDepartmentPage = () => {
     (state) => state.headOffice,
   );
 
+  const scopedProjectId = assignments.find((a) => a.projectId)?.projectId;
+
   useEffect(() => {
     if (!departmentId) return;
     dispatch(getDepartmentById(departmentId));
   }, [dispatch, departmentId]);
 
   useEffect(() => {
-    if (!headOfficesData && !isListingHeadOffices) {
+    if (isCompanyAdmin && !headOfficesData && !isListingHeadOffices) {
       dispatch(getAllHeadOffices());
     }
-  }, [dispatch, headOfficesData, isListingHeadOffices]);
+    if (!isCompanyAdmin && scopedProjectId) {
+      const currentProj = projectData?.data || projectData;
+      if (currentProj?.id !== scopedProjectId) {
+        dispatch(getProjectDetails(scopedProjectId));
+      }
+    }
+  }, [
+    dispatch,
+    isCompanyAdmin,
+    headOfficesData,
+    isListingHeadOffices,
+    scopedProjectId,
+    projectData,
+  ]);
 
   const formik = useFormik({
     // initialValues,
-    initialValues: getInitialValues(departmentDetailsData),
+    initialValues: getInitialValues(
+      departmentDetailsData,
+      isCompanyAdmin ? "COMPANY" : "PROJECT",
+    ),
     validationSchema,
     enableReinitialize: true,
 
@@ -207,15 +229,46 @@ const CreateDepartmentPage = () => {
   const isScoped = values.scopeType !== "COMPANY";
   const isCustomCategory = values.category === "CUSTOM";
 
-  const getListData = (data) => {
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.data)) return data.data;
-    return [];
-  };
+  const getListData = (data) => extractList(data);
 
-  const projects = getListData(projectsData);
-  const sites = getListData(sitesData);
-  const headOffices = getListData(headOfficesData);
+  const scopedProject = projectData?.data || projectData;
+  const attachedHeadOfficeId =
+    scopedProject?.headOfficeId || scopedProject?.headOffice?.id || "";
+
+  const projects = isCompanyAdmin
+    ? getListData(projectsData)
+    : scopedAssignments.projects.map((p) => ({
+        id: p.projectId,
+        name: p.projectName,
+        code: p.roleName,
+      }));
+  const sites =
+    getListData(sitesData).length > 0
+      ? getListData(sitesData)
+      : scopedAssignments.sites.map((s) => ({
+          id: s.siteId,
+          name: s.siteName,
+          code: s.roleName,
+        }));
+  const fetchedHeadOffices = getListData(headOfficesData);
+  const headOffices =
+    fetchedHeadOffices.length > 0
+      ? fetchedHeadOffices
+      : attachedHeadOfficeId
+        ? [
+            {
+              id: attachedHeadOfficeId,
+              name: scopedProject?.headOffice?.name || "Attached Head Office",
+              code: scopedProject?.headOffice?.code,
+            },
+          ]
+        : [];
+
+  useEffect(() => {
+    if (!isCompanyAdmin && !isEditMode && attachedHeadOfficeId && !values.baseHeadOfficeId) {
+      setFieldValue("baseHeadOfficeId", attachedHeadOfficeId);
+    }
+  }, [isCompanyAdmin, isEditMode, attachedHeadOfficeId, values.baseHeadOfficeId, setFieldValue]);
 
   const scopeOptions =
     values.scopeType === "PROJECT"
@@ -247,12 +300,16 @@ const CreateDepartmentPage = () => {
     setFieldValue("scopeId", "");
     setFieldTouched("scopeId", false);
 
-    if (scopeType === "PROJECT" && !projectsData && !isListingProjects) {
+    if (isCompanyAdmin && scopeType === "PROJECT" && !projectsData && !isListingProjects) {
       dispatch(listProjects());
     }
 
     if (scopeType === "SITE" && !sitesData && !isListingSites) {
-      dispatch(listSites());
+      if (isCompanyAdmin) {
+        dispatch(listSites());
+      } else if (scopedProjectId) {
+        dispatch(listSites({ projectId: scopedProjectId }));
+      }
     }
   };
 
@@ -265,7 +322,7 @@ const CreateDepartmentPage = () => {
     const currentValues = formik.values;
 
     const payload = {
-      baseHeadOfficeId: currentValues.baseHeadOfficeId,
+      ...(currentValues.baseHeadOfficeId ? { baseHeadOfficeId: currentValues.baseHeadOfficeId } : {}),
       scopeType: currentValues.scopeType,
       code: currentValues.code.trim().toUpperCase(),
       name: currentValues.name.trim(),
@@ -305,7 +362,7 @@ const CreateDepartmentPage = () => {
             icon={IconBuildingCommunity}
           >
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              {SCOPE_OPTIONS.map((option) => {
+              {SCOPE_OPTIONS.filter((opt) => isCompanyAdmin || opt.value !== "COMPANY").map((option) => {
                 const Icon = option.icon;
                 const selected = values.scopeType === option.value;
 

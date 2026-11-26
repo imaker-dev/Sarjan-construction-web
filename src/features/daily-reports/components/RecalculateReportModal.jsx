@@ -4,6 +4,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { recalculateDailyReport } from "@store/slices/dailyReport.slice";
 import { listSites } from "@store/slices/site.slice";
 import { getAllHeadOffices } from "@store/slices/head-office.slice";
+import { useAccess } from "@hooks/useAccess";
+import { extractList } from "@utils/api.utils";
+import { getTodayIsoDate } from "@utils/date.utils";
 import {
   IconCalculator,
   IconBuilding,
@@ -20,6 +23,8 @@ export default function RecalculateReportModal({
   onSuccess,
 }) {
   const dispatch = useDispatch();
+  const { user } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
   const { isRecalculating } = useSelector((state) => state.dailyReport);
   const { sitesData, isListingSites } = useSelector((state) => state.site);
   const { headOfficesData, isListingHeadOffices } = useSelector(
@@ -30,22 +35,22 @@ export default function RecalculateReportModal({
   const [siteId, setSiteId] = useState(defaultSiteId);
   const [headOfficeId, setHeadOfficeId] = useState(defaultHeadOfficeId);
   const [businessDate, setBusinessDate] = useState(
-    defaultDate || new Date().toISOString().split("T")[0]
+    defaultDate || getTodayIsoDate()
   );
 
   useEffect(() => {
-    if (isOpen) {
-      if (!sitesData || (Array.isArray(sitesData) && sitesData.length === 0)) {
-        dispatch(listSites());
-      }
-      if (
-        !headOfficesData ||
-        (Array.isArray(headOfficesData) && headOfficesData.length === 0)
-      ) {
-        dispatch(getAllHeadOffices());
-      }
+    if (!isOpen) return;
+    if (!sitesData || (Array.isArray(sitesData) && sitesData.length === 0)) {
+      dispatch(listSites());
     }
-  }, [isOpen, dispatch, sitesData, headOfficesData]);
+    if (
+      isCompanyAdmin &&
+      (!headOfficesData ||
+        (Array.isArray(headOfficesData) && headOfficesData.length === 0))
+    ) {
+      dispatch(getAllHeadOffices());
+    }
+  }, [isOpen, isCompanyAdmin, dispatch, sitesData, headOfficesData]);
 
   useEffect(() => {
     if (defaultScope) setLocationScope(defaultScope);
@@ -54,17 +59,9 @@ export default function RecalculateReportModal({
     if (defaultDate) setBusinessDate(defaultDate);
   }, [defaultScope, defaultSiteId, defaultHeadOfficeId, defaultDate]);
 
-  const sitesList = Array.isArray(sitesData)
-    ? sitesData
-    : Array.isArray(sitesData?.data)
-      ? sitesData.data
-      : [];
+  const sitesList = extractList(sitesData);
 
-  const headOfficesList = Array.isArray(headOfficesData)
-    ? headOfficesData
-    : Array.isArray(headOfficesData?.data)
-      ? headOfficesData.data
-      : [];
+  const headOfficesList = extractList(headOfficesData);
 
   const isFormValid =
     Boolean(businessDate) &&

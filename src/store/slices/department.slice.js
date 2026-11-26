@@ -1,6 +1,53 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import departmentApi from "@store/api/department.api";
+import { extractList } from "@utils/api.utils";
+import { extractApiError } from "@utils/error.handlers";
 import { toast } from "sonner";
+
+export const fetchDepartmentMembers = createAsyncThunk(
+  "department/fetchDepartmentMembers",
+  async ({ departmentId, params = {} }, { rejectWithValue }) => {
+    try {
+      const res = await departmentApi.getDepartmentMembersApi(departmentId, params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const onboardDepartmentEmployee = createAsyncThunk(
+  "department/onboardDepartmentEmployee",
+  async ({ departmentId, values }, { rejectWithValue }) => {
+    try {
+      const res = await departmentApi.onboardDepartmentEmployeeApi({ departmentId, values });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const manageDepartmentMember = createAsyncThunk(
+  "department/manageDepartmentMember",
+  async ({ departmentId, membershipId, op, values = {} }, { rejectWithValue }) => {
+    try {
+      let res;
+      if (op === "add") {
+        res = await departmentApi.addDepartmentMemberApi({ departmentId, values });
+      } else if (op === "update") {
+        res = await departmentApi.updateDepartmentMemberApi({ departmentId, membershipId, values });
+      } else if (op === "transfer") {
+        res = await departmentApi.transferDepartmentMemberApi({ departmentId, membershipId, values });
+      } else {
+        res = await departmentApi.endDepartmentMemberApi({ departmentId, membershipId, values });
+      }
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
 
 // --------------------------------------------------
 // ASYNC THUNKS
@@ -125,6 +172,10 @@ const initialState = {
   isEnablingDepartmentOperation: false,
   isUpdatingDepartmentOperation: false,
   isDisablingDepartmentOperation: false,
+
+  departmentMembers: [],
+  isLoadingMembers: false,
+  isMutatingMembers: false,
 };
 
 // --------------------------------------------------
@@ -339,7 +390,40 @@ const departmentSlice = createSlice({
         toast.error(
           action.error.message || "Failed to disable department operation",
         );
-      });
+      })
+
+      .addCase(fetchDepartmentMembers.pending, (state) => {
+        state.isLoadingMembers = true;
+      })
+      .addCase(fetchDepartmentMembers.fulfilled, (state, action) => {
+        state.isLoadingMembers = false;
+        state.departmentMembers = extractList(action.payload, "members");
+      })
+      .addCase(fetchDepartmentMembers.rejected, (state, action) => {
+        state.isLoadingMembers = false;
+        toast.error(extractApiError(action.payload, "Failed to load department members"));
+      })
+
+      .addMatcher(
+        isAnyOf(onboardDepartmentEmployee.pending, manageDepartmentMember.pending),
+        (state) => {
+          state.isMutatingMembers = true;
+        },
+      )
+      .addMatcher(
+        isAnyOf(onboardDepartmentEmployee.fulfilled, manageDepartmentMember.fulfilled),
+        (state) => {
+          state.isMutatingMembers = false;
+          toast.success("Department member action completed.");
+        },
+      )
+      .addMatcher(
+        isAnyOf(onboardDepartmentEmployee.rejected, manageDepartmentMember.rejected),
+        (state, action) => {
+          state.isMutatingMembers = false;
+          toast.error(extractApiError(action.payload, "Department member action failed"));
+        },
+      );
   },
 });
 

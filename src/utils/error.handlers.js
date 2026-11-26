@@ -32,3 +32,17 @@ export const identifyError = (errorMessage) => {
   }
   return null;
 };
+
+/**
+ * Extracts a user-friendly error message from an API/thunk rejection payload,
+ * normalizing backend error codes such as `DELEGATION_DISABLED`.
+ */
+export const extractApiError = (err, fallback = "Something went wrong") => {
+  const code = err?.error?.code || err?.code;
+  if (code === "DELEGATION_DISABLED") {
+    return "This action is currently disabled by company delegation settings. Contact your Company Administrator.";
+  }
+  return typeof err === "string"
+    ? err
+    : err?.error?.message || err?.message || fallback;
+};

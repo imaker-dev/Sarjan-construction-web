@@ -44,6 +44,31 @@ const SIZE_CLASSES = {
   md: { pill: "px-2.5 py-1 text-xs gap-1.5", icon: 13 },
 };
 
+export const STATUS_TONES = {
+  ACTIVE: "emerald",
+  APPROVED: "emerald",
+  CERTIFIED: "emerald",
+  COMPLETED: "emerald",
+  PAID: "emerald",
+  PENDING: "amber",
+  SUBMITTED: "amber",
+  SUSPENDED: "amber",
+  REJECTED: "rose",
+  EXITED: "rose",
+  INACTIVE: "rose",
+  LOCKED: "purple",
+  CANCELLED: "slate",
+  DRAFT: "slate",
+};
+
+/**
+ * Maps common domain status strings to a `StatusBadge` tone.
+ */
+export const getStatusTone = (status, fallback = "slate") => {
+  if (!status) return fallback;
+  return STATUS_TONES[String(status).toUpperCase()] || fallback;
+};
+
 /**
  * Reusable status/category pill following the project's soft translucent TONES palette.
  */

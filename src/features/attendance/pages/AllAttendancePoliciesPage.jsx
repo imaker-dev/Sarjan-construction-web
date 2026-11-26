@@ -1,12 +1,23 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Eye, Pencil, Plus } from "lucide-react";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import { Eye, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { IconClock, IconMapPin } from "@tabler/icons-react";
 
 import DataTable from "@components/ui/DataTable";
+import ModalBasic from "@components/ui/ModalBasic";
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
+import StatusBadge from "@components/ui/StatusBadge";
+import { SelectField } from "@components/fields/SelectField";
 import { ROUTES } from "@constants/routes";
-import { getAttendancePolicies } from "@store/slices/attendance.slice";
+import {
+  getAttendancePolicies,
+  getEffectiveAttendancePolicy,
+} from "@store/slices/attendance.slice";
+import { listSites } from "@store/slices/site.slice";
+import { listEmployees } from "@store/slices/employee.slice";
+import { extractList } from "@utils/api.utils";
 import { formatDate } from "@utils/date.utils";
 import { formatText } from "@utils/text.utils";
 import { useNavigate } from "react-router-dom";
@@ -41,8 +52,52 @@ const AllAttendancePoliciesPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { isFetchingPolicies, attendancePolicies } = useSelector(
-    (state) => state.attendance,
+  const {
+    isFetchingPolicies,
+    attendancePolicies,
+    effectivePolicy,
+    isFetchingEffectivePolicy,
+  } = useSelector((state) => state.attendance);
+  const { sitesData } = useSelector((state) => state.site);
+  const { employeesData } = useSelector((state) => state.employee);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const previewFormik = useFormik({
+    initialValues: { siteId: "", employeeId: "" },
+    validationSchema: Yup.object({
+      siteId: Yup.string().nullable(),
+      employeeId: Yup.string().nullable(),
+    }),
+    onSubmit: (values) => {
+      const params = {};
+      if (values.siteId) params.siteId = values.siteId;
+      if (values.employeeId) params.employeeId = values.employeeId;
+      dispatch(getEffectiveAttendancePolicy(params));
+    },
+  });
+
+  useEffect(() => {
+    if (!isPreviewOpen) return;
+    if (!sitesData) dispatch(listSites());
+    if (!employeesData) dispatch(listEmployees());
+  }, [isPreviewOpen, sitesData, employeesData, dispatch]);
+
+  const siteOptions = useMemo(
+    () =>
+      extractList(sitesData).map((s) => ({
+        label: s.code ? `${s.name} (${s.code})` : s.name,
+        value: s.id,
+      })),
+    [sitesData],
+  );
+
+  const employeeOptions = useMemo(
+    () =>
+      extractList(employeesData, "employees").map((e) => ({
+        label: e.employeeCode ? `${e.displayName} (${e.employeeCode})` : e.displayName,
+        value: e.id,
+      })),
+    [employeesData],
   );
 
   // --------------------------------------------------
@@ -193,6 +248,12 @@ const AllAttendancePoliciesPage = () => {
         loading={isFetchingPolicies}
         headerActions={[
           {
+            label: "Preview Effective",
+            icon: ShieldCheck,
+            variant: "outline",
+            onClick: () => setIsPreviewOpen(true),
+          },
+          {
             label: "Add Policy",
             icon: Plus,
             variant: "primary",
@@ -205,6 +266,97 @@ const AllAttendancePoliciesPage = () => {
           description: "Attendance policies you create will appear here.",
         }}
       />
+
+      <ModalBasic
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        title="Preview Effective Attendance Policy"
+        description="Resolve the effective attendance policy for a site and/or employee context."
+        size="md"
+      >
+        <form onSubmit={previewFormik.handleSubmit} className="space-y-4 p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <SelectField
+              id="previewSiteId"
+              name="siteId"
+              label="Site (Optional)"
+              placeholder="Company default"
+              options={siteOptions}
+              value={previewFormik.values.siteId}
+              onChange={previewFormik.handleChange}
+            />
+            <SelectField
+              id="previewEmployeeId"
+              name="employeeId"
+              label="Employee (Optional)"
+              placeholder="Any employee"
+              options={employeeOptions}
+              value={previewFormik.values.employeeId}
+              onChange={previewFormik.handleChange}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(false)}
+              className="btn btn-outline btn-sm"
+            >
+              Close
+            </button>
+            <button
+              type="submit"
+              disabled={isFetchingEffectivePolicy}
+              className="btn btn-primary btn-sm"
+            >
+              {isFetchingEffectivePolicy ? "Resolving..." : "Resolve Policy"}
+            </button>
+          </div>
+
+          {effectivePolicy && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 p-4 space-y-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <strong className="text-sm text-slate-800 dark:text-white">
+                  {effectivePolicy.name || "Resolved Policy"}
+                </strong>
+                <StatusBadge
+                  label={effectivePolicy.scopeType || "COMPANY"}
+                  tone="indigo"
+                  size="xs"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1 tabular-nums">
+                <div>
+                  <span className="text-slate-400 block">Work Window</span>
+                  <strong className="text-slate-700 dark:text-slate-200">
+                    {formatTime(effectivePolicy.workStartHour, effectivePolicy.workStartMinute)} –{" "}
+                    {formatTime(effectivePolicy.workEndHour, effectivePolicy.workEndMinute)}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Full / Half Day</span>
+                  <strong className="text-slate-700 dark:text-slate-200">
+                    {formatDuration(effectivePolicy.fullDayMinutes)} /{" "}
+                    {formatDuration(effectivePolicy.halfDayMinutes)}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Grace Period</span>
+                  <strong className="text-slate-700 dark:text-slate-200">
+                    {formatDuration(effectivePolicy.lateGraceMinutes)}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Overtime</span>
+                  <strong className="text-slate-700 dark:text-slate-200">
+                    {effectivePolicy.overtimeEnabled ? "Enabled" : "Disabled"}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          )}
+        </form>
+      </ModalBasic>
     </div>
   );
 };

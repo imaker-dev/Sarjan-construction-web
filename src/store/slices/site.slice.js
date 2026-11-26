@@ -1,6 +1,68 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import siteApi from "@store/api/site.api";
+import { extractList } from "@utils/api.utils";
+import { extractApiError } from "@utils/error.handlers";
 import { toast } from "sonner";
+
+export const fetchSiteTeam = createAsyncThunk(
+  "site/fetchSiteTeam",
+  async ({ siteId, params = {} }, { rejectWithValue }) => {
+    try {
+      const res = await siteApi.getSiteTeamApi(siteId, params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const executeSiteWorkforceAction = createAsyncThunk(
+  "site/executeSiteWorkforceAction",
+  async ({ siteId, employeeId, action, values = {} }, { rejectWithValue }) => {
+    try {
+      const res = await siteApi.workforceActionSiteApi({ id: siteId, employeeId, action, values });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const fetchSiteDocuments = createAsyncThunk(
+  "site/fetchSiteDocuments",
+  async ({ siteId, params = {} }, { rejectWithValue }) => {
+    try {
+      const res = await siteApi.getSiteDocumentsApi(siteId, params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const linkSiteDocument = createAsyncThunk(
+  "site/linkSiteDocument",
+  async ({ siteId, values }, { rejectWithValue }) => {
+    try {
+      const res = await siteApi.linkSiteDocumentApi({ id: siteId, values });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
+
+export const fetchSiteActivity = createAsyncThunk(
+  "site/fetchSiteActivity",
+  async ({ siteId, params = {} }, { rejectWithValue }) => {
+    try {
+      const res = await siteApi.getSiteActivityApi(siteId, params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  },
+);
 
 // List sites
 export const listSites = createAsyncThunk(
@@ -62,6 +124,13 @@ const siteSlice = createSlice({
 
     sitesData: null,
     siteData: null,
+    siteTeam: [],
+    isLoadingSiteTeam: false,
+    siteDocuments: [],
+    isLoadingSiteDocs: false,
+    siteActivity: [],
+    isLoadingSiteActivity: false,
+    isMutatingSiteScope: false,
   },
 
   reducers: {},
@@ -157,7 +226,64 @@ const siteSlice = createSlice({
       .addCase(updateSiteStatus.rejected, (state, action) => {
         state.isUpdatingSiteStatus = false;
         toast.error(action.error.message || "Failed to update site status");
-      });
+      })
+
+      .addCase(fetchSiteTeam.pending, (state) => {
+        state.isLoadingSiteTeam = true;
+      })
+      .addCase(fetchSiteTeam.fulfilled, (state, action) => {
+        state.isLoadingSiteTeam = false;
+        state.siteTeam = extractList(action.payload, "team");
+      })
+      .addCase(fetchSiteTeam.rejected, (state, action) => {
+        state.isLoadingSiteTeam = false;
+        toast.error(extractApiError(action.payload, "Failed to load site team"));
+      })
+
+      .addCase(fetchSiteDocuments.pending, (state) => {
+        state.isLoadingSiteDocs = true;
+      })
+      .addCase(fetchSiteDocuments.fulfilled, (state, action) => {
+        state.isLoadingSiteDocs = false;
+        state.siteDocuments = extractList(action.payload, "documents");
+      })
+      .addCase(fetchSiteDocuments.rejected, (state, action) => {
+        state.isLoadingSiteDocs = false;
+        toast.error(extractApiError(action.payload, "Failed to load site documents"));
+      })
+
+      .addCase(fetchSiteActivity.pending, (state) => {
+        state.isLoadingSiteActivity = true;
+      })
+      .addCase(fetchSiteActivity.fulfilled, (state, action) => {
+        state.isLoadingSiteActivity = false;
+        state.siteActivity = extractList(action.payload, "logs");
+      })
+      .addCase(fetchSiteActivity.rejected, (state, action) => {
+        state.isLoadingSiteActivity = false;
+        toast.error(extractApiError(action.payload, "Failed to load site activity"));
+      })
+
+      .addMatcher(
+        isAnyOf(executeSiteWorkforceAction.pending, linkSiteDocument.pending),
+        (state) => {
+          state.isMutatingSiteScope = true;
+        },
+      )
+      .addMatcher(
+        isAnyOf(executeSiteWorkforceAction.fulfilled, linkSiteDocument.fulfilled),
+        (state) => {
+          state.isMutatingSiteScope = false;
+          toast.success("Action completed successfully.");
+        },
+      )
+      .addMatcher(
+        isAnyOf(executeSiteWorkforceAction.rejected, linkSiteDocument.rejected),
+        (state, action) => {
+          state.isMutatingSiteScope = false;
+          toast.error(extractApiError(action.payload, "Operation failed"));
+        },
+      );
   },
 });
 

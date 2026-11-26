@@ -1,7 +1,11 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import FormElementsDemo from "../components/FormElementsDemo";
 import DateRangePicker from "@components/fields/DateRangePicker";
 import useDateRange from "@hooks/useDateRange";
+import useAccess from "@hooks/useAccess";
+import { PERMISSIONS } from "@constants/permissions";
+import { ROUTES } from "@constants/routes";
 import StatCard from "@components/ui/StatCard";
 import {
   BadgeCheck,
@@ -22,22 +26,55 @@ import {
 } from "lucide-react";
 
 const DashboardPage = () => {
+  const navigate = useNavigate();
+  const { can, user, assignments } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
+  const assignedProjects = assignments.filter((a) => a.projectId);
+  const canMarkAttendance = can({ permissions: [PERMISSIONS.ATTENDANCE.RECORD] });
+  const isScopedLead = !isCompanyAdmin && assignedProjects.length > 0;
   const { startDate, endDate, pickerProps } = useDateRange();
-
-  // useEffect(() => {
-  //   console.log({ startDate, endDate });
-  // }, [startDate, endDate]);
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-        <p className="mt-1 text-sm text-muted-foreground">
-          Welcome back. Here's what's happening today.
-        </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Welcome back. Here's what's happening today.
+          </p>
+        </div>
+        {canMarkAttendance && (
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.ATTENDANCE.ROOT)}
+            className="btn btn-primary btn-sm"
+          >
+            Mark Attendance
+          </button>
+        )}
       </div>
+
+      {isScopedLead && (
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-4 space-y-3">
+          <h2 className="text-[15px] font-semibold text-slate-800 dark:text-white">
+            Your Assigned Projects
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {assignedProjects.map((proj) => (
+              <button
+                key={proj.projectId}
+                type="button"
+                onClick={() => navigate(`${ROUTES.PROJECTS.DETAILS}?projectId=${proj.projectId}`)}
+                className="btn btn-outline btn-xs"
+              >
+                {proj.projectName}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* <DateRangePicker {...pickerProps} placeholder="Select Date Range" /> */}
 

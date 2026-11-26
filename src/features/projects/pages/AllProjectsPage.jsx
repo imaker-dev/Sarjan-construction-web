@@ -19,8 +19,10 @@ import DataTable from "@components/ui/DataTable";
 
 import { listProjects, updateProjectStatus } from "@store/slices/project.slice";
 import { ROUTES } from "@constants/routes";
+import { useAccess } from "@hooks/useAccess";
 import { formatText } from "@utils/text.utils";
 import { formatDate } from "@utils/date.utils";
+import { extractList } from "@utils/api.utils";
 import ModalAction from "@components/ui/ModalAction";
 import { handleResponse } from "@utils/async.utils";
 
@@ -57,6 +59,8 @@ const Muted = ({ children }) => (
 const AllProjectsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
   const [statusConfirmation, setStatusConfirmation] = useState(null);
 
   const { isListingProjects, projectsData, isUpdatingProjectStatus } =
@@ -69,11 +73,7 @@ const AllProjectsPage = () => {
     fetchProjects();
   }, [dispatch]);
 
-  const rows = useMemo(() => {
-    if (Array.isArray(projectsData)) return projectsData;
-    if (Array.isArray(projectsData?.data)) return projectsData.data;
-    return [];
-  }, [projectsData]);
+  const rows = useMemo(() => extractList(projectsData), [projectsData]);
 
   const handleOpenStatusConfirmation = useCallback(
     (project, status, title, description) => {

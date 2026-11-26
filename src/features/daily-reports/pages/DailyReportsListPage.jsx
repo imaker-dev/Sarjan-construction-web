@@ -21,11 +21,18 @@ import { listProjects } from "@store/slices/project.slice";
 import { listSites } from "@store/slices/site.slice";
 import { getAllHeadOffices } from "@store/slices/head-office.slice";
 import { listDepartments } from "@store/slices/department.slice";
+import { useAccess } from "@hooks/useAccess";
+import { extractList } from "@utils/api.utils";
+import { getTodayIsoDate } from "@utils/date.utils";
 import { ROUTES } from "@constants/routes";
 
 export default function DailyReportsListPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user, assignments } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
+  const firstSiteId = assignments.find((a) => a.siteId)?.siteId;
+  const firstProjectId = assignments.find((a) => a.projectId)?.projectId;
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Active Tab: "reports" (Site Reports) vs "muster-roll" (Office Attendance)
@@ -68,14 +75,21 @@ export default function DailyReportsListPage() {
   useEffect(() => {
     dispatch(listProjects());
     dispatch(listSites());
-    dispatch(getAllHeadOffices());
     dispatch(listDepartments());
-  }, [dispatch]);
+    if (isCompanyAdmin) {
+      dispatch(getAllHeadOffices());
+    }
+  }, [dispatch, isCompanyAdmin]);
 
   // Fetch Site Reports
   const fetchReports = () => {
     const params = { limit: 50, offset: 0 };
-    if (selectedSiteId) params.siteId = selectedSiteId;
+    if (selectedSiteId) {
+      params.siteId = selectedSiteId;
+    } else if (!isCompanyAdmin) {
+      if (firstSiteId) params.siteId = firstSiteId;
+      else if (firstProjectId) params.projectId = firstProjectId;
+    }
     if (statusFilter !== "ALL") params.status = statusFilter;
     if (dsrFromDate) params.fromDate = dsrFromDate;
     if (dsrToDate) params.toDate = dsrToDate;
@@ -85,7 +99,7 @@ export default function DailyReportsListPage() {
 
   // Fetch Office Attendance Data (Today vs Custom Date)
   const fetchMusterRollData = () => {
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getTodayIsoDate();
     const params = {};
 
     if (attendanceDateFilter === "today") {
@@ -103,13 +117,18 @@ export default function DailyReportsListPage() {
 
     if (selectedHeadOfficeId) params.headOfficeId = selectedHeadOfficeId;
     if (selectedDepartmentId) params.departmentId = selectedDepartmentId;
-    if (selectedMusterSiteId) params.siteId = selectedMusterSiteId;
+    if (selectedMusterSiteId) {
+      params.siteId = selectedMusterSiteId;
+    } else if (!isCompanyAdmin && !selectedDepartmentId) {
+      if (firstSiteId) params.siteId = firstSiteId;
+      else if (firstProjectId) params.projectId = firstProjectId;
+    }
 
     dispatch(getMusterRoll(params));
   };
 
   const handleExportOfficeMuster = (format, dateOverride) => {
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getTodayIsoDate();
     const params = { format };
 
     if (dateOverride) {
@@ -142,9 +161,12 @@ export default function DailyReportsListPage() {
   }, [dispatch, selectedSiteId, statusFilter, dsrFromDate, dsrToDate]);
 
   useEffect(() => {
+    if (!isCompanyAdmin || activeTab !== "muster-roll") return;
     fetchMusterRollData();
   }, [
     dispatch,
+    isCompanyAdmin,
+    activeTab,
     attendanceDateFilter,
     musterFromDate,
     musterToDate,
@@ -154,29 +176,10 @@ export default function DailyReportsListPage() {
   ]);
 
   // Normalizing Project, Site, Head Office & Department lists
-  const projectsList = Array.isArray(projectsData)
-    ? projectsData
-    : Array.isArray(projectsData?.data)
-      ? projectsData.data
-      : [];
-
-  const sitesList = Array.isArray(sitesData)
-    ? sitesData
-    : Array.isArray(sitesData?.data)
-      ? sitesData.data
-      : [];
-
-  const headOfficesList = Array.isArray(headOfficesData)
-    ? headOfficesData
-    : Array.isArray(headOfficesData?.data)
-      ? headOfficesData.data
-      : [];
-
-  const departmentsList = Array.isArray(departmentsData)
-    ? departmentsData
-    : Array.isArray(departmentsData?.data)
-      ? departmentsData.data
-      : [];
+  const projectsList = extractList(projectsData);
+  const sitesList = extractList(sitesData);
+  const headOfficesList = extractList(headOfficesData);
+  const departmentsList = extractList(departmentsData);
 
   // Filter sites when project changes
   const filteredSites = useMemo(() => {
@@ -226,20 +229,22 @@ export default function DailyReportsListPage() {
             <span>Site Reports</span>
           </button>
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "muster-roll"}
-            onClick={() => handleTabChange("muster-roll")}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
-              activeTab === "muster-roll"
-                ? "bg-white text-slate-800 shadow-sm dark:bg-[#1C2536] dark:text-white"
-                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <IconClipboardList size={16} />
-            <span>Office Attendance</span>
-          </button>
+          {isCompanyAdmin && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "muster-roll"}
+              onClick={() => handleTabChange("muster-roll")}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
+                activeTab === "muster-roll"
+                  ? "bg-white text-slate-800 shadow-sm dark:bg-[#1C2536] dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              <IconClipboardList size={16} />
+              <span>Office Attendance</span>
+            </button>
+          )}
         </div>
 
         {/* Recalculate Day Action */}

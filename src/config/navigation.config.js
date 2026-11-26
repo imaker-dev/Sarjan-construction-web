@@ -99,6 +99,12 @@ export const NAV_CONFIG = [
         path: ROUTES.SCHEDULES.ROOT,
         permissions: [PERMISSIONS.WORK_SCHEDULE.READ],
       },
+      {
+        title: "Delegation Settings",
+        icon: IconShieldCog,
+        path: ROUTES.COMPANIES.DELEGATIONS,
+        permissions: [PERMISSIONS.COMPANY.UPDATE],
+      },
     ],
   },
   {
@@ -115,6 +121,12 @@ export const NAV_CONFIG = [
         icon: IconReportAnalytics,
         path: ROUTES.DAILY_REPORTS.ROOT,
         permissions: [PERMISSIONS.ATTENDANCE.READ],
+      },
+      {
+        title: "Leave",
+        icon: IconClipboardList,
+        path: ROUTES.LEAVE.ROOT,
+        permissions: [PERMISSIONS.LEAVE.READ, PERMISSIONS.LEAVE.APPLY],
       },
       {
         title: "Attendance Policies",

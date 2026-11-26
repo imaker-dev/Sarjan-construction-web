@@ -29,4 +29,24 @@ export default false
       updateProjectStatusApi: ({ id, values }) => {
         return Api.post(`/org/projects/${id}/status`, values);
       },
+
+      getProjectTeamApi: (id, params = {}) => {
+        return Api.get(`/org/projects/${id}/team`, { params });
+      },
+
+      workforceActionProjectApi: ({ id, employeeId, action, values = {} }) => {
+        return Api.post(`/org/projects/${id}/workforce/${employeeId}/${action}`, values);
+      },
+
+      getProjectDocumentsApi: (id, params = {}) => {
+        return Api.get(`/org/projects/${id}/documents`, { params });
+      },
+
+      linkProjectDocumentApi: ({ id, values }) => {
+        return Api.post(`/org/projects/${id}/documents`, values);
+      },
+
+      getProjectActivityApi: (id, params = {}) => {
+        return Api.get(`/org/projects/${id}/activity`, { params });
+      },
     };

@@ -6,36 +6,34 @@ import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import DataTable from "@components/ui/DataTable";
 
 import { listSites } from "@store/slices/site.slice";
+import { useAccess } from "@hooks/useAccess";
+import { PERMISSIONS } from "@constants/permissions";
 import { ROUTES } from "@constants/routes";
 
 import { IconMapPin } from "@tabler/icons-react";
 import { formatDate } from "@utils/date.utils";
+import { extractList } from "@utils/api.utils";
 import { formatText } from "@utils/text.utils";
-import { Plus } from "lucide-react";
+import { Plus, Eye } from "lucide-react";
 
 const AllSitesPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { can, user } = useAccess();
+  const isCompanyAdmin = Boolean(user?.isCompanyScoped);
 
   const { isListingSites, sitesData } = useSelector((state) => state.site);
-
-  const { projectsData } = useSelector((state) => state.project);
+  const { projectsData, isGettingProjectDetails } = useSelector((state) => state.project);
 
   useEffect(() => {
     dispatch(listSites());
   }, [dispatch]);
 
-  const sites = useMemo(() => {
-    if (Array.isArray(sitesData)) return sitesData;
-    if (Array.isArray(sitesData?.data)) return sitesData.data;
-    return [];
-  }, [sitesData]);
+  const sites = useMemo(() => extractList(sitesData), [sitesData]);
 
-  const projects = useMemo(() => {
-    if (Array.isArray(projectsData)) return projectsData;
-    if (Array.isArray(projectsData?.data)) return projectsData.data;
-    return [];
-  }, [projectsData]);
+  const projects = useMemo(() => extractList(projectsData), [projectsData]);
+
+  const canCreateSite = can({ permissions: [PERMISSIONS.SITE.CREATE] });
 
   const getProject = (projectId) =>
     projects.find((project) => project.id === projectId);
@@ -145,27 +143,46 @@ const AllSitesPage = () => {
   return (
     <div className="space-y-5">
       <PageHeaderBanner
-        title="All Sites"
-        description="Manage and monitor all sites across your projects."
-        action={{
-          label: "Add Site",
-          onClick: () => navigate(ROUTES.SITES.CREATE),
-        }}
+        title={isCompanyAdmin ? "All Sites" : "Assigned Sites"}
+        description={
+          isCompanyAdmin
+            ? "Manage and monitor all sites across your projects."
+            : "View and manage sites within your assigned project scope."
+        }
+        action={
+          canCreateSite
+            ? {
+                label: "Add Site",
+                onClick: () => navigate(ROUTES.SITES.CREATE),
+              }
+            : undefined
+        }
       />
 
       <DataTable
         title="Sites"
-        headerActions={[
-          {
-            label: "Add Site",
-            icon: Plus,
-            variant: "primary",
-            onClick: () => navigate(ROUTES.SITES.CREATE),
-          },
-        ]}
+        headerActions={
+          canCreateSite
+            ? [
+                {
+                  label: "Add Site",
+                  icon: Plus,
+                  variant: "primary",
+                  onClick: () => navigate(ROUTES.SITES.CREATE),
+                },
+              ]
+            : []
+        }
         columns={columns}
         data={sites}
-        loading={isListingSites}
+        actions={[
+          {
+            label: "View Details",
+            icon: Eye,
+            onClick: (row) => navigate(`${ROUTES.SITES.DETAILS}?siteId=${row.id}`),
+          },
+        ]}
+        loading={isCompanyAdmin ? isListingSites : isGettingProjectDetails}
         empty={{
           icon: IconMapPin,
           title: "No sites yet",

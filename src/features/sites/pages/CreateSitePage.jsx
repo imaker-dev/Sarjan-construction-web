@@ -15,6 +15,8 @@ import { SelectField } from "@components/fields/SelectField";
 
 import { createSite } from "@store/slices/site.slice";
 import { listProjects } from "@store/slices/project.slice";
+import { extractList } from "@utils/api.utils";
+import { useAccess } from "@hooks/useAccess";
 
 import { ROUTES } from "@constants/routes";
 import { ArrowLeft, Check, LoaderCircle } from "lucide-react";
@@ -103,11 +105,7 @@ const CreateSitePage = () => {
   }, [dispatch]);
 
   // Normalize project list
-  const projects = useMemo(() => {
-    if (Array.isArray(projectsData)) return projectsData;
-    if (Array.isArray(projectsData?.data)) return projectsData.data;
-    return [];
-  }, [projectsData]);
+  const projects = useMemo(() => extractList(projectsData), [projectsData]);
 
   // Project dropdown options
   const projectOptions = useMemo(

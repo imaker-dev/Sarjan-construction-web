@@ -10,4 +10,3 @@ export const extractList = (raw, altKey) => {
   if (Array.isArray(p?.items)) return p.items;
   return [];
 };
-const { a, b } = data || {}

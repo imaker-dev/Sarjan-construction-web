@@ -22,6 +22,18 @@ const scheduleApi = {
     Api.post(`/schedules/${id}/overrides/${overrideId}/cancel`, values),
 
   classifyDateApi: ({ id, date }) => Api.get(`/schedules/${id}/classify/${date}`),
+
+  // Holiday Categories & Calendars
+  listHolidayCategoriesApi: (params = {}) => Api.get("/holiday-categories", { params }),
+  createHolidayCategoryApi: (values) => Api.post("/holiday-categories", values),
+  listHolidayCalendarsApi: (params = {}) => Api.get("/holiday-calendars", { params }),
+  createHolidayCalendarApi: (values) => Api.post("/holiday-calendars", values),
+  listCalendarHolidaysApi: (id, params = {}) =>
+    Api.get(`/holiday-calendars/${id}/holidays`, { params }),
+  bulkAddHolidaysApi: ({ id, values }) =>
+    Api.post(`/holiday-calendars/${id}/holidays/bulk`, values),
+  cancelHolidayApi: ({ calendarId, holidayId }) =>
+    Api.post(`/holiday-calendars/${calendarId}/holidays/${holidayId}/cancel`),
 };
 
 export default scheduleApi;

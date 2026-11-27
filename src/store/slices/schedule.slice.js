@@ -160,6 +160,90 @@ export const classifyScheduleDate = createAsyncThunk(
   }
 );
 
+export const listHolidayCategories = createAsyncThunk(
+  "schedule/listHolidayCategories",
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const res = await scheduleApi.listHolidayCategoriesApi(params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const createHolidayCategory = createAsyncThunk(
+  "schedule/createHolidayCategory",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await scheduleApi.createHolidayCategoryApi(values);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const listHolidayCalendars = createAsyncThunk(
+  "schedule/listHolidayCalendars",
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const res = await scheduleApi.listHolidayCalendarsApi(params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const createHolidayCalendar = createAsyncThunk(
+  "schedule/createHolidayCalendar",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await scheduleApi.createHolidayCalendarApi(values);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const listCalendarHolidays = createAsyncThunk(
+  "schedule/listCalendarHolidays",
+  async ({ id, params = {} }, { rejectWithValue }) => {
+    try {
+      const res = await scheduleApi.listCalendarHolidaysApi(id, params);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const bulkAddHolidays = createAsyncThunk(
+  "schedule/bulkAddHolidays",
+  async ({ id, values }, { rejectWithValue }) => {
+    try {
+      const res = await scheduleApi.bulkAddHolidaysApi({ id, values });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
+export const cancelHoliday = createAsyncThunk(
+  "schedule/cancelHoliday",
+  async ({ calendarId, holidayId }, { rejectWithValue }) => {
+    try {
+      const res = await scheduleApi.cancelHolidayApi({ calendarId, holidayId });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err);
+    }
+  }
+);
+
 const scheduleSlice = createSlice({
   name: "schedule",
   initialState: {
@@ -171,6 +255,10 @@ const scheduleSlice = createSlice({
     overrides: [],
     effectivePreview: null,
     classificationResult: null,
+    holidayCategories: [],
+    holidayCalendars: [],
+    calendarHolidays: [],
+    isLoadingHolidays: false,
     isMutatingSchedule: false,
   },
   reducers: {
@@ -220,6 +308,24 @@ const scheduleSlice = createSlice({
         state.classificationResult = action.payload?.data || action.payload;
       })
 
+      .addCase(listHolidayCategories.fulfilled, (state, action) => {
+        state.holidayCategories = extractList(action.payload, "categories");
+      })
+      .addCase(listHolidayCalendars.fulfilled, (state, action) => {
+        state.holidayCalendars = extractList(action.payload, "calendars");
+      })
+      .addCase(listCalendarHolidays.pending, (state) => {
+        state.isLoadingHolidays = true;
+      })
+      .addCase(listCalendarHolidays.fulfilled, (state, action) => {
+        state.isLoadingHolidays = false;
+        state.calendarHolidays = extractList(action.payload, "holidays");
+      })
+      .addCase(listCalendarHolidays.rejected, (state, action) => {
+        state.isLoadingHolidays = false;
+        toast.error(extractApiError(action.payload, "Failed to load holidays"));
+      })
+
       .addMatcher(
         isAnyOf(
           createSchedule.pending,
@@ -228,7 +334,11 @@ const scheduleSlice = createSlice({
           addScheduleRevision.pending,
           cancelScheduleRevision.pending,
           addScheduleOverride.pending,
-          cancelScheduleOverride.pending
+          cancelScheduleOverride.pending,
+          createHolidayCategory.pending,
+          createHolidayCalendar.pending,
+          bulkAddHolidays.pending,
+          cancelHoliday.pending
         ),
         (state) => {
           state.isMutatingSchedule = true;
@@ -242,11 +352,15 @@ const scheduleSlice = createSlice({
           addScheduleRevision.fulfilled,
           cancelScheduleRevision.fulfilled,
           addScheduleOverride.fulfilled,
-          cancelScheduleOverride.fulfilled
+          cancelScheduleOverride.fulfilled,
+          createHolidayCategory.fulfilled,
+          createHolidayCalendar.fulfilled,
+          bulkAddHolidays.fulfilled,
+          cancelHoliday.fulfilled
         ),
         (state) => {
           state.isMutatingSchedule = false;
-          toast.success("Work schedule updated successfully.");
+          toast.success("Schedule updated successfully.");
         }
       )
       .addMatcher(
@@ -257,7 +371,11 @@ const scheduleSlice = createSlice({
           addScheduleRevision.rejected,
           cancelScheduleRevision.rejected,
           addScheduleOverride.rejected,
-          cancelScheduleOverride.rejected
+          cancelScheduleOverride.rejected,
+          createHolidayCategory.rejected,
+          createHolidayCalendar.rejected,
+          bulkAddHolidays.rejected,
+          cancelHoliday.rejected
         ),
         (state, action) => {
           state.isMutatingSchedule = false;

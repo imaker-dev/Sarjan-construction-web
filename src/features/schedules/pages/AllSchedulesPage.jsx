@@ -13,6 +13,7 @@ import DataTable from "@components/ui/DataTable";
 import StatusBadge from "@components/ui/StatusBadge";
 import ModalBasic from "@components/ui/ModalBasic";
 import RefreshButton from "@components/ui/RefreshButton";
+import HolidayCalendarsPanel from "../components/HolidayCalendarsPanel";
 import { InputField } from "@components/fields/InputField";
 import { SelectField } from "@components/fields/SelectField";
 import {
@@ -41,6 +42,7 @@ export default function AllSchedulesPage() {
   const { employeesData } = useSelector((state) => state.employee);
   const { projectTeam: teamItems } = useSelector((state) => state.project);
 
+  const [activeTab, setActiveTab] = useState("schedules");
   const [scopeFilter, setScopeFilter] = useState("ALL");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewEmployeeId, setPreviewEmployeeId] = useState("");
@@ -156,10 +158,39 @@ export default function AllSchedulesPage() {
     <div className="space-y-6 pb-12">
       <PageHeaderBanner
         title="Work Schedules"
-        description="Manage shift timings, intraday break windows, auto clock-out rules, and holiday overrides."
+        description="Manage shift timings, intraday break windows, auto clock-out rules, and holiday calendars."
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
+      <div
+        className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800/60"
+        role="tablist"
+      >
+        {[
+          { key: "schedules", label: "Work Schedules" },
+          { key: "holidays", label: "Holiday Calendars" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-all whitespace-nowrap ${
+              activeTab === t.key
+                ? "bg-white text-slate-800 shadow-sm dark:bg-[#1C2536] dark:text-white"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "holidays" ? (
+        <HolidayCalendarsPanel canManage={canManage} />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-40">
             <SelectField
@@ -219,6 +250,8 @@ export default function AllSchedulesPage() {
           description: "No schedules match the selected scope.",
         }}
       />
+        </>
+      )}
 
       <ModalBasic
         isOpen={isPreviewOpen}

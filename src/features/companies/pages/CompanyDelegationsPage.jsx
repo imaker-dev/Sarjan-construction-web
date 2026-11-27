@@ -15,6 +15,7 @@ const DELEGATION_FLAGS = [
   { key: "memberSuspend", label: "Workforce Suspend & Reinstate", desc: "Allow PI/PD to temporarily suspend or reinstate workers at a site/project." },
   { key: "memberExit", label: "Workforce Permanent Exit", desc: "Allow PI/PD to mark a worker as permanently exited from a site/project." },
   { key: "scheduleManage", label: "Work Schedule Management", desc: "Allow PI/PM with WORK_SCHEDULE_MANAGE to create or edit project/site schedules." },
+  { key: "leavePolicyManage", label: "Leave Policy Management", desc: "Allow PI/PM with LEAVE_MANAGE to create, edit, and version site/project department leave policies." },
 ];
 
 export default function CompanyDelegationsPage() {
@@ -43,8 +44,19 @@ export default function CompanyDelegationsPage() {
     setFormState((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleSave = () => {
-    dispatch(updateCompanyDelegations(formState));
+  const handleSave = async () => {
+    try {
+      await dispatch(
+        updateCompanyDelegations({
+          expectedVersion: delegations?.version ?? 0,
+          ...formState,
+        })
+      ).unwrap();
+    } catch (err) {
+      if ((err?.error?.code || err?.code) === "VERSION_CONFLICT") {
+        dispatch(getCompanyDelegations());
+      }
+    }
   };
 
   return (

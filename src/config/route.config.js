@@ -54,6 +54,8 @@ const AllSchedulesPage = lazyLoad(() => import("@features/schedules/pages/AllSch
 const CreateSchedulePage = lazyLoad(() => import("@features/schedules/pages/CreateSchedulePage"));
 const ScheduleDetailsPage = lazyLoad(() => import("@features/schedules/pages/ScheduleDetailsPage"));
 const LeavePage = lazyLoad(() => import("@features/leave/pages/LeavePage"));
+const SiteWalletPage = lazyLoad(() => import("@features/wallet/pages/SiteWalletPage"));
+const FinanceWalletsPage = lazyLoad(() => import("@features/wallet/pages/FinanceWalletsPage"));
 
 
 /* -------------------------------------------------------------------------- */
@@ -149,5 +151,9 @@ export const privateRouteConfig = [
 
   // Notifications Routes
   { path: ROUTES.NOTIFICATIONS.ROOT, element: NotificationPage },
+
+  // Site Wallet & Finance Routes
+  { path: ROUTES.WALLET.SITE, element: SiteWalletPage, permissions: [PERMISSIONS.WALLET.SITE_VIEW] },
+  { path: ROUTES.WALLET.FINANCE, element: FinanceWalletsPage, permissions: [PERMISSIONS.WALLET.FINANCE_READ] },
 
 ];

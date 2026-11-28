@@ -17,6 +17,8 @@ import {
   IconShieldCog,
   IconCalendarTime,
   IconShieldCheck,
+  IconWallet,
+  IconBuildingBank,
 } from "@tabler/icons-react";
 
 export const NAV_CONFIG = [
@@ -134,6 +136,24 @@ export const NAV_CONFIG = [
         path: ROUTES.ATTENDANCE.POLICIES,
         permissions: [PERMISSIONS.ATTENDANCE.MANAGE],
       }
+    ],
+  },
+
+  {
+    section: "FINANCE & WALLET",
+    items: [
+      {
+        title: "Site Wallet",
+        icon: IconWallet,
+        path: ROUTES.WALLET.SITE,
+        permissions: [PERMISSIONS.WALLET.SITE_VIEW],
+      },
+      {
+        title: "Finance Wallets",
+        icon: IconBuildingBank,
+        path: ROUTES.WALLET.FINANCE,
+        permissions: [PERMISSIONS.WALLET.FINANCE_READ],
+      },
     ],
   },
 ];

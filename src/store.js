@@ -17,6 +17,7 @@ import attendanceSlice from './store/slices/attendance.slice';
 import dailyReportSlice from './store/slices/dailyReport.slice';
 import scheduleSlice from './store/slices/schedule.slice';
 import leaveSlice from './store/slices/leave.slice';
+import walletSlice from './store/slices/wallet.slice';
 
 const reducer = {
   auth: authSlice,
@@ -37,6 +38,7 @@ const reducer = {
   dailyReport: dailyReportSlice,
   schedule: scheduleSlice,
   leave: leaveSlice,
+  wallet: walletSlice,
 };
 
 const store = configureStore({

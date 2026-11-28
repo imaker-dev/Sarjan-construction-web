@@ -186,4 +186,12 @@ export const ROUTES = {
   NOTIFICATIONS: {
     ROOT: "/notifications",
   },
+
+  // =========================
+  // SITE WALLET & FINANCE
+  // =========================
+  WALLET: {
+    SITE: "/site-wallet",
+    FINANCE: "/finance/wallets",
+  },
 };

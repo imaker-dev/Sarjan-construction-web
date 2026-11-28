@@ -16,7 +16,7 @@ export default function DailyReportWorkforceTab({
     () => [
       {
         key: "category",
-        header: "Category",
+        header: "Type",
         render: (item) => {
           const cfg = LABOUR_CATEGORY_CONFIG[item.category] || {
             label: item.category,
@@ -27,7 +27,7 @@ export default function DailyReportWorkforceTab({
       },
       {
         key: "tradeCategory",
-        header: "Subcontractor / Trade",
+        header: "Trade / Contractor",
         render: (item) => (
           <div>
             <span className="font-semibold text-foreground block text-xs">
@@ -43,7 +43,7 @@ export default function DailyReportWorkforceTab({
       },
       {
         key: "headcount",
-        header: "Headcount",
+        header: "Workers",
         render: (item) => (
           <span className="font-semibold text-foreground tabular-nums text-xs">
             {item.headcount}
@@ -52,7 +52,7 @@ export default function DailyReportWorkforceTab({
       },
       {
         key: "presentUnits",
-        header: "Present Units",
+        header: "Hazri",
         render: (item) => (
           <span className="font-bold text-primary-600 dark:text-primary-400 tabular-nums text-xs">
             {item.presentUnits}
@@ -61,7 +61,7 @@ export default function DailyReportWorkforceTab({
       },
       {
         key: "overtimeHours",
-        header: "OT Hours",
+        header: "Overtime",
         render: (item) =>
           Number(item.overtimeHours || 0) > 0 ? (
             <span className="font-mono text-amber-600 font-semibold text-xs">
@@ -73,7 +73,7 @@ export default function DailyReportWorkforceTab({
       },
       {
         key: "remarks",
-        header: "Remarks",
+        header: "Notes",
         render: (item) => (
           <span className="text-muted-foreground text-xs max-w-xs truncate block">
             {item.remarks || "—"}
@@ -88,7 +88,7 @@ export default function DailyReportWorkforceTab({
     if (isLocked) return [];
     return [
       {
-        label: "Adjust",
+        label: "Edit",
         icon: IconPencil,
         onClick: (item) => onAdjustItem(item),
       },
@@ -96,30 +96,23 @@ export default function DailyReportWorkforceTab({
   }, [isLocked, onAdjustItem]);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-background overflow-hidden shadow-sm">
-        <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-            Workforce &amp; Headcount (Staff, Workers, Contractors)
-          </h3>
-          {!isLocked && (
-            <span className="text-[11px] text-muted-foreground">
-              Pre-lock HO Admin adjustments allowed
-            </span>
-          )}
-        </div>
-
-        <DataTable
-          columns={columns}
-          data={labourSummaries}
-          actions={actions}
-          empty={{
-            icon: IconUsers,
-            title: "No Labour Breakdown",
-            description: "No labour muster breakdown entries recorded for this report.",
-          }}
-        />
-      </div>
-    </div>
+    <DataTable
+      title="Workforce"
+      headerExtra={
+        !isLocked ? (
+          <span className="text-[11px] text-muted-foreground">
+            Editable until locked
+          </span>
+        ) : null
+      }
+      columns={columns}
+      data={labourSummaries}
+      actions={actions}
+      empty={{
+        icon: IconUsers,
+        title: "No workforce entries",
+        description: "No workers recorded for this day.",
+      }}
+    />
   );
 }

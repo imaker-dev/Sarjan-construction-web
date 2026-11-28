@@ -45,7 +45,7 @@ export default function DailyReportActionBar({
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
       >
         <IconArrowLeft size={16} />
-        <span>Back to All Daily Reports</span>
+        <span>Back</span>
       </button>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -125,7 +125,7 @@ export default function DailyReportActionBar({
             ) : (
               <IconCheck size={15} />
             )}
-            <span>Submit for Review</span>
+            <span>Submit</span>
           </button>
         )}
 

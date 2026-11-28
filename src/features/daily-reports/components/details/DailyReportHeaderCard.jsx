@@ -25,10 +25,10 @@ export default function DailyReportHeaderCard({ report, isLocked }) {
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-bold text-foreground">
-              Daily Report: {report.site?.name || report.site?.code}
+              {report.site?.name || report.site?.code}
             </h1>
             <StatusBadge
-              label={report.status}
+              label={statusCfg.label || report.status}
               tone={statusCfg.tone}
               icon={statusCfg.icon}
               size="md"
@@ -36,16 +36,15 @@ export default function DailyReportHeaderCard({ report, isLocked }) {
           </div>
 
           <p className="mt-1 text-xs text-muted-foreground">
-            Project:{" "}
             <strong className="text-foreground font-semibold">
               {report.project?.name} ({report.project?.code})
             </strong>{" "}
-            • Business Date:{" "}
-            <strong className="text-foreground font-semibold font-mono">
+            •{" "}
+            <strong className="text-foreground font-semibold">
               {new Date(report.businessDate).toLocaleDateString("en-IN", {
-                weekday: "long",
+                weekday: "short",
                 year: "numeric",
-                month: "long",
+                month: "short",
                 day: "numeric",
               })}
             </strong>
@@ -58,12 +57,12 @@ export default function DailyReportHeaderCard({ report, isLocked }) {
               ) : (
                 <IconCloudRain size={14} className="text-blue-500" />
               )}
-              Weather: {report.weather}
+              {report.weather}
             </span>
 
             {Number(report.weatherStoppageHours || 0) > 0 && (
               <StatusBadge
-                label={`Stoppage: ${report.weatherStoppageHours}h`}
+                label={`Delay: ${report.weatherStoppageHours}h`}
                 tone="amber"
                 bordered={false}
                 size="md"
@@ -72,7 +71,7 @@ export default function DailyReportHeaderCard({ report, isLocked }) {
 
             {report.safetyIncidentReported ? (
               <StatusBadge
-                label="Safety Incident Reported"
+                label="Safety incident"
                 tone="rose"
                 icon={IconAlertTriangle}
                 bordered={false}
@@ -80,7 +79,7 @@ export default function DailyReportHeaderCard({ report, isLocked }) {
               />
             ) : (
               <StatusBadge
-                label="Zero Safety Incidents"
+                label="No incidents"
                 tone="emerald"
                 icon={IconShieldCheck}
                 bordered={false}
@@ -91,7 +90,7 @@ export default function DailyReportHeaderCard({ report, isLocked }) {
         </div>
 
         <div className="text-left md:text-right text-xs text-muted-foreground font-mono">
-          <span>Report UUID:</span>
+          <span>Report ID</span>
           <code className="block mt-0.5 rounded bg-muted px-2 py-1 text-[11px] text-foreground">
             {report.id}
           </code>
@@ -105,10 +104,10 @@ export default function DailyReportHeaderCard({ report, isLocked }) {
           size="sm"
           icon={IconLock}
           className="border border-purple-500/30 bg-purple-500/10 text-purple-800 dark:text-purple-300 rounded-xl"
-          title="This Daily Report is LOCKED and Permanently Immutable"
-          description={`Locked by ${report.lockedBy?.displayName || "Central Admin"} on ${
+          title="Report locked"
+          description={`Locked by ${report.lockedBy?.displayName || "Admin"} on ${
             report.lockedAt ? new Date(report.lockedAt).toLocaleString("en-IN") : "—"
-          }. No further changes or headcount adjustments can be made. This is the legal record for payroll and billing.`}
+          }. No further changes allowed.`}
         />
       )}
     </div>

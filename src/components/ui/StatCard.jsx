@@ -69,6 +69,18 @@ const COLORS = {
     bar: "bg-violet-500",
     track: "bg-violet-100 dark:bg-violet-500/20",
   },
+  indigo: {
+    soft: "bg-indigo-50 dark:bg-indigo-500/10",
+    text: "text-indigo-500 dark:text-indigo-400",
+    bar: "bg-indigo-500",
+    track: "bg-indigo-100 dark:bg-indigo-500/20",
+  },
+  cyan: {
+    soft: "bg-cyan-50 dark:bg-cyan-500/10",
+    text: "text-cyan-500 dark:text-cyan-400",
+    bar: "bg-cyan-500",
+    track: "bg-cyan-100 dark:bg-cyan-500/20",
+  },
   gray: {
     soft: "bg-gray-100 dark:bg-gray-500/10",
     text: "text-gray-500 dark:text-gray-400",

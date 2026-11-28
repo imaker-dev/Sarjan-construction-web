@@ -125,7 +125,7 @@ export default function SiteKioskPanel({ site }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-white dark:bg-[#1C2536]">
         <div className="flex-1 min-w-[220px]">
           <InputField
             id="kioskRemarks"

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Inbox, Loader2, Search, X } from "lucide-react";
 import RowActionsMenu from "./RowActionsMenu";
+import Pagination from "./Pagination";
 
 /**
  * Reusable table: desktop table + stacked cards on mobile.
@@ -204,7 +205,32 @@ export default function DataTable({
   headerExtra,
   empty,
   skeletonRows = 5,
+  pageSize = 10,
+  itemLabel = "",
+  pagination,
 }) {
+  const [clientPage, setClientPage] = useState(1);
+  const [clientPageSize, setClientPageSize] = useState(pageSize);
+
+  const isServerPaged = Boolean(pagination);
+  const activePage = isServerPaged ? pagination.page : clientPage;
+  const activePageSize = isServerPaged ? pagination.pageSize : clientPageSize;
+  const totalItems = isServerPaged ? pagination.totalItems : data.length;
+
+  useEffect(() => {
+    if (!isServerPaged) {
+      setClientPage(1);
+    }
+  }, [data.length, search?.value, isServerPaged]);
+
+  const rowsToRender = useMemo(() => {
+    if (isServerPaged || !activePageSize || data.length <= activePageSize) {
+      return data;
+    }
+    const start = (activePage - 1) * activePageSize;
+    return data.slice(start, start + activePageSize);
+  }, [data, isServerPaged, activePage, activePageSize]);
+
   const hasActions = !!actions;
   const getActions = (row) =>
     (typeof actions === "function" ? actions(row) : actions || []).filter(
@@ -299,7 +325,7 @@ export default function DataTable({
                       )}
                     </tr>
                   ))
-                : data.map((row, i) => (
+                : rowsToRender.map((row, i) => (
                     <tr
                       key={getRowKey(row, i, rowKey)}
                       className="border-t border-slate-100 transition-colors hover:bg-slate-50/60 dark:border-slate-700/70 dark:hover:bg-slate-700/20"
@@ -335,7 +361,7 @@ export default function DataTable({
                   <div className="h-10 w-full animate-pulse rounded bg-slate-100 dark:bg-slate-700/50" />
                 </div>
               ))
-            : data.map((row, i) => (
+            : rowsToRender.map((row, i) => (
                 <div key={getRowKey(row, i, rowKey)} className="px-5 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 break-words">
@@ -374,6 +400,26 @@ export default function DataTable({
                 description: `Nothing matches “${searchTerm}”. Try a different search.`,
               }
             : empty)}
+        />
+      )}
+
+      {!loading && totalItems > activePageSize && (
+        <Pagination
+          page={activePage}
+          pageSize={activePageSize}
+          totalItems={totalItems}
+          itemLabel={itemLabel || pagination?.itemLabel || ""}
+          onPageChange={
+            isServerPaged ? pagination.onPageChange : setClientPage
+          }
+          onPageSizeChange={
+            isServerPaged
+              ? pagination.onPageSizeChange
+              : (nextSize) => {
+                  setClientPageSize(nextSize);
+                  setClientPage(1);
+                }
+          }
         />
       )}
     </div>

@@ -1,3 +1,5 @@
+import { saveAs } from "file-saver";
+
 export const formatInr = (value) => {
   const num = Number(value ?? 0);
   if (!Number.isFinite(num)) return "₹ 0.00";
@@ -56,14 +58,12 @@ export const formikFieldProps = (formik, name) => ({
   error: formik.touched[name] && formik.errors[name],
 });
 
-export const openPdfBlob = (blobData) => {
+export const openPdfBlob = (blobData, fileName = "voucher.pdf") => {
   const blob =
     blobData instanceof Blob
-      ? blobData
+      ? new Blob([blobData], { type: "application/pdf" })
       : new Blob([blobData], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-  window.open(url, "_blank", "noopener,noreferrer");
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  saveAs(blob, fileName);
 };
 
 export const formatDateTimeParts = (iso) => {

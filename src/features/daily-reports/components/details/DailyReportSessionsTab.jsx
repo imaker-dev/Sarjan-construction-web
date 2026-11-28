@@ -144,56 +144,39 @@ export default function DailyReportSessionsTab({
     ];
   }, [isLocked, onRegularize]);
 
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-background overflow-hidden shadow-sm">
-        <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-              Individual Worker Attendance Sessions
-            </h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Raw punches recorded on site. Missing departures can be regularized before final lock.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {!isLocked && onAddManualSession && (
-              <button
-                type="button"
-                onClick={onAddManualSession}
-                className="btn btn-primary btn-xs inline-flex items-center gap-1"
-              >
-                <IconPlus size={13} />
-                <span>Add Missed Session</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="btn btn-outline btn-xs inline-flex items-center gap-1.5"
-              disabled={isFetchingMusterRoll}
-            >
-              <IconRefresh
-                size={13}
-                className={isFetchingMusterRoll ? "animate-spin" : ""}
-              />
-              <span>Refresh Logs</span>
-            </button>
-          </div>
-        </div>
+  const headerActions = [
+    ...(!isLocked && onAddManualSession
+      ? [
+          {
+            label: "Add Missed Session",
+            icon: IconPlus,
+            variant: "primary",
+            onClick: onAddManualSession,
+          },
+        ]
+      : []),
+    {
+      label: "Refresh Logs",
+      icon: IconRefresh,
+      variant: "secondary",
+      loading: isFetchingMusterRoll,
+      onClick: onRefresh,
+    },
+  ];
 
-        <DataTable
-          columns={columns}
-          data={dailySessions}
-          actions={actions}
-          loading={isFetchingMusterRoll && dailySessions.length === 0}
-          empty={{
-            icon: IconClock,
-            title: "No Attendance Punches",
-            description: `No worker attendance punches found for this site on ${businessDate}.`,
-          }}
-        />
-      </div>
-    </div>
+  return (
+    <DataTable
+      title="Attendance logs"
+      headerActions={headerActions}
+      columns={columns}
+      data={dailySessions}
+      actions={actions}
+      loading={isFetchingMusterRoll && dailySessions.length === 0}
+      empty={{
+        icon: IconClock,
+        title: "No Attendance Punches",
+        description: `No worker attendance punches found for this site on ${businessDate}.`,
+      }}
+    />
   );
 }

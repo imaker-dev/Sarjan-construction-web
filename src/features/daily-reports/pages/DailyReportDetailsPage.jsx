@@ -22,7 +22,6 @@ import CreateManualSessionModal from "../components/CreateManualSessionModal";
 import PrintableDailyReport from "../components/PrintableDailyReport";
 import DailyReportActionBar from "../components/details/DailyReportActionBar";
 import DailyReportHeaderCard from "../components/details/DailyReportHeaderCard";
-import DailyReportSignOffSteps from "../components/details/DailyReportSignOffSteps";
 import DailyReportWorkforceTab from "../components/details/DailyReportWorkforceTab";
 import DailyReportSessionsTab from "../components/details/DailyReportSessionsTab";
 import DailyReportNotesTab from "../components/details/DailyReportNotesTab";
@@ -138,9 +137,9 @@ export default function DailyReportDetailsPage() {
     return (
       <div className="p-8 text-center space-y-4">
         <IconAlertTriangle size={42} className="mx-auto text-muted-foreground" />
-        <h3 className="text-lg font-semibold text-foreground">Daily Report Not Found</h3>
+        <h3 className="text-lg font-semibold text-foreground">Report not found</h3>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          The requested daily site report could not be found or you do not have permission to access it.
+          The report could not be found or you lack permission to view it.
         </p>
         <button
           type="button"
@@ -163,10 +162,10 @@ export default function DailyReportDetailsPage() {
   const statusColor = isLocked ? "violet" : isApproved ? "primary" : "gray";
 
   const tabs = [
-    { key: "workforce", label: `Workforce Breakdown (${labourSummaries.length})`, icon: IconUsers },
-    { key: "sessions", label: `Worker Attendance Logs (${dailySessions.length})`, icon: IconClock },
-    { key: "notes", label: "Site Notes & Safety", icon: IconFileText },
-    { key: "audit", label: `Audit History (${auditLogs.length})`, icon: IconHistory },
+    { key: "workforce", label: `Workforce`, icon: IconUsers },
+    { key: "sessions", label: `Attendance`, icon: IconClock },
+    { key: "notes", label: "Notes & Safety", icon: IconFileText },
+    { key: "audit", label: `History`, icon: IconHistory },
   ];
 
   return (
@@ -211,33 +210,27 @@ export default function DailyReportDetailsPage() {
 
         <DailyReportHeaderCard report={currentReport} isLocked={isLocked} />
 
-        <DailyReportSignOffSteps report={currentReport} isLocked={isLocked} />
-
         {/* Aggregate Metrics Bar using shared StatCard */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard
-            variant="card"
             color="blue"
             icon={IconUsers}
             label="Total Headcount"
             value={currentReport.totalWorkersHeadcount ?? 0}
           />
           <StatCard
-            variant="card"
-            color="primary"
+            color="emerald"
             icon={IconCalendarStats}
             label="Days Worked"
             value={currentReport.totalPresentUnits ?? "0.0"}
           />
           <StatCard
-            variant="card"
             color="amber"
             icon={IconClock}
             label="Total Overtime"
             value={`${currentReport.totalOvertimeHours ?? "0.0"}h`}
           />
           <StatCard
-            variant="card"
             color={statusColor}
             icon={IconCheck}
             label="Report Status"
@@ -255,11 +248,10 @@ export default function DailyReportDetailsPage() {
                 key={t.key}
                 type="button"
                 onClick={() => setActiveTab(t.key)}
-                className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
-                  active
-                    ? "border-primary-500 text-primary-600 dark:text-primary-400"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
+                className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${active
+                  ? "border-primary-500 text-primary-600 dark:text-primary-400"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 <Icon size={17} />
                 <span>{t.label}</span>

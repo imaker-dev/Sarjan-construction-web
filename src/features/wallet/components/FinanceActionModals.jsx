@@ -187,6 +187,7 @@ export function DecideFundingModal({
   isOpen,
   onClose,
   requestDetail,
+  initialAction = "APPROVE",
   onSubmit,
   isSubmitting,
 }) {
@@ -205,7 +206,7 @@ export function DecideFundingModal({
   const formik = useFormik({
     enableReinitialize: true,
     initialValues: {
-      action: "APPROVE",
+      action: initialAction,
       approvedAmount: maxAmount ? maxAmount.toFixed(2) : "",
       reason: "",
     },
@@ -250,12 +251,22 @@ export function DecideFundingModal({
     },
   });
 
+  const actionMeta = {
+    APPROVE: { title: "Approve Funding Request", submit: "Approve", btnClass: "btn-primary" },
+    REJECT: { title: "Reject Funding Request", submit: "Reject", btnClass: "btn-danger" },
+    RETURN: { title: "Return Funding Request", submit: "Return", btnClass: "btn-primary" },
+  }[initialAction] || {
+    title: "Review Funding Request",
+    submit: "Submit",
+    btnClass: "btn-primary",
+  };
+
   return (
     <ModalBasic
       id="decide-funding-modal"
       isOpen={isOpen}
       onClose={onClose}
-      title="Review Funding Request"
+      title={actionMeta.title}
       size="md"
     >
       <form onSubmit={formik.handleSubmit} className="p-6 space-y-4">
@@ -271,17 +282,6 @@ export function DecideFundingModal({
           </div>
         </div>
 
-        <SelectField
-          label="Decision"
-          {...formikFieldProps(formik, "action")}
-          required
-          options={[
-            { value: "APPROVE", label: "Approve (set approved amount)" },
-            { value: "RETURN", label: "Return to PI for changes" },
-            { value: "REJECT", label: "Reject (terminal)" },
-          ]}
-        />
-
         {formik.values.action === "APPROVE" ? (
           <InputField
             label="Approved Amount (INR)"
@@ -295,7 +295,11 @@ export function DecideFundingModal({
             {...formikFieldProps(formik, "reason")}
             required
             rows={3}
-            placeholder="Explain why this request is returned or rejected..."
+            placeholder={
+              formik.values.action === "REJECT"
+                ? "Explain why this request is rejected..."
+                : "Explain why this request is returned for changes..."
+            }
           />
         )}
 
@@ -310,9 +314,9 @@ export function DecideFundingModal({
           <button
             type="submit"
             disabled={isSubmitting || !taskId}
-            className="btn btn-primary btn-sm"
+            className={`btn ${actionMeta.btnClass} btn-sm`}
           >
-            {isSubmitting ? "Submitting..." : "Submit Decision"}
+            {isSubmitting ? "Submitting..." : actionMeta.submit}
           </button>
         </div>
       </form>

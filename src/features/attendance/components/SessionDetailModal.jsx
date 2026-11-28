@@ -9,6 +9,7 @@ import {
   IconAlertTriangle,
 } from "@tabler/icons-react";
 import ModalBasic from "@components/ui/ModalBasic";
+import StatCard from "@components/ui/StatCard";
 import StatusBadge from "@components/ui/StatusBadge";
 import {
   clearAttendanceSession,
@@ -163,48 +164,43 @@ export default function SessionDetailModal({
             ) : (
               <>
                 {/* Punches & Units Summary */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 block">
-                      Punch In
-                    </span>
-                    <span className="mt-1 text-sm font-bold text-slate-800 dark:text-white tabular-nums block">
-                      {session.punchInAt
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatCard
+                    color="emerald"
+                    icon={IconClock}
+                    label="Punch In"
+                    value={
+                      session.punchInAt
                         ? timeFmt(new Date(session.punchInAt))
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 block">
-                      Punch Out
-                    </span>
-                    <span className="mt-1 text-sm font-bold text-slate-800 dark:text-white tabular-nums block">
-                      {session.punchOutAt
+                        : "—"
+                    }
+                  />
+                  <StatCard
+                    color="sky"
+                    icon={IconClock}
+                    label="Punch Out"
+                    value={
+                      session.punchOutAt
                         ? timeFmt(new Date(session.punchOutAt))
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 block">
-                      Net Duration
-                    </span>
-                    <span className="mt-1 text-sm font-bold text-slate-800 dark:text-white tabular-nums block">
-                      {formatDurationMins(session.netDurationMins)}
-                    </span>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 block">
-                      Hazri / OT
-                    </span>
-                    <span className="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums block">
-                      {Number(session.presentUnits ?? 0).toFixed(1)} P
-                      {Number(session.overtimePUnits ?? 0) > 0 && (
-                        <span className="text-amber-500 ml-1.5">
-                          +{Number(session.overtimePUnits).toFixed(1)} OT
-                        </span>
-                      )}
-                    </span>
-                  </div>
+                        : "—"
+                    }
+                  />
+                  <StatCard
+                    color="indigo"
+                    icon={IconHistory}
+                    label="Net Duration"
+                    value={formatDurationMins(session.netDurationMins)}
+                  />
+                  <StatCard
+                    color="amber"
+                    icon={IconCalendarEvent}
+                    label="Hazri / OT"
+                    value={
+                      Number(session.overtimePUnits ?? 0) > 0
+                        ? `${Number(session.presentUnits ?? 0).toFixed(1)} P (+${Number(session.overtimePUnits).toFixed(1)})`
+                        : `${Number(session.presentUnits ?? 0).toFixed(1)} P`
+                    }
+                  />
                 </div>
 
                 {/* Pinned Schedule & Flags */}

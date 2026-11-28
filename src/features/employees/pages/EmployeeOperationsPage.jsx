@@ -1,4 +1,4 @@
-import DataTable from "@components/ui/Datatable";
+import DataTable from "@components/ui/DataTable";
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import ModalAction from "@components/ui/ModalAction";
 import AddEmployeeOperationModal from "../components/AddEmployeeOperationModal";

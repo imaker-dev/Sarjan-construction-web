@@ -15,6 +15,7 @@ import {
   IconSend,
   IconTrash,
   IconWallet,
+  IconX,
 } from "@tabler/icons-react";
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import DataTable from "@components/ui/DataTable";
@@ -213,18 +214,39 @@ export default function FinanceWalletsPage() {
         ),
       },
       {
-        key: "amounts",
-        header: "Requested / Approved / Confirmed",
+        key: "requested",
+        header: "Requested",
+        align: "right",
         render: (r) => (
-          <div className="text-xs tabular-nums space-y-0.5">
-            <div className="font-semibold text-slate-800 dark:text-white">
-              Req: {formatInr(r.draftAmount)}
-            </div>
-            <div className="text-[11px] text-slate-400">
-              Appr: {r.approvedAmount ? formatInr(r.approvedAmount) : "—"} • Conf:{" "}
-              {formatInr(r.confirmedAmount)}
-            </div>
-          </div>
+          <span className="text-xs font-semibold tabular-nums text-slate-800 dark:text-white">
+            {formatInr(r.draftAmount)}
+          </span>
+        ),
+      },
+      {
+        key: "approved",
+        header: "Approved",
+        align: "right",
+        render: (r) => (
+          <span className="text-xs font-medium tabular-nums text-slate-700 dark:text-slate-200">
+            {r.approvedAmount ? formatInr(r.approvedAmount) : "—"}
+          </span>
+        ),
+      },
+      {
+        key: "confirmed",
+        header: "Confirmed",
+        align: "right",
+        render: (r) => (
+          <span
+            className={`text-xs font-semibold tabular-nums ${
+              Number(r.confirmedAmount || 0) > 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-slate-400"
+            }`}
+          >
+            {formatInr(r.confirmedAmount)}
+          </span>
         ),
       },
       {
@@ -245,12 +267,31 @@ export default function FinanceWalletsPage() {
   const queueActions = useMemo(
     () => [
       {
-        label: "Approve / Reject / Return",
+        label: "Approve",
         icon: IconCheck,
         hidden: (r) => !canManage || r.status !== "SUBMITTED",
         onClick: async (r) => {
           await dispatch(getFinanceFundingRequest(r.id));
-          setDecideTarget(r);
+          setDecideTarget({ request: r, action: "APPROVE" });
+        },
+      },
+      {
+        label: "Reject",
+        icon: IconX,
+        danger: true,
+        hidden: (r) => !canManage || r.status !== "SUBMITTED",
+        onClick: async (r) => {
+          await dispatch(getFinanceFundingRequest(r.id));
+          setDecideTarget({ request: r, action: "REJECT" });
+        },
+      },
+      {
+        label: "Return",
+        icon: IconRotateClockwise,
+        hidden: (r) => !canManage || r.status !== "SUBMITTED",
+        onClick: async (r) => {
+          await dispatch(getFinanceFundingRequest(r.id));
+          setDecideTarget({ request: r, action: "RETURN" });
         },
       },
       {
@@ -389,36 +430,48 @@ export default function FinanceWalletsPage() {
           label="Active Site Wallets"
           value={walletsList.length}
           icon={IconWallet}
-          tone="emerald"
+          color="emerald"
         />
         <StatCard
           label="Total Site Balance"
           value={formatInr(totalBalance)}
           icon={IconBuildingBank}
-          tone="indigo"
+          color="indigo"
         />
         <StatCard
           label="Funding Queue"
           value={queueList.length}
           icon={IconSend}
-          tone="amber"
+          color="amber"
         />
         <StatCard
           label="Pending Reversals"
           value={reversalsList.length}
           icon={IconRotateClockwise}
-          tone="rose"
+          color="rose"
         />
       </div>
 
       {/* Tabs & Actions */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex flex-wrap rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800/60">
             {[
               { key: "wallets", label: "Site Wallets" },
-              { key: "queue", label: "Funding Queue" },
-              { key: "reversals", label: "Reversals" },
+              {
+                key: "queue",
+                label: "Funding Queue",
+                badge: queueList.filter((r) =>
+                  ["SUBMITTED", "APPROVED", "PARTIALLY_FUNDED"].includes(r.status)
+                ).length,
+                badgeTone: "bg-amber-500 text-white",
+              },
+              {
+                key: "reversals",
+                label: "Reversals",
+                badge: reversalsList.filter((r) => r.status === "REQUESTED").length,
+                badgeTone: "bg-rose-500 text-white",
+              },
               { key: "heads", label: "Account Heads" },
               { key: "reports", label: "Reports" },
             ].map((t) => (
@@ -426,13 +479,20 @@ export default function FinanceWalletsPage() {
                 key={t.key}
                 type="button"
                 onClick={() => setActiveTab(t.key)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
                   activeTab === t.key
                     ? "bg-white text-slate-800 shadow-xs dark:bg-[#1C2536] dark:text-white"
                     : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
                 }`}
               >
-                {t.label}
+                <span>{t.label}</span>
+                {t.badge > 0 && (
+                  <span
+                    className={`inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums ${t.badgeTone}`}
+                  >
+                    {t.badge}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -487,8 +547,7 @@ export default function FinanceWalletsPage() {
           </div>
         </div>
 
-        <div className="p-4">
-          {activeTab === "wallets" && (
+        {activeTab === "wallets" && (
             <DataTable
               columns={walletColumns}
               data={walletsList}
@@ -575,7 +634,6 @@ export default function FinanceWalletsPage() {
           {activeTab === "reports" && (
             <FinanceReportsTab sitesList={sitesList} />
           )}
-        </div>
       </div>
 
       {/* Modals */}
@@ -613,7 +671,8 @@ export default function FinanceWalletsPage() {
       <DecideFundingModal
         isOpen={Boolean(decideTarget)}
         onClose={() => setDecideTarget(null)}
-        requestDetail={financeFundingDetail || decideTarget}
+        requestDetail={financeFundingDetail || decideTarget?.request}
+        initialAction={decideTarget?.action || "APPROVE"}
         isSubmitting={isSubmitting}
         onSubmit={async (payload) => {
           await dispatch(decideApprovalTask(payload)).unwrap();

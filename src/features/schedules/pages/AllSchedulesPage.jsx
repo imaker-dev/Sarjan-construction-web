@@ -175,11 +175,10 @@ export default function AllSchedulesPage() {
             role="tab"
             aria-selected={activeTab === t.key}
             onClick={() => setActiveTab(t.key)}
-            className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-all whitespace-nowrap ${
-              activeTab === t.key
+            className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-all whitespace-nowrap ${activeTab === t.key
                 ? "bg-white text-slate-800 shadow-sm dark:bg-[#1C2536] dark:text-white"
                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
+              }`}
           >
             {t.label}
           </button>
@@ -190,66 +189,66 @@ export default function AllSchedulesPage() {
         <HolidayCalendarsPanel canManage={canManage} />
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="w-40">
-            <SelectField
-              id="scopeFilter"
-              name="scopeFilter"
-              options={[
-                { label: "All Scopes", value: "ALL" },
-                { label: "Company", value: "COMPANY" },
-                { label: "Project", value: "PROJECT" },
-                { label: "Site", value: "SITE" },
-                { label: "Department", value: "DEPARTMENT" },
-                { label: "Employee", value: "EMPLOYEE" },
-              ]}
-              value={scopeFilter}
-              onChange={(e) => setScopeFilter(e.target.value)}
-            />
+          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-white dark:bg-[#1C2536]">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="w-40">
+                <SelectField
+                  id="scopeFilter"
+                  name="scopeFilter"
+                  options={[
+                    { label: "All Scopes", value: "ALL" },
+                    { label: "Company", value: "COMPANY" },
+                    { label: "Project", value: "PROJECT" },
+                    { label: "Site", value: "SITE" },
+                    { label: "Department", value: "DEPARTMENT" },
+                    { label: "Employee", value: "EMPLOYEE" },
+                  ]}
+                  value={scopeFilter}
+                  onChange={(e) => setScopeFilter(e.target.value)}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsPreviewOpen(true)}
+                className="btn btn-outline btn-sm h-10 inline-flex items-center gap-1.5"
+              >
+                <IconSearch size={15} />
+                <span>Preview Effective Schedule</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => navigate(ROUTES.SCHEDULES.CREATE)}
+                  className="btn btn-primary btn-sm h-10 inline-flex items-center gap-1.5"
+                >
+                  <IconPlus size={15} />
+                  <span>Create Schedule</span>
+                </button>
+              )}
+              <RefreshButton
+                onClick={loadSchedules}
+                loading={isLoadingSchedules}
+                title="Refresh schedules"
+                className="h-10 w-10 inline-flex items-center justify-center border border-slate-200 dark:border-slate-700/60"
+              />
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsPreviewOpen(true)}
-            className="btn btn-outline btn-sm h-10 inline-flex items-center gap-1.5"
-          >
-            <IconSearch size={15} />
-            <span>Preview Effective Schedule</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => navigate(ROUTES.SCHEDULES.CREATE)}
-              className="btn btn-primary btn-sm h-10 inline-flex items-center gap-1.5"
-            >
-              <IconPlus size={15} />
-              <span>Create Schedule</span>
-            </button>
-          )}
-          <RefreshButton
-            onClick={loadSchedules}
+          <DataTable
+            columns={columns}
+            data={schedules}
+            actions={actions}
             loading={isLoadingSchedules}
-            title="Refresh schedules"
-            className="h-10 w-10 inline-flex items-center justify-center border border-slate-200 dark:border-slate-700/60"
+            empty={{
+              icon: IconCalendarTime,
+              title: "No Work Schedules",
+              description: "No schedules match the selected scope.",
+            }}
           />
-        </div>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={schedules}
-        actions={actions}
-        loading={isLoadingSchedules}
-        empty={{
-          icon: IconCalendarTime,
-          title: "No Work Schedules",
-          description: "No schedules match the selected scope.",
-        }}
-      />
         </>
       )}
 

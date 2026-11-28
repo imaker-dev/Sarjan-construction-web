@@ -1,4 +1,4 @@
-import DataTable from "@components/ui/Datatable";
+import DataTable from "@components/ui/DataTable";
 import PageHeaderBanner from "@components/ui/PageHeaderBanner";
 import { useQueryParams } from "@hooks/useQueryParams";
 import {

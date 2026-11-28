@@ -60,12 +60,12 @@ const walletApi = {
 
   // Finance PDFs
   getFinanceVoucherPdfApi: ({ walletId, voucherId }) =>
-    Api.get(`/finance/wallets/${walletId}/vouchers/${voucherId}/pdf`, undefined, {
+    Api.get(`/finance/wallets/${walletId}/vouchers/${voucherId}/pdf`, {
       responseType: "blob",
     }),
 
   getFinanceTransferPdfApi: (transferId) =>
-    Api.get(`/finance/wallet-transfers/${transferId}/pdf`, undefined, {
+    Api.get(`/finance/wallet-transfers/${transferId}/pdf`, {
       responseType: "blob",
     }),
 
@@ -142,17 +142,17 @@ const walletApi = {
     Api.get(`/sites/${siteId}/wallet/vouchers/${voucherId}`),
 
   getSiteVoucherPrintHtmlApi: ({ siteId, voucherId }) =>
-    Api.get(`/sites/${siteId}/wallet/vouchers/${voucherId}/print`, undefined, {
+    Api.get(`/sites/${siteId}/wallet/vouchers/${voucherId}/print`, {
       responseType: "text",
     }),
 
   getSiteVoucherPdfApi: ({ siteId, voucherId }) =>
-    Api.get(`/sites/${siteId}/wallet/vouchers/${voucherId}/pdf`, undefined, {
+    Api.get(`/sites/${siteId}/wallet/vouchers/${voucherId}/pdf`, {
       responseType: "blob",
     }),
 
   getSiteTransferPdfApi: ({ siteId, transferId }) =>
-    Api.get(`/sites/${siteId}/wallet/transfers/${transferId}/pdf`, undefined, {
+    Api.get(`/sites/${siteId}/wallet/transfers/${transferId}/pdf`, {
       responseType: "blob",
     }),
 

@@ -214,29 +214,29 @@ export default function HolidayCalendarsPanel({ canManage = false }) {
     () =>
       canManage
         ? [
-            {
-              label: "Cancel Holiday",
-              icon: IconTrash,
-              hidden: (h) => h.status === "ARCHIVED" || h.status === "CANCELLED",
-              onClick: async (h) => {
-                try {
-                  await dispatch(
-                    cancelHoliday({ calendarId: selectedCalendarId, holidayId: h.id })
-                  ).unwrap();
-                  loadHolidays();
-                } catch {
-                  // handled
-                }
-              },
+          {
+            label: "Cancel Holiday",
+            icon: IconTrash,
+            hidden: (h) => h.status === "ARCHIVED" || h.status === "CANCELLED",
+            onClick: async (h) => {
+              try {
+                await dispatch(
+                  cancelHoliday({ calendarId: selectedCalendarId, holidayId: h.id })
+                ).unwrap();
+                loadHolidays();
+              } catch {
+                // handled
+              }
             },
-          ]
+          },
+        ]
         : [],
     [canManage, dispatch, selectedCalendarId, loadHolidays]
   );
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-white dark:bg-[#1C2536]">
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-56">
             <SelectField

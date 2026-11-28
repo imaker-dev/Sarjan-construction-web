@@ -9,6 +9,22 @@ import {
 } from "@store/slices/notification.slice";
 import { clearAuthStorage, getCompanyId } from "@utils/auth.utils";
 
+const NOTIFICATION_SOUND_URL = `${import.meta.env.BASE_URL}notfiaction.mp3`;
+
+const playNotificationSound = (audioRef) => {
+  try {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(NOTIFICATION_SOUND_URL);
+    }
+    audioRef.current.currentTime = 0;
+    audioRef.current.play().catch(() => {
+      // Ignore browser autoplay restrictions when user hasn't interacted yet
+    });
+  } catch {
+    // Ignore audio playback errors in unsupported environments
+  }
+};
+
 const buildStreamUrl = () => {
   const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
   const trimmed = apiUrl.replace(/\/+$/, "");
@@ -37,6 +53,7 @@ export function useNotificationStream(enabled = true) {
   const timerRef = useRef(null);
   const attemptsRef = useRef(0);
   const closedIntentionallyRef = useRef(false);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     if (!enabled || !isAuthenticated || !companyId) return;
@@ -75,6 +92,7 @@ export function useNotificationStream(enabled = true) {
               window.dispatchEvent(
                 new CustomEvent("sarjan:realtime-notification", { detail: frame }),
               );
+              playNotificationSound(audioRef);
               if (frame.title) {
                 toast.info(frame.title);
               }

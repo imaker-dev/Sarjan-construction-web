@@ -1,9 +1,16 @@
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  IconArrowsExchange,
+  IconCalendar,
+  IconCoins,
+  IconDownload,
+  IconFileText,
   IconFileTypePdf,
   IconFileUpload,
+  IconReceipt,
   IconRotateClockwise,
+  IconShoppingCart,
   IconWallet,
 } from "@tabler/icons-react";
 import DataTable from "@components/ui/DataTable";
@@ -16,8 +23,31 @@ import {
   isDebitEntry,
   LEDGER_TYPE_LABELS,
   openPdfBlob,
-  WALLET_STATUS_TONES,
 } from "@utils/wallet.utils";
+
+const matchesPeriod = (dateStr, period) => {
+  if (period === "ALL" || !dateStr) return true;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return true;
+  const now = new Date();
+  if (period === "TODAY") {
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  }
+  if (period === "WEEK") {
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    return d >= start;
+  }
+  if (period === "MONTH") {
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }
+  return true;
+};
 
 /**
  * Bank-statement style Credit/Debit ledger table shared by Site Wallet (PI/PD)
@@ -34,6 +64,34 @@ export default function WalletStatementTable({
   onRequestReversal,
 }) {
   const [downloadingId, setDownloadingId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+
+  const filteredEntries = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return entries.filter((e) => {
+      if (typeFilter === "IN" && !isCreditEntry(e.type)) return false;
+      if (typeFilter === "OUT" && !isDebitEntry(e.type)) return false;
+      if (!matchesPeriod(e.postedAt || e.createdAt, periodFilter)) return false;
+      if (!q) return true;
+
+      const desc = [
+        e.expense?.payee,
+        e.payee,
+        e.description,
+        e.expense?.description,
+        e.transfer?.reference,
+        e.reversalReason,
+        LEDGER_TYPE_LABELS[e.type],
+        e.type,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return desc.includes(q);
+    });
+  }, [entries, searchQuery, periodFilter, typeFilter]);
 
   const handleDownloadPdf = async (entry) => {
     setDownloadingId(entry.id);
@@ -80,7 +138,12 @@ export default function WalletStatementTable({
     () => [
       {
         key: "postedAt",
-        header: "Date & Time",
+        header: (
+          <span className="inline-flex items-center gap-1.5">
+            <IconCalendar size={14} className="text-slate-400" />
+            <span>Date & Time</span>
+          </span>
+        ),
         render: (e) => {
           const { date, time } = formatDateTimeParts(e.postedAt || e.createdAt);
           return (
@@ -98,8 +161,13 @@ export default function WalletStatementTable({
         },
       },
       {
-        key: "particulars",
-        header: "Particulars",
+        key: "description",
+        header: (
+          <span className="inline-flex items-center gap-1.5">
+            <IconFileText size={14} className="text-slate-400" />
+            <span>Description</span>
+          </span>
+        ),
         render: (e) => {
           const desc =
             e.description ||
@@ -108,54 +176,73 @@ export default function WalletStatementTable({
             e.reversalReason ||
             null;
           const payee = e.expense?.payee || e.payee;
+          const label =
+            [payee, desc].filter(Boolean).join(" — ") ||
+            LEDGER_TYPE_LABELS[e.type] ||
+            e.type;
           return (
-            <div className="space-y-1 max-w-[260px]">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-mono text-[10px] text-slate-400">
-                  #{e.seq ?? "—"}
-                </span>
-                <StatusBadge
-                  label={LEDGER_TYPE_LABELS[e.type] || e.type}
-                  tone={WALLET_STATUS_TONES[e.type] || "slate"}
-                  size="xs"
-                />
-              </div>
-              {(desc || payee) && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  {[payee, desc].filter(Boolean).join(" — ")}
-                </p>
-              )}
-            </div>
+            <p className="text-xs font-medium text-slate-700 dark:text-slate-200 max-w-[260px] truncate">
+              {label}
+            </p>
           );
         },
       },
       {
-        key: "debit",
-        header: "Debit (₹)",
+        key: "moneyType",
+        header: (
+          <span className="inline-flex items-center gap-1.5">
+            <IconArrowsExchange size={14} className="text-slate-400" />
+            <span>Type</span>
+          </span>
+        ),
         render: (e) =>
-          isDebitEntry(e.type) ? (
-            <span className="text-xs font-bold text-rose-500 dark:text-rose-400 tabular-nums whitespace-nowrap">
-              -{formatInr(e.amount)}
-            </span>
+          isCreditEntry(e.type) ? (
+            <StatusBadge
+              label="Credit"
+              tone="emerald"
+              icon={IconDownload}
+              size="xs"
+            />
           ) : (
-            <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+            <StatusBadge
+              label="Debit"
+              tone="rose"
+              icon={IconShoppingCart}
+              size="xs"
+            />
           ),
       },
       {
-        key: "credit",
-        header: "Credit (₹)",
-        render: (e) =>
-          isCreditEntry(e.type) ? (
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap">
-              +{formatInr(e.amount)}
+        key: "amount",
+        header: (
+          <span className="inline-flex items-center gap-1.5">
+            <IconCoins size={14} className="text-slate-400" />
+            <span>Amount (₹)</span>
+          </span>
+        ),
+        render: (e) => {
+          const isCredit = isCreditEntry(e.type);
+          return (
+            <span
+              className={`text-xs font-bold tabular-nums whitespace-nowrap ${isCredit
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-rose-500 dark:text-rose-400"
+                }`}
+            >
+              {isCredit ? "+" : "-"}
+              {formatInr(e.amount)}
             </span>
-          ) : (
-            <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
-          ),
+          );
+        },
       },
       {
         key: "balanceAfter",
-        header: "Balance (₹)",
+        header: (
+          <span className="inline-flex items-center gap-1.5">
+            <IconWallet size={14} className="text-slate-400" />
+            <span>Balance After (₹)</span>
+          </span>
+        ),
         render: (e) => (
           <span className="text-xs font-bold text-slate-800 dark:text-white tabular-nums whitespace-nowrap">
             {formatInr(e.balanceAfter)}
@@ -164,14 +251,19 @@ export default function WalletStatementTable({
       },
       {
         key: "pdf",
-        header: "Receipt / PDF",
+        header: (
+          <span className="inline-flex items-center gap-1.5">
+            <IconReceipt size={14} className="text-slate-400" />
+            <span>Receipt</span>
+          </span>
+        ),
         render: (e) => {
           const hasDoc = Boolean(
             e.transferId ||
-              e.transfer?.id ||
-              e.voucherId ||
-              e.voucher?.id ||
-              e.expenseId
+            e.transfer?.id ||
+            e.voucherId ||
+            e.voucher?.id ||
+            e.expenseId
           );
           if (!hasDoc) {
             return (
@@ -214,15 +306,60 @@ export default function WalletStatementTable({
 
   return (
     <DataTable
+      title={
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+            <IconWallet size={17} />
+          </span>
+          <div>
+            <div className="text-[15px] font-semibold text-slate-800 dark:text-white leading-tight">
+              Transactions
+            </div>
+            <div className="text-[12px] font-normal text-slate-400 dark:text-slate-500">
+              All your money in and out, with current balance
+            </div>
+          </div>
+        </div>
+      }
+      search={{
+        value: searchQuery,
+        onChange: setSearchQuery,
+        placeholder: "Search by name or note...",
+      }}
+      headerExtra={
+        <div className="flex items-center gap-2">
+          <select
+            value={periodFilter}
+            onChange={(e) => setPeriodFilter(e.target.value)}
+            className="form-select form-sm w-auto"
+            aria-label="Filter by period"
+          >
+            <option value="ALL">All Time</option>
+            <option value="MONTH">This Month</option>
+            <option value="WEEK">This Week</option>
+            <option value="TODAY">Today</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="form-select form-sm w-auto"
+            aria-label="Filter by transaction type"
+          >
+            <option value="ALL">Filter: All</option>
+            <option value="IN">Credit</option>
+            <option value="OUT">Debit</option>
+          </select>
+        </div>
+      }
       columns={columns}
-      data={entries}
+      data={filteredEntries}
       actions={actions}
       loading={loading}
       empty={{
         icon: IconWallet,
         title: "No Transactions Yet",
         description:
-          "Bank-style credit and debit entries will appear here once funds are confirmed or expenses are posted.",
+          "Credit and debit entries will appear here once funds are confirmed or expenses are posted.",
       }}
     />
   );

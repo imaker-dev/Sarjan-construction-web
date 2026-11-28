@@ -186,7 +186,7 @@ export default function OfficeAttendanceTab({
   return (
     <div className="space-y-4">
       {/* Streamlined Filter Toolbar: Strictly Today vs Custom Date */}
-      <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3 shadow-xs">
+      <div className="rounded-xl bg-white dark:bg-[#1C2536] shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
             {/* Two-Option Date Filter: Today vs Custom Date */}

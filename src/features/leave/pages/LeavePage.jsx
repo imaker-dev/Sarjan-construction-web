@@ -66,7 +66,7 @@ const ROLE_TIER = {
 export default function LeavePage() {
   const dispatch = useDispatch();
   const { can, user } = useAccess();
-  const employeeId = user?.employee?.id;
+  const employeeId = user?.employeeId || user?.employee?.id;
   const isCompanyAdmin = Boolean(user?.isCompanyScoped);
 
   const {
@@ -101,7 +101,7 @@ export default function LeavePage() {
   }, [canApprove, sitesData, dispatch]);
 
   const loadLeave = useCallback(() => {
-    const params = {};
+    const params = { limit: 100 };
     if (statusFilter) params.status = statusFilter;
     if (typeFilter) params.leaveType = typeFilter;
     if (siteFilter) params.siteId = siteFilter;
@@ -244,7 +244,8 @@ export default function LeavePage() {
   const canReviewRow = useCallback(
     (r) => {
       if (!canApprove || r.status !== "PENDING") return false;
-      if (employeeId && r.employeeId === employeeId) return false;
+      const rowEmployeeId = r.employeeId || r.employee?.id;
+      if (employeeId && rowEmployeeId === employeeId) return false;
 
       const targetRole =
         r.employee?.roleKey || r.employee?.roles?.[0] || r.requesterRole;
@@ -253,9 +254,17 @@ export default function LeavePage() {
         if (actorTier < 4 && targetTier >= actorTier) return false;
       }
 
-      const actorDeptId = user?.employee?.departmentId || user?.departments?.[0]?.id;
-      const targetDeptId = r.employee?.departmentId || r.departmentId;
-      if (actorTier < 4 && actorDeptId && targetDeptId && actorDeptId === targetDeptId) {
+      const actorDeptIds = new Set(
+        (user?.departments || [])
+          .map((d) => d.departmentId || d.id)
+          .filter(Boolean)
+      );
+      if (user?.employee?.departmentId) {
+        actorDeptIds.add(user.employee.departmentId);
+      }
+      const targetDeptId =
+        r.departmentId || r.employee?.departmentId || r.department?.id;
+      if (actorTier < 4 && targetDeptId && actorDeptIds.has(targetDeptId)) {
         return false;
       }
       return true;
@@ -294,15 +303,22 @@ export default function LeavePage() {
       {
         label: "Resubmit",
         icon: IconSend,
-        hidden: (r) => !canApply || r.status !== "RETURNED" || (employeeId && r.employeeId !== employeeId),
+        hidden: (r) => {
+          const rowEmployeeId = r.employeeId || r.employee?.id;
+          return !canApply || r.status !== "RETURNED" || (employeeId && rowEmployeeId !== employeeId);
+        },
         onClick: (r) => setResubmitTarget(r),
       },
       {
         label: "Cancel Request",
         icon: IconX,
-        hidden: (r) =>
-          !["PENDING", "RETURNED", "APPROVED"].includes(r.status) ||
-          (!canManage && (!canApply || (employeeId && r.employeeId !== employeeId))),
+        hidden: (r) => {
+          const rowEmployeeId = r.employeeId || r.employee?.id;
+          return (
+            !["PENDING", "RETURNED", "APPROVED"].includes(r.status) ||
+            (!canManage && (!canApply || (employeeId && rowEmployeeId !== employeeId)))
+          );
+        },
         onClick: (r) => setReviewState({ request: r, mode: "CANCEL" }),
       },
     ],
@@ -360,9 +376,8 @@ export default function LeavePage() {
             Number(b.pendingDays ?? 0);
           return (
             <strong
-              className={`text-xs tabular-nums ${
-                avail > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"
-              }`}
+              className={`text-xs tabular-nums ${avail > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"
+                }`}
             >
               {avail}
             </strong>
@@ -373,8 +388,21 @@ export default function LeavePage() {
     []
   );
 
+  const pendingLeaveCount = useMemo(
+    () =>
+      (Array.isArray(requests) ? requests : []).filter((r) =>
+        ["PENDING", "RETURNED"].includes(r.status)
+      ).length,
+    [requests]
+  );
+
   const tabs = [
-    { key: "requests", label: "Requests & Balances", icon: IconCalendarEvent },
+    {
+      key: "requests",
+      label: "Requests & Balances",
+      icon: IconCalendarEvent,
+      badge: pendingLeaveCount,
+    },
     { key: "balances", label: "All Balances", icon: IconCoins },
     ...(canManage ? [{ key: "policies", label: "Leave Policies", icon: IconShieldCheck }] : []),
     ...(canManage && isCompanyAdmin ? [{ key: "types", label: "Leave Types", icon: IconTag }] : []),
@@ -402,14 +430,18 @@ export default function LeavePage() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setActiveTab(t.key)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all whitespace-nowrap ${
-                  active
-                    ? "bg-white text-slate-800 shadow-sm dark:bg-[#1C2536] dark:text-white"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                }`}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all whitespace-nowrap ${active
+                  ? "bg-white text-slate-800 shadow-sm dark:bg-[#1C2536] dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  }`}
               >
                 <Icon size={15} />
                 <span>{t.label}</span>
+                {t.badge > 0 && (
+                  <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums text-white">
+                    {t.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -441,7 +473,7 @@ export default function LeavePage() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-white dark:bg-[#1C2536]">
             <div className="flex flex-wrap items-center gap-2">
               <div className="w-36">
                 <SelectField
@@ -508,6 +540,8 @@ export default function LeavePage() {
             data={requests}
             actions={actions}
             loading={isLoadingRequests}
+            pageSize={10}
+            itemLabel="requests"
             empty={{
               icon: IconCalendarEvent,
               title: "No Leave Requests",
@@ -519,7 +553,7 @@ export default function LeavePage() {
 
       {activeTab === "balances" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-white dark:bg-[#1C2536]">
             <div className="flex flex-wrap items-center gap-2">
               <div className="w-44">
                 <SelectField
@@ -565,6 +599,8 @@ export default function LeavePage() {
             columns={balanceColumns}
             data={balances}
             loading={isLoadingBalances}
+            pageSize={10}
+            itemLabel="balances"
             empty={{
               icon: IconCoins,
               title: "No Leave Balances",

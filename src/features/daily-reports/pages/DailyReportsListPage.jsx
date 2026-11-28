@@ -79,8 +79,8 @@ export default function DailyReportsListPage() {
     dispatch(listProjects());
     dispatch(listSites());
     dispatch(listDepartments());
-    dispatch(listEmployees({ limit: 200 }));
     if (isCompanyAdmin) {
+      dispatch(listEmployees({ limit: 200 }));
       dispatch(getAllHeadOffices());
     }
   }, [dispatch, isCompanyAdmin]);
@@ -168,6 +168,26 @@ export default function DailyReportsListPage() {
     fetchReports();
   }, [dispatch, selectedSiteId, statusFilter, dsrFromDate, dsrToDate]);
 
+  // Real-time refresh on DAILY_REPORT_* / DSR_* WebSocket events
+  useEffect(() => {
+    const onRealtime = (e) => {
+      const et = String(e?.detail?.eventType || "");
+      if (et.startsWith("DAILY_REPORT_") || et.startsWith("DSR_")) {
+        fetchReports();
+      }
+    };
+    window.addEventListener("sarjan:realtime-notification", onRealtime);
+    return () => window.removeEventListener("sarjan:realtime-notification", onRealtime);
+  });
+
+  const pendingReportsCount = useMemo(
+    () =>
+      (Array.isArray(reports) ? reports : []).filter((r) =>
+        ["SUBMITTED", "APPROVED"].includes(r.status)
+      ).length,
+    [reports]
+  );
+
   useEffect(() => {
     if (!isCompanyAdmin || activeTab !== "muster-roll") return;
     fetchMusterRollData();
@@ -237,6 +257,11 @@ export default function DailyReportsListPage() {
           >
             <IconFileSpreadsheet size={16} />
             <span>Site Reports</span>
+            {pendingReportsCount > 0 && (
+              <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums text-white">
+                {pendingReportsCount}
+              </span>
+            )}
           </button>
 
           {isCompanyAdmin && (

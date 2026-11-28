@@ -224,18 +224,39 @@ export default function SiteWalletPage() {
         ),
       },
       {
-        key: "amount",
-        header: "Draft / Approved / Confirmed",
+        key: "requested",
+        header: "Requested",
+        align: "right",
         render: (r) => (
-          <div className="text-xs tabular-nums">
-            <div className="font-bold text-slate-800 dark:text-white">
-              {formatInr(r.draftAmount)}
-            </div>
-            <div className="text-[11px] text-slate-400">
-              Appr: {r.approvedAmount ? formatInr(r.approvedAmount) : "—"} • Conf:{" "}
-              {formatInr(r.confirmedAmount)}
-            </div>
-          </div>
+          <span className="text-xs font-semibold tabular-nums text-slate-800 dark:text-white">
+            {formatInr(r.draftAmount)}
+          </span>
+        ),
+      },
+      {
+        key: "approved",
+        header: "Approved",
+        align: "right",
+        render: (r) => (
+          <span className="text-xs font-medium tabular-nums text-slate-700 dark:text-slate-200">
+            {r.approvedAmount ? formatInr(r.approvedAmount) : "—"}
+          </span>
+        ),
+      },
+      {
+        key: "confirmed",
+        header: "Confirmed",
+        align: "right",
+        render: (r) => (
+          <span
+            className={`text-xs font-semibold tabular-nums ${
+              Number(r.confirmedAmount || 0) > 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-slate-400"
+            }`}
+          >
+            {formatInr(r.confirmedAmount)}
+          </span>
         ),
       },
       {
@@ -330,11 +351,8 @@ export default function SiteWalletPage() {
       />
 
       {/* Site Selector */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] p-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="rounded-xl bg-white dark:bg-[#1C2536] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Site:
-          </span>
           <select
             value={activeSiteId}
             onChange={(e) => setSelectedSiteId(e.target.value)}
@@ -368,25 +386,25 @@ export default function SiteWalletPage() {
           label="Wallet Balance"
           value={formatInr(wallet?.balance ?? 0)}
           icon={IconWallet}
-          tone="emerald"
+          color="emerald"
         />
         <StatCard
           label="Pending Requests"
           value={siteWalletSummary?.pendingRequests ?? 0}
           icon={IconSend}
-          tone="amber"
+          color="amber"
         />
         <StatCard
           label="Approved Amount"
           value={formatInr(siteWalletSummary?.approvedAmount ?? 0)}
           icon={IconCheck}
-          tone="indigo"
+          color="indigo"
         />
         <StatCard
           label="Confirmed Amount"
           value={formatInr(siteWalletSummary?.confirmedAmount ?? 0)}
           icon={IconReceipt}
-          tone="emerald"
+          color="emerald"
         />
       </div>
 
@@ -408,53 +426,62 @@ export default function SiteWalletPage() {
           </p>
         </div>
       ) : (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-[#1C2536] shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex flex-wrap rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800/60">
-            {[
-              { key: "ledger", label: "Ledger" },
-              { key: "requests", label: "Funding Requests" },
-              { key: "expenses", label: "Expenses & Vouchers" },
-              { key: "reports", label: "Reports" },
-            ].map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveTab(t.key)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-                  activeTab === t.key
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex flex-wrap rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800/60">
+              {[
+                { key: "ledger", label: "Ledger" },
+                {
+                  key: "requests",
+                  label: "Funding Requests",
+                  badge: requestsList.filter((r) =>
+                    ["APPROVED", "PARTIALLY_FUNDED", "RETURNED"].includes(r.status)
+                  ).length,
+                },
+                { key: "expenses", label: "Expenses & Vouchers" },
+                { key: "reports", label: "Reports" },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveTab(t.key)}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${activeTab === t.key
                     ? "bg-white text-slate-800 shadow-xs dark:bg-[#1C2536] dark:text-white"
                     : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+                    }`}
+                >
+                  <span>{t.label}</span>
+                  {t.badge > 0 && (
+                    <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums text-white">
+                      {t.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {canManage && activeSiteId && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReqModalState({ open: true, req: null })}
+                  className="btn btn-outline btn-xs inline-flex items-center gap-1"
+                >
+                  <IconPlus size={14} />
+                  <span>Request Funds</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpenseModalOpen(true)}
+                  className="btn btn-primary btn-xs inline-flex items-center gap-1"
+                >
+                  <IconPlus size={14} />
+                  <span>Post Expense</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {canManage && activeSiteId && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setReqModalState({ open: true, req: null })}
-                className="btn btn-outline btn-xs inline-flex items-center gap-1"
-              >
-                <IconPlus size={14} />
-                <span>Request Funds</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setExpenseModalOpen(true)}
-                className="btn btn-primary btn-xs inline-flex items-center gap-1"
-              >
-                <IconPlus size={14} />
-                <span>Post Expense</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="p-4">
           {activeTab === "ledger" && (
             <WalletStatementTable
               entries={ledgerList}
@@ -581,7 +608,6 @@ export default function SiteWalletPage() {
             <SiteWalletReportsTab siteId={activeSiteId} />
           )}
         </div>
-      </div>
       )}
 
       {/* Funding Request Detail & Transfers Modal */}

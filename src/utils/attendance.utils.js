@@ -353,3 +353,74 @@ export function buildLogs(rawEvents, late) {
     };
   });
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Day-Level Status Derivation (Muster Roll & Calendar)                      */
+/* -------------------------------------------------------------------------- */
+
+export const AUTO_CLOSED_LABELS = {
+  SCHEDULED_END: "Auto-closed (Scheduled End)",
+  EOD_SETTLEMENT: "Auto-closed (EOD)",
+  STALE_SWEEP: "Auto-closed (Stale Sweep)",
+};
+
+/**
+ * Derives displayable day-level status badges from a session or calendar row.
+ * Note: `regularized` is audit-trail only and intentionally omitted from on-row badges.
+ */
+export function deriveAttendanceBadges(record = {}) {
+  const badges = [];
+  const status = String(record.status || "").toUpperCase();
+  const presentUnits = Number(record.presentUnits ?? 0);
+  const lateMins = Number(record.lateMins ?? 0);
+  const earlyLeaveMins = Number(record.earlyLeaveMins ?? 0);
+  const autoClosedBy = record.autoClosedBy;
+
+  if (status === "REST_DAY" || status === "WEEKLY_OFF") {
+    badges.push({ key: "REST_DAY", label: "Rest Day", code: "O", tone: "slate" });
+  } else if (status === "HOLIDAY") {
+    badges.push({ key: "HOLIDAY", label: "Holiday", code: "H", tone: "indigo" });
+  } else if (status === "LEAVE" || record.leaveCode) {
+    badges.push({
+      key: "LEAVE",
+      label: record.leaveName || record.leaveCode || "Leave",
+      code: record.leaveCode || "L",
+      tone: "indigo",
+    });
+  } else if (status === "ABSENT") {
+    badges.push({ key: "ABSENT", label: "Absent", code: "A", tone: "rose" });
+  } else if (status === "PRESENT" || presentUnits > 0 || record.punchInAt) {
+    badges.push({
+      key: "PRESENT",
+      label: presentUnits > 0 ? `P (${presentUnits.toFixed(1)})` : "P",
+      code: "P",
+      tone: "emerald",
+    });
+  }
+
+  if (lateMins > 0 || record.isLate) {
+    badges.push({
+      key: "LATE",
+      label: lateMins > 0 ? `Late (${lateMins}m)` : "Late",
+      tone: "amber",
+    });
+  }
+
+  if (earlyLeaveMins > 0 || record.isEarlyLeave) {
+    badges.push({
+      key: "EARLY_LEAVE",
+      label: earlyLeaveMins > 0 ? `Early (${earlyLeaveMins}m)` : "Early leave",
+      tone: "amber",
+    });
+  }
+
+  if (autoClosedBy) {
+    badges.push({
+      key: "AUTO_CLOSED",
+      label: AUTO_CLOSED_LABELS[autoClosedBy] || `Auto-closed (${autoClosedBy})`,
+      tone: "slate",
+    });
+  }
+
+  return badges;
+}

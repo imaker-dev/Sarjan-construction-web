@@ -1,22 +1,21 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import notificationApi from "@store/api/notification.api";
 import { toast } from "sonner";
 
-// Create notification ticket
-export const createNotificationTicket = createAsyncThunk(
-  "notification/createNotificationTicket",
-  async (values) => {
-    const res = await notificationApi.createNotificationTicketApi(values);
+// List notifications
+export const listNotifications = createAsyncThunk(
+  "notification/listNotifications",
+  async (params = {}) => {
+    const res = await notificationApi.listNotificationsApi(params);
     return res.data;
   },
 );
 
-// List notifications
-export const listNotifications = createAsyncThunk(
-  "notification/listNotifications",
-  async (values = {}) => {
-    const res = await notificationApi.listNotificationsApi(values);
+// Get unread count
+export const getUnreadNotificationCount = createAsyncThunk(
+  "notification/getUnreadNotificationCount",
+  async () => {
+    const res = await notificationApi.getUnreadNotificationCountApi();
     return res.data;
   },
 );
@@ -30,68 +29,101 @@ export const markNotificationAsRead = createAsyncThunk(
   },
 );
 
+// Mint single-use 30s WebSocket ticket
+export const createNotificationTicket = createAsyncThunk(
+  "notification/createNotificationTicket",
+  async (values = {}) => {
+    const res = await notificationApi.createNotificationTicketApi(values);
+    return res.data;
+  },
+);
+
 const notificationSlice = createSlice({
   name: "notification",
 
   initialState: {
-    isCreatingNotificationTicket: false,
     isListingNotifications: false,
+    isFetchingUnreadCount: false,
     isMarkingNotificationAsRead: false,
+    isCreatingNotificationTicket: false,
 
-    notificationTicket: null,
+    unreadCount: 0,
     notificationsData: null,
+    nextCursor: null,
+    hasMore: false,
   },
 
   reducers: {
-    // Add notification received through WebSocket
+    // Add live notification frame received via WebSocket (deduped by id / notificationId)
     addNotification: (state, action) => {
-      const notification = action.payload;
+      const frame = action.payload;
+      if (!frame) return;
 
-      if (!notification) return;
+      const id = frame.notificationId || frame.id;
+      if (!id) return;
 
-      const notifications = Array.isArray(state.notificationsData)
+      const normalized = {
+        ...frame,
+        id,
+        readAt: frame.readAt ?? null,
+      };
+
+      const existing = Array.isArray(state.notificationsData)
         ? state.notificationsData
-        : state.notificationsData?.data;
+        : Array.isArray(state.notificationsData?.data)
+          ? state.notificationsData.data
+          : [];
 
-      if (Array.isArray(notifications)) {
-        const exists = notifications.some(
-          (item) => item.id === notification.id,
-        );
+      const exists = existing.some((item) => item.id === id);
+      if (exists) return;
 
-        if (!exists) {
-          if (Array.isArray(state.notificationsData)) {
-            state.notificationsData.unshift(notification);
-          } else {
-            state.notificationsData.data.unshift(notification);
-          }
-        }
-      } else {
-        state.notificationsData = [notification];
+      state.notificationsData = [normalized, ...existing];
+      if (!normalized.readAt && !normalized.read && !normalized.isRead) {
+        state.unreadCount += 1;
       }
     },
 
     clearNotificationsData: (state) => {
       state.notificationsData = null;
-      state.notificationTicket = null;
+      state.unreadCount = 0;
+      state.nextCursor = null;
+      state.hasMore = false;
     },
   },
 
   extraReducers: (builder) => {
     builder
 
-      // Create notification ticket
+      // Mint WS ticket
       .addCase(createNotificationTicket.pending, (state) => {
         state.isCreatingNotificationTicket = true;
       })
-      .addCase(createNotificationTicket.fulfilled, (state, action) => {
+      .addCase(createNotificationTicket.fulfilled, (state) => {
         state.isCreatingNotificationTicket = false;
-        state.notificationTicket = action.payload;
       })
-      .addCase(createNotificationTicket.rejected, (state, action) => {
+      .addCase(createNotificationTicket.rejected, (state) => {
         state.isCreatingNotificationTicket = false;
-        toast.error(
-          action.error.message || "Failed to create notification ticket",
-        );
+      })
+
+      // Unread count
+      .addCase(getUnreadNotificationCount.pending, (state) => {
+        state.isFetchingUnreadCount = true;
+      })
+      .addCase(getUnreadNotificationCount.fulfilled, (state, action) => {
+        state.isFetchingUnreadCount = false;
+        const payload = action.payload;
+        const count =
+          typeof payload === "number"
+            ? payload
+            : payload?.unreadCount ??
+              payload?.count ??
+              payload?.data?.unreadCount ??
+              payload?.data?.count ??
+              0;
+        state.unreadCount = Number(count) || 0;
+      })
+      .addCase(getUnreadNotificationCount.rejected, (state) => {
+        state.isFetchingUnreadCount = false;
       })
 
       // List notifications
@@ -100,7 +132,35 @@ const notificationSlice = createSlice({
       })
       .addCase(listNotifications.fulfilled, (state, action) => {
         state.isListingNotifications = false;
-        state.notificationsData = action.payload;
+        const payload = action.payload;
+        const incoming = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.notifications)
+            ? payload.notifications
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : Array.isArray(payload?.items)
+                ? payload.items
+                : [];
+        const isAppend = Boolean(action.meta?.arg?.cursor);
+
+        if (isAppend) {
+          const existing = Array.isArray(state.notificationsData)
+            ? state.notificationsData
+            : Array.isArray(state.notificationsData?.data)
+              ? state.notificationsData.data
+              : [];
+          const seen = new Set(existing.map((n) => n.id));
+          state.notificationsData = [
+            ...existing,
+            ...incoming.filter((n) => !seen.has(n.id)),
+          ];
+        } else {
+          state.notificationsData = incoming;
+        }
+
+        state.nextCursor = payload?.nextCursor ?? payload?.cursor ?? null;
+        state.hasMore = Boolean(state.nextCursor);
       })
       .addCase(listNotifications.rejected, (state, action) => {
         state.isListingNotifications = false;
@@ -117,13 +177,27 @@ const notificationSlice = createSlice({
         state.isMarkingNotificationAsRead = false;
 
         const updatedNotification = action.payload;
+        let decremented = false;
 
         const updateNotificationInList = (notifications) =>
-          notifications?.map((notification) =>
-            notification.id === updatedNotification.id
-              ? { ...notification, ...updatedNotification }
-              : notification,
-          );
+          notifications?.map((notification) => {
+            if (notification.id === updatedNotification.id) {
+              if (
+                !notification.read &&
+                !notification.isRead &&
+                !notification.readAt
+              ) {
+                decremented = true;
+              }
+              return {
+                ...notification,
+                ...updatedNotification,
+                read: true,
+                readAt: updatedNotification.readAt || new Date().toISOString(),
+              };
+            }
+            return notification;
+          });
 
         if (Array.isArray(state.notificationsData)) {
           state.notificationsData = updateNotificationInList(
@@ -135,10 +209,9 @@ const notificationSlice = createSlice({
           );
         }
 
-        toast.success(
-          updatedNotification?.message ||
-            "Notification marked as read!",
-        );
+        if (decremented && state.unreadCount > 0) {
+          state.unreadCount -= 1;
+        }
       })
       .addCase(markNotificationAsRead.rejected, (state, action) => {
         state.isMarkingNotificationAsRead = false;
@@ -149,9 +222,7 @@ const notificationSlice = createSlice({
   },
 });
 
-export const {
-  addNotification,
-  clearNotificationsData,
-} = notificationSlice.actions;
+export const { addNotification, clearNotificationsData } =
+  notificationSlice.actions;
 
 export default notificationSlice.reducer;

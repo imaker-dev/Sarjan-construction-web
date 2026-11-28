@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import DataTable from "@components/ui/DataTable";
 import DateRangePicker from "@components/fields/DateRangePicker";
+import AttendanceCalendarCard from "@features/attendance/components/AttendanceCalendarCard";
 import DateAttendanceDetailModal from "./DateAttendanceDetailModal";
 import {
   aggregateSessionsByDate,
@@ -30,8 +31,11 @@ export default function OfficeAttendanceTab({
   setSelectedDepartmentId,
   selectedHeadOfficeId,
   setSelectedHeadOfficeId,
+  selectedEmployeeId = "",
+  setSelectedEmployeeId,
   departmentsList,
   headOfficesList,
+  employeesList = [],
   lockedReportsMap,
   onExportMuster,
   isExportingReport,
@@ -204,6 +208,21 @@ export default function OfficeAttendanceTab({
               <button
                 type="button"
                 onClick={() => {
+                  setDateFilter("monthly");
+                  if (!fromDate) {
+                    setFromDate(todayStr);
+                  }
+                }}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${dateFilter === "monthly"
+                  ? "bg-white text-slate-800 shadow-xs dark:bg-[#1C2536] dark:text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  }`}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setDateFilter("custom");
                   if (!fromDate) {
                     setFromDate(todayStr);
@@ -268,14 +287,32 @@ export default function OfficeAttendanceTab({
               </select>
             )}
 
+            {/* Employee scope */}
+            {setSelectedEmployeeId && employeesList.length > 0 && (
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                style={{ width: "auto" }}
+                className="form-select form-sm w-auto min-w-[160px] max-w-[210px] shrink-0"
+              >
+                <option value="">All Employees</option>
+                {employeesList.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.displayName || emp.employeeCode || emp.id}
+                  </option>
+                ))}
+              </select>
+            )}
+
             {/* Reset button if active filters */}
-            {(selectedDepartmentId || selectedHeadOfficeId || dateFilter === "custom" || fromDate || toDate) && (
+            {(selectedDepartmentId || selectedHeadOfficeId || selectedEmployeeId || dateFilter !== "today" || fromDate || toDate) && (
               <button
                 type="button"
                 onClick={() => {
                   setDateFilter("today");
                   setSelectedDepartmentId("");
                   setSelectedHeadOfficeId("");
+                  setSelectedEmployeeId?.("");
                   setFromDate("");
                   setToDate("");
                 }}
@@ -324,6 +361,11 @@ export default function OfficeAttendanceTab({
             </span>
           ))}
         </div>
+      )}
+
+      {/* Employee Monthly Calendar View when an employee is selected */}
+      {selectedEmployeeId && (
+        <AttendanceCalendarCard employeeId={selectedEmployeeId} />
       )}
 
       {/* Office Attendance Table: Grouped by Date */}

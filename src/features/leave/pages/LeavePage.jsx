@@ -134,6 +134,26 @@ export default function LeavePage() {
     loadLeave();
   }, [loadLeave]);
 
+  // Auto-refresh Leave Requests & Balances when a real-time WebSocket leave notification arrives
+  useEffect(() => {
+    const handleRealtime = (event) => {
+      const frame = event?.detail;
+      if (
+        frame?.resourceType === "LEAVE_REQUEST" ||
+        String(frame?.eventType || "").startsWith("LEAVE_")
+      ) {
+        loadLeave();
+        if (activeTab === "balances") {
+          loadBalances();
+        }
+      }
+    };
+
+    window.addEventListener("sarjan:realtime-notification", handleRealtime);
+    return () =>
+      window.removeEventListener("sarjan:realtime-notification", handleRealtime);
+  }, [loadLeave, loadBalances, activeTab]);
+
   const siteOptions = useMemo(
     () => [
       { label: "All Accessible Scopes", value: "" },

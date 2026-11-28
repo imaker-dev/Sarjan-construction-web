@@ -1,66 +1,50 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import {  IconBellRinging, IconX } from "@tabler/icons-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { IconBellRinging, IconX } from "@tabler/icons-react";
 import Avatar from "@components/ui/Avatar";
 import { ROUTES } from "@constants/routes";
+import {
+  getUnreadNotificationCount,
+  listNotifications,
+  markNotificationAsRead,
+} from "@store/slices/notification.slice";
+import { useNotificationStream } from "@hooks/useNotificationStream";
+import { extractList } from "@utils/api.utils";
 
-const NOTIFICATIONS = [
-  {
-    id: 1,
-    type: "user",
-    user: {
-      name: "Roman",
-    },
-    title: "Joined the Team!",
-    message: "Please welcome Roman to the team.",
-    read: false,
-  },
-  {
-    id: 2,
-    type: "user",
-    user: {
-      name: "Salma",
-    },
-    title: "Sent you a new message",
-    message: "You have a new message in your inbox.",
-    read: false,
-  },
-  {
-    id: 3,
-    type: "common",
-    title: "Payment received",
-    message: "Your payment of $250 has been successfully processed.",
-    read: false,
-  },
-  {
-    id: 4,
-    type: "user",
-    user: {
-      name: "Jolly",
-    },
-    title: "Completed tasks",
-    message: "Jolly has completed the assigned tasks.",
-    read: false,
-  },
-  {
-    id: 5,
-    type: "common",
-    title: "System maintenance",
-    message: "Scheduled maintenance will begin tonight at 11:00 PM.",
-    read: true,
-  },
-];
+const isRead = (n) => Boolean(n?.read || n?.isRead || n?.readAt);
 
-function NotificationRow({ notification }) {
-  const isUserNotification = notification.type === "user";
+const getDeepLink = (notification) => {
+  switch (notification?.resourceType) {
+    case "LEAVE_REQUEST":
+      return ROUTES.LEAVE?.ROOT;
+    case "ATTENDANCE_SESSION":
+      return ROUTES.ATTENDANCE?.ROOT;
+    case "DAILY_SITE_REPORT":
+      return notification?.resourceId && ROUTES.DAILY_REPORTS?.DETAILS
+        ? ROUTES.DAILY_REPORTS.DETAILS.replace(":id", notification.resourceId)
+        : ROUTES.DAILY_REPORTS?.ROOT || ROUTES.ATTENDANCE?.ROOT;
+    case "DOCUMENT":
+      return ROUTES.EMPLOYEES?.DOCUMENTS;
+    default:
+      return null;
+  }
+};
+
+function NotificationRow({ notification, onClickRow }) {
+  const isUserNotification = notification.type === "user" && notification.user;
+  const unread = !isRead(notification);
 
   return (
-    <Link
-      to="#"
+    <button
+      type="button"
       role="menuitem"
-      className="group flex items-start gap-3 rounded-xl px-2.5 py-3 transition-colors hover:bg-primary-50 focus-visible:bg-primary-50 focus-visible:outline-none dark:hover:bg-primary-950/40 dark:focus-visible:bg-primary-950/40"
+      onClick={() => onClickRow?.(notification)}
+      className={`group w-full text-left flex items-start gap-3 rounded-xl px-2.5 py-3 transition-colors hover:bg-primary-50 focus-visible:bg-primary-50 focus-visible:outline-none dark:hover:bg-primary-950/40 dark:focus-visible:bg-primary-950/40 ${
+        unread ? "bg-primary-50/40 dark:bg-primary-950/20" : ""
+      }`}
     >
-      {isUserNotification && notification.user ? (
+      {isUserNotification ? (
         <Avatar name={notification.user.name} size={36} />
       ) : (
         <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary-50 text-primary-500 dark:bg-primary-950/40 dark:text-primary-400">
@@ -69,32 +53,67 @@ function NotificationRow({ notification }) {
       )}
 
       <div className="min-w-0 flex-1 pt-0.5">
-        <p className="text-[13.5px] font-semibold leading-5 text-foreground">
-          {isUserNotification && notification.user && (
-            <span>{notification.user.name} </span>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[13.5px] font-semibold leading-5 text-foreground">
+            {isUserNotification && <span>{notification.user.name} </span>}
+            {notification.title || "Notification"}
+          </p>
+          {unread && (
+            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary-500" />
           )}
-          {notification.title}
-        </p>
+        </div>
 
-        <p className="mt-0.5 line-clamp-2 text-[12px] leading-5 text-muted-foreground">
-          {notification.message}
-        </p>
+        {(notification.message || notification.body) && (
+          <p className="mt-0.5 line-clamp-2 text-[12px] leading-5 text-muted-foreground">
+            {notification.message || notification.body}
+          </p>
+        )}
       </div>
-    </Link>
+    </button>
   );
 }
 
-export default function HeaderNotifications({
-  notifications = NOTIFICATIONS,
-  onViewAll,
-}) {
+export default function HeaderNotifications({ onViewAll }) {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   const triggerRef = useRef(null);
 
-  const unreadCount = notifications.filter(
-    (notification) => !notification.read,
-  ).length;
+  const { notificationsData, unreadCount, isListingNotifications } = useSelector(
+    (state) => state.notification,
+  );
+  const isAuthenticated = useSelector((state) => Boolean(state.auth?.meData));
+
+  // Connect live WebSocket stream with single-use subprotocol ticket
+  useNotificationStream(isAuthenticated);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    dispatch(getUnreadNotificationCount());
+    dispatch(listNotifications({ limit: 15 }));
+  }, [dispatch, isAuthenticated]);
+
+  useEffect(() => {
+    if (!open || !isAuthenticated) return;
+    dispatch(listNotifications({ limit: 15 }));
+  }, [dispatch, open, isAuthenticated]);
+
+  const notifications = useMemo(
+    () => extractList(notificationsData),
+    [notificationsData],
+  );
+
+  const handleRowClick = (notification) => {
+    if (!isRead(notification) && notification.id) {
+      dispatch(markNotificationAsRead(notification.id));
+    }
+    const target = getDeepLink(notification);
+    if (target) {
+      setOpen(false);
+      navigate(target);
+    }
+  };
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -149,7 +168,7 @@ export default function HeaderNotifications({
         <IconBellRinging className="h-[19px] w-[19px]" strokeWidth={1.8} />
 
         {unreadCount > 0 && (
-          <span className="absolute right-[6px] top-[5px] h-2 w-2 rounded-full bg-primary-500 " />
+          <span className="absolute right-[6px] top-[5px] h-2 w-2 rounded-full bg-primary-500" />
         )}
       </button>
 
@@ -177,7 +196,7 @@ export default function HeaderNotifications({
 
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
-                <span className="rounded-full bg-primary-500 px-2.5 py-1 text-[11px] font-semibold text-white">
+                <span className="rounded-full bg-primary-500 px-2.5 py-1 text-[11px] font-semibold text-white tabular-nums">
                   {unreadCount} new
                 </span>
               )}
@@ -195,11 +214,16 @@ export default function HeaderNotifications({
 
           {/* Notifications */}
           <div className="max-h-[55vh] overflow-y-auto px-3 py-2 sm:max-h-[440px]">
-            {notifications.length ? (
+            {isListingNotifications && notifications.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                Loading notifications...
+              </div>
+            ) : notifications.length ? (
               notifications.map((notification) => (
                 <NotificationRow
                   key={notification.id}
                   notification={notification}
+                  onClickRow={handleRowClick}
                 />
               ))
             ) : (

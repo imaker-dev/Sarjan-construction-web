@@ -26,6 +26,7 @@ import { handleResponse } from "@utils/async.utils";
 import StatCard from "@components/ui/StatCard";
 import AttendanceHero from "../components/AttandanceHero";
 import WeeklyWorkProgressBar from "../components/WeeklyWorkProgressBar";
+import AttendanceCalendarCard from "../components/AttendanceCalendarCard";
 import {
   BREAK_TYPES,
   DEFAULT_POLICY,
@@ -1035,6 +1036,12 @@ export default function AttendancePage({
           )}
         </div>
       </div>
+
+      {(meData?.employeeId || meData?.employee?.id) && (
+        <AttendanceCalendarCard
+          employeeId={meData?.employeeId || meData?.employee?.id}
+        />
+      )}
 
       <ModalAction
         id="attendance-confirm"

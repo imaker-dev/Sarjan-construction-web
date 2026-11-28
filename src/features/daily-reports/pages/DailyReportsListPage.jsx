@@ -21,6 +21,7 @@ import { listProjects } from "@store/slices/project.slice";
 import { listSites } from "@store/slices/site.slice";
 import { getAllHeadOffices } from "@store/slices/head-office.slice";
 import { listDepartments } from "@store/slices/department.slice";
+import { listEmployees } from "@store/slices/employee.slice";
 import { useAccess } from "@hooks/useAccess";
 import { extractList } from "@utils/api.utils";
 import { getTodayIsoDate } from "@utils/date.utils";
@@ -51,6 +52,7 @@ export default function DailyReportsListPage() {
   const { sitesData } = useSelector((state) => state.site);
   const { headOfficesData } = useSelector((state) => state.headOffice);
   const { departmentsData } = useSelector((state) => state.department);
+  const { employeesData } = useSelector((state) => state.employee);
 
   // Common Scope / Modal States
   const [lockCandidate, setLockCandidate] = useState(null);
@@ -63,19 +65,21 @@ export default function DailyReportsListPage() {
   const [dsrFromDate, setDsrFromDate] = useState("");
   const [dsrToDate, setDsrToDate] = useState("");
 
-  // Office Attendance Filters State: Strictly "today" or "custom"
-  const [attendanceDateFilter, setAttendanceDateFilter] = useState("today"); // "today" | "custom"
+  // Office Attendance Filters State: "today" | "monthly" | "custom"
+  const [attendanceDateFilter, setAttendanceDateFilter] = useState("today");
   const [musterFromDate, setMusterFromDate] = useState("");
   const [musterToDate, setMusterToDate] = useState("");
   const [selectedHeadOfficeId, setSelectedHeadOfficeId] = useState("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [selectedMusterSiteId, setSelectedMusterSiteId] = useState("");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
 
   // Initial Scope Data Fetch
   useEffect(() => {
     dispatch(listProjects());
     dispatch(listSites());
     dispatch(listDepartments());
+    dispatch(listEmployees({ limit: 200 }));
     if (isCompanyAdmin) {
       dispatch(getAllHeadOffices());
     }
@@ -105,6 +109,9 @@ export default function DailyReportsListPage() {
     if (attendanceDateFilter === "today") {
       params.period = "DAILY";
       params.date = todayStr;
+    } else if (attendanceDateFilter === "monthly") {
+      params.period = "MONTHLY";
+      params.date = musterFromDate || todayStr;
     } else {
       params.period = "CUSTOM";
       if (musterFromDate) params.from = musterFromDate;
@@ -115,6 +122,7 @@ export default function DailyReportsListPage() {
       }
     }
 
+    if (selectedEmployeeId) params.employeeId = selectedEmployeeId;
     if (selectedHeadOfficeId) params.headOfficeId = selectedHeadOfficeId;
     if (selectedDepartmentId) params.departmentId = selectedDepartmentId;
     if (selectedMusterSiteId) {
@@ -173,11 +181,13 @@ export default function DailyReportsListPage() {
     selectedHeadOfficeId,
     selectedDepartmentId,
     selectedMusterSiteId,
+    selectedEmployeeId,
   ]);
 
   // Normalizing Project, Site, Head Office & Department lists
   const projectsList = extractList(projectsData);
   const sitesList = extractList(sitesData);
+  const employeesList = extractList(employeesData);
   const headOfficesList = extractList(headOfficesData);
   const departmentsList = extractList(departmentsData);
 
@@ -308,8 +318,11 @@ export default function DailyReportsListPage() {
           setSelectedDepartmentId={setSelectedDepartmentId}
           selectedHeadOfficeId={selectedHeadOfficeId}
           setSelectedHeadOfficeId={setSelectedHeadOfficeId}
+          selectedEmployeeId={selectedEmployeeId}
+          setSelectedEmployeeId={setSelectedEmployeeId}
           departmentsList={departmentsList}
           headOfficesList={headOfficesList}
+          employeesList={employeesList}
           lockedReportsMap={lockedReportsMap}
           onExportMuster={handleExportOfficeMuster}
           isExportingReport={isExportingReport}

@@ -148,6 +148,6 @@ export const privateRouteConfig = [
   { path: ROUTES.DAILY_REPORTS.DETAILS, element: DailyReportDetailsPage, permissions: [PERMISSIONS.ATTENDANCE.READ] },
 
   // Notifications Routes
-  { path: ROUTES.NOTIFICATIONS.ROOT, element: NotificationPage, roles: [ROLES.COMPANY_OWNER] },
+  { path: ROUTES.NOTIFICATIONS.ROOT, element: NotificationPage },
 
 ];

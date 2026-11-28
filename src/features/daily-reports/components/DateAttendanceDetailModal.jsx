@@ -4,11 +4,14 @@ import {
   IconCsv,
   IconFileTypePdf,
   IconFileTypeXls,
+  IconEye,
 } from "@tabler/icons-react";
 import ModalBasic from "@components/ui/ModalBasic";
 import DataTable from "@components/ui/DataTable";
 import SearchBar from "@components/ui/SearchBar";
 import StatusBadge from "@components/ui/StatusBadge";
+import SessionDetailModal from "@features/attendance/components/SessionDetailModal";
+import { deriveAttendanceBadges } from "@utils/attendance.utils";
 import {
   formatTimeStr,
   exportDateAttendanceCsv,
@@ -32,6 +35,7 @@ export default function DateAttendanceDetailModal({
   isExportingReport,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [inspectSession, setInspectSession] = useState(null);
 
   const weeklyByEmployeeId = useMemo(() => {
     const map = new Map();
@@ -178,15 +182,28 @@ export default function DateAttendanceDetailModal({
                 ? "APPROVED"
                 : "COMPLETED";
           const cfg = SESSION_STATUS_CONFIG[key];
+          const dayBadges = deriveAttendanceBadges(s);
 
           return (
-            <StatusBadge
-              label={cfg.label}
-              tone={cfg.tone}
-              icon={cfg.icon}
-              dot={cfg.dot}
-              size="sm"
-            />
+            <div className="flex flex-wrap items-center gap-1">
+              <StatusBadge
+                label={cfg.label}
+                tone={cfg.tone}
+                icon={cfg.icon}
+                dot={cfg.dot}
+                size="sm"
+              />
+              {dayBadges
+                .filter((b) => b.key !== "PRESENT")
+                .map((b) => (
+                  <StatusBadge
+                    key={b.key}
+                    label={b.label}
+                    tone={b.tone}
+                    size="xs"
+                  />
+                ))}
+            </div>
           );
         },
       },
@@ -299,6 +316,19 @@ export default function DateAttendanceDetailModal({
           <DataTable
             columns={sessionColumns}
             data={filteredSessions}
+            actions={[
+              {
+                label: "Inspect session",
+                icon: IconEye,
+                onClick: (s) =>
+                  setInspectSession({
+                    sessionId: s.id || null,
+                    employeeId: s.employeeId || s.employee?.id || null,
+                    businessDate: s.businessDate || dateRecord?.businessDate,
+                    daySummary: s,
+                  }),
+              },
+            ]}
             empty={{
               icon: IconUsers,
               title: "No Matching Employees",
@@ -307,6 +337,15 @@ export default function DateAttendanceDetailModal({
             }}
           />
         </div>
+
+        <SessionDetailModal
+          isOpen={Boolean(inspectSession)}
+          onClose={() => setInspectSession(null)}
+          sessionId={inspectSession?.sessionId}
+          employeeId={inspectSession?.employeeId}
+          businessDate={inspectSession?.businessDate}
+          daySummary={inspectSession?.daySummary}
+        />
 
         {/* Modal Footer */}
         <div className="flex items-center justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
